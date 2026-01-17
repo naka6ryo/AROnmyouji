@@ -449,8 +449,8 @@ export class Renderer {
         const pitchInRange = this.isAngleInArc(startPitch, endPitch, enemyPitch);
         const yawInRange = this.isAngleInArc(startYaw, endYaw, enemyYaw);
         
-        // 敵のメッシュサイズ（球体半径0.3m）を判定に含める
-        const enemyRadius = 0.3;
+        // 敵のメッシュサイズ（当たり判定半径0.5m）を判定に含める
+        const enemyRadius = 0.5;
         const minRadius = radiusScale * 0.3 - enemyRadius;
         const maxRadius = radiusScale * 0.3 + enemyRadius;
         const distanceInRange = enemyDistance >= minRadius && enemyDistance <= maxRadius;

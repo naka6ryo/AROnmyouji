@@ -36,11 +36,10 @@ export class Hitodama {
             opacity: 0.8,
             blending: THREE.AdditiveBlending
         });
-            this.coreMesh = new THREE.Mesh(coreGeo, coreMat);
-            this.coreMesh.position.copy(this.pos);
-            this.coreMesh.scale.set(0.8 * SPAWN_SCALE_FACTOR, 1.4 * SPAWN_SCALE_FACTOR, 0.8 * SPAWN_SCALE_FACTOR);
-            this.scene.add(this.coreMesh);
-            this.baseCoreScale = this.coreMesh.scale.clone();
+        this.coreMesh = new THREE.Mesh(coreGeo, coreMat);
+        this.coreMesh.position.copy(this.pos);
+        this.coreMesh.scale.set(0.8 * SPAWN_SCALE_FACTOR, 1.4 * SPAWN_SCALE_FACTOR, 0.8 * SPAWN_SCALE_FACTOR);
+        this.scene.add(this.coreMesh);
 
         // --- 2. Body ---
         const bodyGeo = new THREE.SphereGeometry(0.6, 64, 64);
@@ -55,10 +54,9 @@ export class Hitodama {
         this.mesh = new THREE.Mesh(bodyGeo, bodyMat);
         this.mesh.position.copy(this.pos);
         this.mesh.position.y += 0.3;
-            this.mesh.scale.set(0.75 * SPAWN_SCALE_FACTOR, 1.8 * SPAWN_SCALE_FACTOR, 0.75 * SPAWN_SCALE_FACTOR);
-            this.scene.add(this.mesh);
-            this.baseMeshScale = this.mesh.scale.clone();
-            this.originalPositions = bodyGeo.attributes.position.clone();
+        this.mesh.scale.set(0.75 * SPAWN_SCALE_FACTOR, 1.8 * SPAWN_SCALE_FACTOR, 0.75 * SPAWN_SCALE_FACTOR);
+        this.scene.add(this.mesh);
+        this.originalPositions = bodyGeo.attributes.position.clone();
 
         // --- 3. Aura ---
         const auraMat = new THREE.SpriteMaterial({
@@ -72,7 +70,6 @@ export class Hitodama {
         this.auraSprite.scale.set(3.0 * SPAWN_SCALE_FACTOR, 5.0 * SPAWN_SCALE_FACTOR, 3.0 * SPAWN_SCALE_FACTOR);
         this.auraSprite.position.copy(this.pos);
         this.scene.add(this.auraSprite);
-            this.baseAuraScale = this.auraSprite.scale.clone();
 
         // --- 4. Light ---
         this.light = new THREE.PointLight(0xff4400, 30, 10);
@@ -379,27 +376,6 @@ export class Hitodama {
                 sprite.scale.set(scale, scale, scale);
                 sprite.material.opacity = 0.4 * ratio;
             }
-        }
-        // --- Distortion / subtle glitch effect for 人魂 ---
-        try {
-            const hueShift = Math.sin(this.time * 6.0) * 0.03; // small oscillation
-            const baseColor = new THREE.Color(0xff2200);
-            const hsl = { h: 0, s: 0, l: 0 };
-            baseColor.getHSL(hsl);
-            if (this.mesh && this.mesh.material && typeof this.mesh.material.color !== 'undefined') {
-                this.mesh.material.color.setHSL((hsl.h + hueShift + 1) % 1, hsl.s, hsl.l);
-            }
-
-            const meshJitter = 1.0 + Math.sin(this.time * 9.0) * 0.03;
-            const coreJitter = 1.0 + Math.sin(this.time * 7.0 + 0.7) * 0.04;
-            const auraJitter = 1.0 + Math.sin(this.time * 5.5 + 1.2) * 0.05;
-            if (this.baseMeshScale) this.mesh.scale.copy(this.baseMeshScale).multiplyScalar(meshJitter);
-            if (this.baseCoreScale) this.coreMesh.scale.copy(this.baseCoreScale).multiplyScalar(coreJitter);
-            if (this.baseAuraScale) this.auraSprite.scale.copy(this.baseAuraScale).multiplyScalar(auraJitter);
-
-            if (this.light) this.light.intensity = (10 + Math.sin(this.time * 10.0) * 6) * (this.isPurifying ? 0.6 : 1.0);
-        } catch (e) {
-            // ignore if any part missing
         }
     }
 

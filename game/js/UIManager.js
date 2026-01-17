@@ -38,6 +38,12 @@ export class UIManager {
 
             // Gameplay HUD
             playerHP: document.getElementById('playerHP'),
+            hpBarFill: document.getElementById('hpBarFill'),
+            // Start overlay copies
+            playerHPStart: document.getElementById('playerHPStart'),
+            hpBarFillStart: document.getElementById('hpBarFillStart'),
+            killCountStart: document.getElementById('killCountStart'),
+            timeLeftStart: document.getElementById('timeLeftStart'),
             killCount: document.getElementById('killCount'),
             timeLeft: document.getElementById('timeLeft'),
             hudPowerMode: document.getElementById('hudPowerMode'),
@@ -47,6 +53,7 @@ export class UIManager {
             sceneStartButton: document.getElementById('sceneStartButton'),
             countdownOverlay: document.getElementById('countdownOverlay'),
             countdownValue: document.getElementById('countdownValue'),
+            startOverlay: document.getElementById('startOverlay'),
 
             // Effects
             flashOverlay: document.getElementById('flash-overlay'),
@@ -168,9 +175,25 @@ export class UIManager {
     // --- HUD Updates ---
 
     updateHUD(stats, playerState) {
-        if (this.elements.playerHP) this.elements.playerHP.textContent = `HP: ${playerState.hp} / ${playerState.maxHP}`;
-        if (this.elements.killCount) this.elements.killCount.textContent = `撃破: ${stats.killCount}`;
-        if (this.elements.timeLeft) this.elements.timeLeft.textContent = `残り時間: ${stats.remainingTime.toFixed(0)}秒`;
+        // メインHUDの数値更新
+        if (this.elements.playerHP) this.elements.playerHP.textContent = `${playerState.hp} / ${playerState.maxHP}`;
+        if (this.elements.killCount) this.elements.killCount.textContent = `${stats.killCount}`;
+        if (this.elements.timeLeft) this.elements.timeLeft.textContent = `${stats.remainingTime.toFixed(0)}`;
+
+        // HPバーの更新（メイン）
+        if (this.elements.hpBarFill) {
+            const pct = Math.max(0, Math.min(1, playerState.hp / playerState.maxHP));
+            this.elements.hpBarFill.style.width = `${pct * 100}%`;
+        }
+
+        // スタートオーバーレイ用の数値同期（もし表示中なら同じ値を表示）
+        if (this.elements.playerHPStart) this.elements.playerHPStart.textContent = `${playerState.hp} / ${playerState.maxHP}`;
+        if (this.elements.killCountStart) this.elements.killCountStart.textContent = `${stats.killCount}`;
+        if (this.elements.timeLeftStart) this.elements.timeLeftStart.textContent = `${stats.remainingTime.toFixed(0)}`;
+        if (this.elements.hpBarFillStart) {
+            const pct2 = Math.max(0, Math.min(1, playerState.hp / playerState.maxHP));
+            this.elements.hpBarFillStart.style.width = `${pct2 * 100}%`;
+        }
     }
 
     updatePowerMode(active, remainingTime) {
@@ -289,6 +312,9 @@ export class UIManager {
     toggleSceneStartButton(show) {
         if (this.elements.sceneStartButton) {
             this.elements.sceneStartButton.style.display = show ? 'block' : 'none';
+        }
+        if (this.elements.startOverlay) {
+            this.elements.startOverlay.style.display = show ? 'flex' : 'none';
         }
     }
 

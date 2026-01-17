@@ -370,6 +370,65 @@ body {
     background: #0c0;
 }
 
+/* スタートオーバーレイ（中央表示） */
+.start-overlay {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: min(90%, 520px);
+    background: linear-gradient(180deg, rgba(5,5,10,0.95), rgba(0,0,0,0.85));
+    border-radius: 14px;
+    padding: 28px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    text-align: center;
+    z-index: 60;
+    pointer-events: auto;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+}
+.start-overlay h1 {
+    font-size: 2.4rem;
+    letter-spacing: 2px;
+}
+.start-stats {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+}
+.start-hp, .start-kills, .start-timer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    color: #fff;
+}
+.start-hp .hp-label { font-size: 0.85rem; margin-bottom: 6px; color: #ffdede; }
+
+/* HPバー共通 */
+#hpBarContainer, #hpBarContainerStart {
+    width: 160px;
+    height: 14px;
+    background: rgba(255,255,255,0.08);
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid rgba(255,255,255,0.06);
+}
+#hpBarFill, #hpBarFillStart {
+    height: 100%;
+    width: 100%; /* 初期は満タン */
+    background: linear-gradient(90deg, #ff6b6b 0%, #ff8a5b 60%);
+    transition: width 0.25s ease-out, background 0.25s ease-out;
+}
+#playerHP, #playerHPStart {
+    font-weight: bold;
+    margin-top: 6px;
+    font-size: 1rem;
+}
+
 /* レスポンシブ対応 */
 @media (max-width: 768px) {
     .screen h1 {

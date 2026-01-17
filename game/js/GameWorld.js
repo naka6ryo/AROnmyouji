@@ -109,14 +109,15 @@ export class GameWorld {
         const azim = Math.random() * 360; // 0-360度
         // 上半球のみ。水平面付近に寄せて偏りを緩和（0〜60度）
         const elev = Math.random() * 60; // 0〜60度
-        
+        // 人魂タイプの敵（今は全て人魂、将来はランダム分岐可）
         const enemy = {
             id: this.nextEnemyId++,
             hp: this.ENEMY_HP,
             distance: this.ENEMY_DISTANCE_INITIAL,
             azim,
             elev,
-            spawnTime: performance.now()
+            spawnTime: performance.now(),
+            type: 'hitodama'
         };
         
         this.enemies.push(enemy);

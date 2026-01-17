@@ -409,6 +409,13 @@ class AROnmyoujiGame {
         
         this.debugOverlay.logInfo(`斬撃が敵に当たった: 敵id=${enemy.id}`);
         
+        // 敵がまだ生存しているか確認
+        const existingEnemy = this.gameWorld.enemies.find(e => e.id === enemy.id);
+        if (!existingEnemy) {
+            console.warn(`[Game] 敵が既に削除されています: 敵id=${enemy.id}`);
+            return;
+        }
+        
         // ダメージを与える
         const damage = this.motionInterpreter.isPowerMode ? this.combatSystem.powerDamage : this.combatSystem.normalDamage;
         const killed = this.gameWorld.damageEnemy(enemy.id, damage);
@@ -421,6 +428,7 @@ class AROnmyoujiGame {
         
         // 敵が撃破された場合、敵メッシュを即座に削除
         if (killed) {
+            console.log(`[Game] 敵メッシュを削除: 敵id=${enemy.id}`);
             this.renderer.removeEnemy(enemy.id);
         }
         

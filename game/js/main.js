@@ -82,10 +82,11 @@ class AROnmyoujiGame {
             timeLeft: document.getElementById('timeLeft'),
             hudPowerMode: document.getElementById('hudPowerMode'),
             powerModeTime: document.getElementById('powerModeTime'),
-            enemyIndicator: document.getElementById('enemyIndicator'),
-            enemyIndicatorArrow: document.querySelector('#enemyIndicator .arrow'),
-            enemyIndicatorLabel: document.querySelector('#enemyIndicator .label'),
+            enemyIndicators: document.getElementById('enemyIndicators'),
             
+
+        // 敵インジケータ要素管理
+        this.enemyIndicatorMap = new Map(); // enemyId -> element
             // Result
             resultTitle: document.getElementById('resultTitle'),
             resultKills: document.getElementById('resultKills'),
@@ -447,8 +448,9 @@ class AROnmyoujiGame {
         this.ui.resultTitle.textContent = title;
         this.ui.resultKills.textContent = kills;
         this.ui.resultTime.textContent = time.toFixed(1);
-        if (this.ui.enemyIndicator) {
-            this.ui.enemyIndicator.classList.add('hidden');
+        if (this.ui.enemyIndicators) {
+            this.ui.enemyIndicators.innerHTML = '';
+            this.enemyIndicatorMap.clear();
         }
         this.appState.endGame();
     }
@@ -500,7 +502,7 @@ class AROnmyoujiGame {
             this.combatSystem.update(this.FIXED_DELTA_TIME, viewDir);
 
             // 画面外の敵インジケータ更新
-            this.updateEnemyIndicator(viewDir);
+            this.updateEnemyIndicators(viewDir);
             
             // レンダラー更新
             this.renderer.updateEnemies(this.gameWorld.getEnemies());
@@ -517,62 +519,124 @@ class AROnmyoujiGame {
     }
 
     /**
-     * 画面外の敵方向を矢印で示す
+     * 画面外の敵方向を矢印で示す（敵ごとに1つ）
      */
-    updateEnemyIndicator(viewDir) {
-        const indicator = this.ui.enemyIndicator;
-        const arrow = this.ui.enemyIndicatorArrow;
-        if (!indicator || !arrow) return;
+    updateEnemyIndicators(viewDir) {
+        const container = this.ui.enemyIndicators;
+        if (!container) return;
         
         const enemies = this.gameWorld.getEnemies();
-        if (!enemies.length) {
-            indicator.classList.add('hidden');
-            return;
-        }
+        const existingIds = new Set(this.enemyIndicatorMap.keys());
         
-        const halfFov = this.renderer.getHalfFovDegrees();
-        let target = null;
-        let smallestAngle = Infinity;
+        const halfVert = this.renderer.getHalfFovDegrees();
+        const halfHorz = this.renderer.getHalfFovHorizontalDegrees();
+        
+        const viewYaw = Math.atan2(viewDir.x, viewDir.z);
+        const viewElev = Math.atan2(viewDir.y, Math.sqrt(viewDir.x * viewDir.x + viewDir.z * viewDir.z));
         
         for (const enemy of enemies) {
             const enemyDir = this.gameWorld.getEnemyDirection(enemy);
-            const angle = this.combatSystem.calculateAngleBetween(viewDir, enemyDir);
+            const enemyYaw = Math.atan2(enemyDir.x, enemyDir.z);
+            const enemyElev = Math.atan2(enemyDir.y, Math.sqrt(enemyDir.x * enemyDir.x + enemyDir.z * enemyDir.z));
             
-            // FOV外のみ対象
-            if (angle > halfFov) {
-                if (angle < smallestAngle) {
-                    smallestAngle = angle;
-                    target = { enemy, dir: enemyDir };
+            let yawDiff = (enemyYaw - viewYaw) * 180 / Math.PI;
+            let pitchDiff = (enemyElev - viewElev) * 180 / Math.PI;
+            yawDiff = this.normalizeAngleDeg(yawDiff);
+            pitchDiff = this.normalizeAngleDeg(pitchDiff);
+            
+            const onScreen = Math.abs(yawDiff) <= halfHorz && Math.abs(pitchDiff) <= halfVert;
+            const existing = this.enemyIndicatorMap.get(enemy.id);
+            if (onScreen) {
+                if (existing) {
+                    container.removeChild(existing);
+                    this.enemyIndicatorMap.delete(enemy.id);
                 }
+                continue;
             }
+            
+            const indicatorEl = existing || this.createEnemyIndicator(container);
+            this.positionIndicator(indicatorEl, yawDiff, pitchDiff, halfHorz, halfVert);
+            this.updateIndicatorLabel(indicatorEl, enemy);
+            this.enemyIndicatorMap.set(enemy.id, indicatorEl);
+            existingIds.delete(enemy.id);
         }
         
-        if (!target) {
-            indicator.classList.add('hidden');
-            return;
+        // 削除済み敵のインジケータを除去
+        for (const staleId of existingIds) {
+            const el = this.enemyIndicatorMap.get(staleId);
+            if (el && el.parentElement === container) {
+                container.removeChild(el);
+            }
+            this.enemyIndicatorMap.delete(staleId);
         }
-        
-        // 視線基準で水平角差を算出し、矢印を回転
-        const yawDiff = this.calculateYawDifference(viewDir, target.dir);
-        arrow.style.transform = `rotate(${yawDiff}deg)`;
-        
-        if (this.ui.enemyIndicatorLabel) {
-            this.ui.enemyIndicatorLabel.textContent = `ENEMY ${target.enemy.distance.toFixed(1)}m`;
-        }
-        
-        indicator.classList.remove('hidden');
     }
     
-    /**
-     * 視線と対象方向の水平角差（度）
-     */
-    calculateYawDifference(viewDir, targetDir) {
-        const viewYaw = Math.atan2(viewDir.x, viewDir.z);
-        const targetYaw = Math.atan2(targetDir.x, targetDir.z);
-        let diffDeg = (targetYaw - viewYaw) * 180 / Math.PI;
-        while (diffDeg > 180) diffDeg -= 360;
-        while (diffDeg < -180) diffDeg += 360;
-        return diffDeg;
+    createEnemyIndicator(container) {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'enemy-indicator';
+        const arrow = document.createElement('div');
+        arrow.className = 'arrow';
+        const label = document.createElement('div');
+        label.className = 'label';
+        wrapper.appendChild(arrow);
+        wrapper.appendChild(label);
+        container.appendChild(wrapper);
+        return wrapper;
+    }
+    
+    positionIndicator(el, yawDiff, pitchDiff, halfHorz, halfVert) {
+        // エッジ判定（近い方の端に出す）
+        const normYaw = Math.abs(yawDiff) / halfHorz;
+        const normPitch = Math.abs(pitchDiff) / halfVert;
+        const arrow = el.querySelector('.arrow');
+        if (!arrow) return;
+        
+        const clamp = (v, min, max) => Math.min(Math.max(v, min), max);
+        let xPct = 50;
+        let yPct = 50;
+        let rotation = 0;
+        const marginPct = 6;
+        
+        if (normYaw >= normPitch) {
+            // 左右端
+            const verticalShift = clamp(pitchDiff / halfVert, -1, 1) * 45;
+            yPct = 50 - verticalShift * 0.5;
+            if (yawDiff > 0) {
+                xPct = 100 - marginPct;
+                rotation = 90;
+            } else {
+                xPct = marginPct;
+                rotation = -90;
+            }
+        } else {
+            // 上下端
+            const horizontalShift = clamp(yawDiff / halfHorz, -1, 1) * 45;
+            xPct = 50 + horizontalShift * 0.5;
+            if (pitchDiff > 0) {
+                yPct = marginPct;
+                rotation = 0;
+            } else {
+                yPct = 100 - marginPct;
+                rotation = 180;
+            }
+        }
+        el.style.left = `${xPct}%`;
+        el.style.top = `${yPct}%`;
+        arrow.style.transform = `rotate(${rotation}deg)`;
+    }
+    
+    updateIndicatorLabel(el, enemy) {
+        const label = el.querySelector('.label');
+        if (label) {
+            label.textContent = `ENEMY ${enemy.distance.toFixed(1)}m`;
+        }
+    }
+    
+    normalizeAngleDeg(angle) {
+        let a = angle;
+        while (a > 180) a -= 360;
+        while (a < -180) a += 360;
+        return a;
     }
     
     /**
@@ -593,6 +657,12 @@ class AROnmyoujiGame {
             this.ui.powerModeTime.textContent = Math.ceil(powerMode.remaining / 1000);
         } else {
             this.ui.hudPowerMode.classList.add('hidden');
+        }
+
+        // 敵インジケータなしのときはコンテナを空に
+        if (this.ui.enemyIndicators && !this.gameWorld.getEnemies().length) {
+            this.ui.enemyIndicators.innerHTML = '';
+            this.enemyIndicatorMap.clear();
         }
     }
     

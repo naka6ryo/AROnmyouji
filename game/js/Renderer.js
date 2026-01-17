@@ -184,6 +184,15 @@ export class Renderer {
     getHalfFovDegrees() {
         return this.camera.fov / 2;
     }
+
+    /**
+     * 水平方向FOVの半角（度）を取得
+     */
+    getHalfFovHorizontalDegrees() {
+        const halfVertRad = (this.camera.fov * Math.PI / 180) / 2;
+        const halfHorzRad = Math.atan(Math.tan(halfVertRad) * this.camera.aspect);
+        return halfHorzRad * 180 / Math.PI;
+    }
     
     /**
      * クリーンアップ

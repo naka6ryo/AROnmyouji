@@ -40,11 +40,16 @@ export class AppState {
         // 現在の画面を非表示
         if (this.screens[this.currentState]) {
             this.screens[this.currentState].classList.remove('active');
+            // Tailwind の `hidden` ユーティリティが優先される場合があるため
+            // 明示的に隠すクラスを付与して確実に非表示にする
+            this.screens[this.currentState].classList.add('hidden');
         }
         
         // 新しい画面を表示
         this.currentState = newState;
         if (this.screens[newState]) {
+            // もし `hidden` が付与されている場合はまず外す
+            this.screens[newState].classList.remove('hidden');
             this.screens[newState].classList.add('active');
         }
         

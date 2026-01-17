@@ -533,7 +533,31 @@ class AROnmyoujiGame {
         this.combatSystem.sendDamageHaptic();
         // 被弾した敵とそのインジケータを除去
         if (data.enemy) {
-            this.renderer.removeEnemy(data.enemy.id);
+            // DOM側のダメージ演出（フラッシュ / ビネット / シェイク）
+            const flash = document.getElementById('flash-overlay');
+            const vignette = document.getElementById('damage-vignette');
+            const container = document.getElementById('uiContainer');
+            if (flash) {
+                flash.style.opacity = '1';
+                // 素早く戻す
+                setTimeout(() => { flash.style.opacity = '0'; }, 80);
+            }
+            if (vignette) {
+                vignette.style.transition = 'opacity 0.05s ease-out';
+                vignette.style.opacity = '1';
+                setTimeout(() => {
+                    vignette.style.transition = 'opacity 2.5s ease-in';
+                    vignette.style.opacity = '0';
+                }, 200);
+            }
+            if (container) {
+                container.classList.remove('shake-screen');
+                void container.offsetWidth; // reflow
+                container.classList.add('shake-screen');
+            }
+
+            // Renderer に「プレイヤーダメージで消える」ことを伝えて、爆発系エフェクトを使わせる
+            this.renderer.removeEnemy(data.enemy.id, { playerDamage: true });
             const el = this.enemyIndicatorMap.get(data.enemy.id);
             if (el && this.ui.enemyIndicators && el.parentElement === this.ui.enemyIndicators) {
                 this.ui.enemyIndicators.removeChild(el);

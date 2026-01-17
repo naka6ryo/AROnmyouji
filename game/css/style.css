@@ -393,3 +393,51 @@ body {
         font-size: 0.8rem;
     }
 }
+
+/* -------- ダメージ演出スタイル（flash/vignette/shake） -------- */
+#flash-overlay {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: #fff;
+    opacity: 0;
+    pointer-events: none;
+    z-index: 100;
+    transition: opacity 0.08s ease-out;
+    mix-blend-mode: hard-light;
+}
+
+#damage-vignette {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    background: radial-gradient(circle, transparent 40%, rgba(120, 0, 0, 0.6) 80%, rgba(50, 0, 0, 0.9) 100%);
+    box-shadow: inset 0 0 150px rgba(255, 0, 0, 0.5);
+    opacity: 0;
+    pointer-events: none;
+    z-index: 90;
+    transition: opacity 0.5s ease-out;
+    mix-blend-mode: multiply;
+}
+
+@keyframes chaotic-shake {
+    0% { transform: translate(0, 0) rotate(0deg); }
+    10% { transform: translate(-8px, -8px) rotate(-1.5deg); }
+    20% { transform: translate(8px, 8px) rotate(1.5deg); }
+    30% { transform: translate(-8px, 8px) rotate(-1.5deg); }
+    40% { transform: translate(8px, -8px) rotate(1.5deg); }
+    50% { transform: translate(-4px, 0) rotate(-0.8deg); }
+    60% { transform: translate(4px, 0) rotate(0.8deg); }
+    100% { transform: translate(0, 0) rotate(0deg); }
+}
+
+.shake-screen {
+    animation: chaotic-shake 0.45s cubic-bezier(.36,.07,.19,.97) both;
+}
+
+/* 小さなユーティリティ: flash をすぐ戻すためのクラス */
+.flash-quick-hide {
+    transition: opacity 0.15s ease-in;
+}

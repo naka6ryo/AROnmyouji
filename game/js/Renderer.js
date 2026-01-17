@@ -178,7 +178,7 @@ export class Renderer {
     /**
      * 敵を削除
      */
-    removeEnemy(enemyId) {
+    removeEnemy(enemyId, options = {}) {
         const hitodama = this.enemyObjects.get(enemyId);
         if (hitodama) {
             // 既に浄化中・死亡なら即時削除
@@ -186,6 +186,22 @@ export class Renderer {
                 hitodama.dispose();
                 this.enemyObjects.delete(enemyId);
                 console.log(`[Renderer] 敵(人魂)削除: id=${enemyId}`);
+            } else if (options.playerDamage && typeof hitodama.explode === 'function') {
+                // プレイヤーダメージにより消える場合は爆発系エフェクトを使う
+                hitodama.onExploded = () => {
+                    hitodama.dispose();
+                    this.enemyObjects.delete(enemyId);
+                    console.log(`[Renderer] 敵(人魂)爆発完了・削除: id=${enemyId}`);
+                };
+                // pass camera world position for biasing fragments toward player
+                try {
+                    const camPos = new THREE.Vector3();
+                    this.camera.getWorldPosition(camPos);
+                    if (!this.scene.userData) this.scene.userData = {};
+                    this.scene.userData.cameraPosition = camPos;
+                } catch (e) {}
+                hitodama.explode({ toCameraBias: true });
+                console.log(`[Renderer] 敵(人魂)爆発開始 (playerDamage): id=${enemyId}`);
             } else if (typeof hitodama.purify === 'function') {
                 // 撃破時に浄化アニメーションを開始し、完了時に実際に削除する
                 hitodama.onPurified = () => {

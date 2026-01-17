@@ -18,11 +18,11 @@ export class Renderer {
         );
 
         // 手を伸ばして端末を持つ前提で、回転中心とカメラ位置を分離
-        // pivotを身体側に置き、カメラを少し前方かつわずかに下げる
+        // pivotを身体側に置き、カメラを原点に配置
         this.cameraPivot = new THREE.Object3D();
         this.scene.add(this.cameraPivot);
         this.cameraPivot.add(this.camera);
-        this.camera.position.set(0, -0.05, 0.35);
+        this.camera.position.set(0, 0, 0);
 
         // 端末を縦向きで持つことを基準に、X軸へ-90度オフセット
         this.orientationOffset = new THREE.Euler(-Math.PI / 2, 0, 0, 'YXZ');

@@ -35,8 +35,8 @@ export class Renderer {
 
         this.renderer = new THREE.WebGLRenderer({
             canvas: this.canvas,
+            alpha: true, // 背景透過 (Bloomと共存させるためClearColorに注意)
             antialias: true // Bloomを使う場合はfalse推奨だが、ユーザーコードがtrueなので維持。パフォーマンス注意
-            // alpha: true はBloomと相性が悪いため外すことが多いが、背景透過が必要なら維持。ここでは背景黒前提なので不要かもだが、元のコードがbody黒でcanvas blockなので、黒のシーン背景で上書きする。
         });
 
         // --- ポストプロセス（ブルーム発光効果） ---
@@ -462,14 +462,66 @@ export class Renderer {
         const pivotPos = this.getPivotWorldPosition();
 
         // 敵のワールド座標を計算
-        const azimRad = enemy.azim * Math.PI / 180;
-        const elevRad = enemy.elev * Math.PI / 180;
-        const r = enemy.distance;
-        const enemyWorld = new THREE.Vector3(
-            r * Math.cos(elevRad) * Math.sin(azimRad),
-            r * Math.sin(elevRad),
-            -r * Math.cos(elevRad) * Math.cos(azimRad)
-        ).add(pivotPos);
+        // 敵のワールド座標を計算
+        // Hitodamaの場合は見た目の位置（浮遊含む）を取得
+        let enemyWorld;
+        const hitodama = this.hitodamas.get(enemy.id);
+
+        if (hitodama) {
+            enemyWorld = new THREE.Vector3();
+            hitodama.getMeshWorldPosition(enemyWorld);
+            // これは既にワールド座標なのでpivotPosを加算する必要はないが、
+            // getMeshWorldPositionはsceneルートからの座標を返す。
+            // cameraPivotはsceneの子。
+            // 待てよ、hitodama.rootはscene直下に追加されている(Hitodama.js L10: this.scene.add(this.root))
+            // cameraPivotもscene直下(Renderer.js L29: this.scene.add(this.cameraPivot))
+            // したがって、hitodama.getMeshWorldPosition()はワールド座標そのもの。
+            // 一方、pivotPosはcameraPivotのワールド座標。
+            // checkSlashEnemyCollisionの元のロジックは:
+            // enemyWorld = (敵の相対位置) + pivotPos
+            // これは「敵がpivot中心に配置されている」前提？
+            // updateEnemyPositionでは:
+            // hitodama.setPosition(...)
+            // これは `this.root.position.set(...)` 
+            // rootはscene直下。
+            // つまり (x, y, z) は scene 原点からの位置。
+            // 元のコードでは `updateEnemyPosition` は `mesh.position.set(...)` だったが、
+            // そもそも `mesh` は `scene` に add されていた (`this.scene.add(mesh)`).
+            // なので、元の `enemyWorld` 計算:
+            // (r * ...) .add(pivotPos)
+            // は、「敵の位置は pivotPos からの相対座標で管理されている」という意味だったのか？
+
+            // Renderer.js L129: updateEnemyPosition(mesh, enemy)
+            // L145: mesh.position.set(...)
+            // L131: this.scene.add(mesh)
+            // メッシュはscene直下。mesh.positionは(0,0,0)基準。
+            // なのに collision check で `.add(pivotPos)` しているということは、
+            // 「enemy.distance 等は pivot からの相対値を表すが、描画時は原点(0,0,0)からの位置としてセットしている」...？
+            // いや、L145の計算式 `r * cos...` は原点中心の計算。
+            // もし `pivotPos` が (0,0,0) なら問題ない。
+            // `cameraPivot` は `this.scene.add` されている。初期位置は明示されていないが、通常 (0,0,0).
+            // `updateCameraRotation` で回転はするが、位置変更はない。
+            // じゃあ `.add(pivotPos)` は `+ (0,0,0)` なので無意味？
+            // いや、ARで「自分が動く」場合、cameraPivotごと移動する設計か？
+            // ユーザーコードを見る限り、cameraPivotの位置を変更するコードはない。
+            // よって pivotPos は常に (0,0,0) のはず。
+            // 念のため、hitodama.getMeshWorldPosition(enemyWorld) をそのまま使うだけで正しいはず。
+            // ただし、元のロジックと合わせるなら、
+            // 「startWorld/endWorld も pivotPos 加算している」
+            // これらも pivotPos=(0,0,0) なら影響なし。
+            // とりあえず `getMeshWorldPosition` で「絶対座標」が取れるのでそれを採用する。
+        } else {
+            // Hitodamaが見つからない場合（通常ありえないがフォールバック）
+            const azimRad = enemy.azim * Math.PI / 180;
+            const elevRad = enemy.elev * Math.PI / 180;
+            const r = enemy.distance;
+            // pivotPosを含める（既存ロジック準拠）
+            enemyWorld = new THREE.Vector3(
+                r * Math.cos(elevRad) * Math.sin(azimRad),
+                r * Math.sin(elevRad),
+                -r * Math.cos(elevRad) * Math.cos(azimRad)
+            ).add(pivotPos);
+        }
 
         // 斬撃円弧の始点・終点もpivot基準
         const startWorld = startPosNormalized.clone().multiplyScalar(radiusScale).add(pivotPos);

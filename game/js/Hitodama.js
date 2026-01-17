@@ -14,7 +14,7 @@ export class Hitodama {
 
         // 1. Core (Sphere)
         // High vertex count for wave animation
-        const geometry = new THREE.SphereGeometry(0.6, 64, 64);
+        const geometry = new THREE.SphereGeometry(0.3, 64, 64);
 
         // Red emissive material
         const material = new THREE.MeshStandardMaterial({
@@ -71,6 +71,11 @@ export class Hitodama {
 
     getPosition() {
         return this.root.position;
+    }
+
+    // Get the actual visual position of the core mesh (including floating offset)
+    getMeshWorldPosition(target) {
+        return this.mesh.getWorldPosition(target);
     }
 
     update(dt) {

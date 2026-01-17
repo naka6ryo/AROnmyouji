@@ -102,17 +102,19 @@ class AROnmyoujiGame {
     /**
      * ゲーム開始
      */
-    onStartGame() {
+    async onStartGame() {
         this.debugOverlay.logInfo('ゲーム開始ボタン押下');
-        // SFX をロード（ユーザー操作直後に呼ぶことで自動再生制限を回避しやすい）
+        // ユーザー操作直後にAudioContextを初期化し、SFXをロード
         try {
-            this.soundManager.load({
+            await this.soundManager.initAudioContext();
+            await this.soundManager.load({
                 polygon_burst: 'assets/sfx/polygon_burst.mp3',
                 explosion: 'assets/sfx/explosion.mp3',
                 attack_swipe: 'assets/sfx/attack_swipe.mp3'
             });
+            this.debugOverlay.logInfo('SFXロード完了');
         } catch (e) {
-            console.warn('sound load failed', e);
+            console.warn('sound init/load failed', e);
         }
 
         this.appState.startGame();

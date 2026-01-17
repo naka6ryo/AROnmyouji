@@ -260,7 +260,7 @@ export class UIManager {
             pitchDiff = this.normalizeAngleDeg(pitchDiff);
 
             const indicatorEl = existing || this.createEnemyIndicator(container);
-            this.positionIndicator(indicatorEl, yawDiff, pitchDiff, halfHorz, halfVert);
+            this.positionIndicator(indicatorEl, yawDiff, pitchDiff, halfHorz, halfVert, enemy);
             this.updateIndicatorLabel(indicatorEl, enemy);
 
             this.enemyIndicatorMap.set(enemy.id, indicatorEl);
@@ -296,9 +296,25 @@ export class UIManager {
             // 距離を表示
             label.textContent = `${enemy.distance.toFixed(1)}m`;
         }
+
+        // 矢印の色を距離に応じて緑 -> 赤 に補間
+        const arrow = el.querySelector('.arrow');
+        if (arrow && enemy && typeof enemy.distance === 'number') {
+            const minDist = 0.9;
+            const maxDist = 4.0;
+            const dist = Math.max(minDist, Math.min(maxDist, enemy.distance));
+            const t = Math.max(0, Math.min(1, (maxDist - dist) / (maxDist - minDist)));
+            const hue = (1 - t) * 120; // 120=green, 0=red
+            const color = `hsl(${hue}, 80%, 50%)`;
+            arrow.style.borderBottomColor = color;
+            arrow.style.filter = `drop-shadow(0 0 8px ${color})`;
+            if (label) {
+                label.style.color = color;
+            }
+        }
     }
 
-    positionIndicator(el, yawDiff, pitchDiff, halfHorz, halfVert) {
+    positionIndicator(el, yawDiff, pitchDiff, halfHorz, halfVert, enemy) {
         const clamp = (v, min, max) => Math.min(Math.max(v, min), max);
         const normYaw = Math.abs(yawDiff) / halfHorz;
         const normPitch = Math.abs(pitchDiff) / halfVert;
@@ -336,7 +352,17 @@ export class UIManager {
         el.style.top = `${yPct}%`;
         const arrow = el.querySelector('.arrow');
         if (arrow) {
-            arrow.style.transform = `translate(-50%, -50%) rotate(${rotation}deg)`;
+            // スケールを距離に応じて変化させる
+            // 敵距離が近いほど t -> 1 (赤・大きく)、遠いほど t -> 0 (緑・小さめ)
+            const minDist = 0.9; // EnemyManager.ENEMY_HIT_DISTANCE と整合
+            const maxDist = 4.0; // 表示上の最大参照距離
+            const dist = (enemy && typeof enemy.distance === 'number') ? enemy.distance : maxDist;
+            const t = Math.max(0, Math.min(1, (maxDist - dist) / (maxDist - minDist)));
+            const minScale = 0.9;
+            const maxScale = 1.8;
+            const scale = minScale + t * (maxScale - minScale);
+
+            arrow.style.transform = `translate(-50%, -50%) rotate(${rotation}deg) scale(${scale})`;
         }
     }
 

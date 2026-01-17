@@ -13,6 +13,7 @@ import { CombatSystem } from './CombatSystem.js';
 import { Renderer } from './Renderer.js';
 import { DebugOverlay } from './DebugOverlay.js';
 import { UIManager } from './UIManager.js';
+import { soundManager } from './SoundManager.js';
 
 class AROnmyoujiGame {
     constructor() {
@@ -26,6 +27,7 @@ class AROnmyoujiGame {
         this.debugOverlay = new DebugOverlay();
         this.renderer = new Renderer('gameCanvas', this.debugOverlay);
         this.uiManager = new UIManager();
+        this.soundManager = soundManager;
 
         // UI初期化
         this.uiManager.init();
@@ -102,6 +104,16 @@ class AROnmyoujiGame {
      */
     onStartGame() {
         this.debugOverlay.logInfo('ゲーム開始ボタン押下');
+        // SFX をロード（ユーザー操作直後に呼ぶことで自動再生制限を回避しやすい）
+        try {
+            this.soundManager.load({
+                polygon_burst: 'assets/sfx/polygon_burst.mp3',
+                explosion: 'assets/sfx/explosion.mp3'
+            });
+        } catch (e) {
+            console.warn('sound load failed', e);
+        }
+
         this.appState.startGame();
     }
 
@@ -323,11 +335,15 @@ class AROnmyoujiGame {
 
     onEnemyKilled(data) {
         this.renderer.removeEnemy(data.enemy.id);
+        // 敵撃破サウンド
+        try { this.soundManager.play('polygon_burst', { volume: 0.9 }); } catch (e) {}
         this.updateHUD();
     }
 
     onPlayerDamaged(data) {
         this.combatSystem.sendDamageHaptic();
+        // 被弾時爆発音
+        try { this.soundManager.play('explosion', { volume: 0.8 }); } catch (e) {}
         if (data.enemy) {
             this.uiManager.triggerDamageEffect();
             this.renderer.removeEnemy(data.enemy.id, { playerDamage: true });

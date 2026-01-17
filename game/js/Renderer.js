@@ -46,6 +46,10 @@ export class Renderer {
         this.SLASH_SPEED = 8.0; // m/s
         this.SLASH_LIFETIME = 1500; // ms
         
+        // 術式段階の軌跡表示（SwingActive中）
+        this.swingTracerMesh = null; // 軌跡メッシュ
+        this.TRACER_RADIUS = 0.4; // 球面半径（カメラ回転中心から）
+        
         // ライト
         const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
         this.scene.add(ambientLight);
@@ -168,84 +172,159 @@ export class Renderer {
     }
     
     /**
-     * 斬撃飛翔体を追加（軌跡円弧版）
+     * 術式段階の軌跡を表示開始
      */
-    addSlashProjectile(direction, intensity, trajectory) {
-        if (!trajectory || trajectory.length < 2) {
-            console.warn('[Renderer] 軌跡データが不足しています');
-            return;
+    startSwingTracer() {
+        // 既存のメッシュがあれば削除
+        if (this.swingTracerMesh) {
+            this.scene.remove(this.swingTracerMesh);
+            this.swingTracerMesh.geometry.dispose();
+            this.swingTracerMesh.material.dispose();
+        }
+    }
+    
+    /**
+     * 術式段階の軌跡を更新
+     */
+    updateSwingTracer(trajectory) {
+        if (!trajectory || trajectory.length === 0) return;
+        
+        // 既存のメッシュを削除
+        if (this.swingTracerMesh) {
+            this.scene.remove(this.swingTracerMesh);
+            this.swingTracerMesh.geometry.dispose();
+            this.swingTracerMesh.material.dispose();
         }
         
-        // 軌跡から円弧メッシュを生成
-        const arcMesh = this.createArcMeshFromTrajectory(trajectory, intensity);
-        
-        if (!arcMesh) {
-            console.warn('[Renderer] 円弧メッシュ生成に失敗');
-            return;
+        // 軌跡から3D点群を生成
+        const points = [];
+        for (const point of trajectory) {
+            const pitchRad = point.pitch * Math.PI / 180;
+            const yawRad = point.yaw * Math.PI / 180;
+            
+            const x = this.TRACER_RADIUS * Math.cos(pitchRad) * Math.sin(yawRad);
+            const y = this.TRACER_RADIUS * Math.sin(pitchRad);
+            const z = -this.TRACER_RADIUS * Math.cos(pitchRad) * Math.cos(yawRad);
+            
+            points.push(new THREE.Vector3(x, y, z));
         }
         
-        // カメラの現在位置を取得
+        if (points.length < 2) return;
+        
+        // CatmullRomCurve3で滑らかな曲線を作成
+        const curve = new THREE.CatmullRomCurve3(points);
+        
+        // TubeGeometryで太い線として描画
+        const tubeGeometry = new THREE.TubeGeometry(
+            curve,
+            Math.max(20, points.length * 2),
+            0.015, // やや細めの半径
+            8,
+            false
+        );
+        
+        const material = new THREE.MeshBasicMaterial({
+            color: 0x00ffff,
+            transparent: true,
+            opacity: 0.5,
+            side: THREE.DoubleSide,
+            blending: THREE.AdditiveBlending
+        });
+        
+        this.swingTracerMesh = new THREE.Mesh(tubeGeometry, material);
+        this.scene.add(this.swingTracerMesh);
+    }
+    
+    /**
+     * 術式段階の軌跡表示を終了
+     */
+    endSwingTracer() {
+        if (this.swingTracerMesh) {
+            this.scene.remove(this.swingTracerMesh);
+            this.swingTracerMesh.geometry.dispose();
+            this.swingTracerMesh.material.dispose();
+            this.swingTracerMesh = null;
+        }
+    }
+    
+    /**
+     * 円弧飛翔体を追加（始点・終点の角度から円弧を計算して飛ばす）
+     */
+    addSlashArcProjectile(startPyr, endPyr, intensity) {
+        // 始点と終点の3D位置を計算（半径0.3m）
+        const baseRadius = 0.3;
+        
+        const startPitchRad = startPyr.pitch * Math.PI / 180;
+        const startYawRad = startPyr.yaw * Math.PI / 180;
+        const startPos = new THREE.Vector3(
+            baseRadius * Math.cos(startPitchRad) * Math.sin(startYawRad),
+            baseRadius * Math.sin(startPitchRad),
+            -baseRadius * Math.cos(startPitchRad) * Math.cos(startYawRad)
+        );
+        
+        const endPitchRad = endPyr.pitch * Math.PI / 180;
+        const endYawRad = endPyr.yaw * Math.PI / 180;
+        const endPos = new THREE.Vector3(
+            baseRadius * Math.cos(endPitchRad) * Math.sin(endYawRad),
+            baseRadius * Math.sin(endPitchRad),
+            -baseRadius * Math.cos(endPitchRad) * Math.cos(endYawRad)
+        );
+        
+        // 2点を含む円弧を作成
+        const arcMesh = this.createArcMesh(startPos, endPos, intensity);
+        if (!arcMesh) return;
+        
+        // カメラの現在位置を基準に配置
         const cameraPos = new THREE.Vector3();
         this.camera.getWorldPosition(cameraPos);
         
-        // カメラの前方方向
-        const cameraForward = new THREE.Vector3();
-        this.camera.getWorldDirection(cameraForward);
-        
-        // 円弧の中心をカメラから少し前方に配置
         arcMesh.position.copy(cameraPos);
-        arcMesh.position.add(cameraForward.multiplyScalar(0.5));
-        
         this.scene.add(arcMesh);
         
         // 飛翔体として記録
         const projectile = {
             mesh: arcMesh,
-            direction: { ...direction },
+            startPos: startPos.clone(),
+            endPos: endPos.clone(),
             speed: this.SLASH_SPEED,
             spawnTime: performance.now(),
             intensity,
-            initialScale: 1.0, // 初期スケール
-            trajectory: trajectory // 軌跡データ保持
+            currentRadius: baseRadius, // 現在の半径
+            direction: this.camera.getWorldDirection(new THREE.Vector3()).normalize()
         };
         
         this.slashProjectiles.push(projectile);
         
-        console.log(`[Renderer] 斬撃円弧生成: 軌跡点数=${trajectory.length}, 強度=${intensity.toFixed(2)}`);
+        console.log(`[Renderer] 円弧飛翔体生成: 始点=${JSON.stringify(startPyr)}, 終点=${JSON.stringify(endPyr)}`);
     }
     
     /**
-     * 軌跡データから円弧メッシュを生成
+     * 2点を結ぶ円弧メッシュを作成
      */
-    createArcMeshFromTrajectory(trajectory, intensity) {
-        const points = [];
+    createArcMesh(startPos, endPos, intensity) {
+        // 始点と終点を含む円弧を作成
+        // 簡単な実装：始点と終点を結ぶ曲線（放物線的）
+        const points = [startPos];
         
-        // 軌跡の姿勢角から3D空間の点群を生成
-        for (const point of trajectory) {
-            const pitchRad = point.pitch * Math.PI / 180;
-            const yawRad = point.yaw * Math.PI / 180;
-            
-            // 球面座標から直交座標へ（半径0.3の球面上）
-            const r = 0.3;
-            const x = r * Math.cos(pitchRad) * Math.sin(yawRad);
-            const y = r * Math.sin(pitchRad);
-            const z = -r * Math.cos(pitchRad) * Math.cos(yawRad);
-            
-            points.push(new THREE.Vector3(x, y, z));
+        // 中間点を追加（3つの制御点で Catmull-Rom 曲線）
+        for (let i = 1; i < 5; i++) {
+            const t = i / 5;
+            const midPoint = new THREE.Vector3();
+            midPoint.lerpVectors(startPos, endPos, t);
+            // 外側に膨らませる
+            midPoint.multiplyScalar(1.0 + Math.sin(t * Math.PI) * 0.3);
+            points.push(midPoint);
         }
         
-        if (points.length < 2) return null;
+        points.push(endPos);
         
-        // CatmullRomCurveで滑らかな曲線を作成
         const curve = new THREE.CatmullRomCurve3(points);
-        
-        // 曲線から太い線（チューブ）を生成
         const tubeGeometry = new THREE.TubeGeometry(
             curve,
-            Math.max(20, points.length * 2), // セグメント数
-            0.02, // チューブの半径
-            8, // 断面の分割数
-            false // 閉じていない
+            20,
+            0.02,
+            8,
+            false
         );
         
         const material = new THREE.MeshBasicMaterial({
@@ -260,7 +339,7 @@ export class Renderer {
     }
     
     /**
-     * 斬撃飛翔体を更新（円弧版：半径を拡大しながら飛ぶ）
+     * 斬撃飛翔体を更新（円弧拡大版：両端の半径を同じ比率で大きくする）
      */
     updateSlashProjectiles(deltaTime) {
         const now = performance.now();
@@ -278,18 +357,42 @@ export class Renderer {
                 return false;
             }
             
-            // 時間経過で半径を拡大（スケールを大きくする）
-            const scaleFactor = 1.0 + (age / this.SLASH_LIFETIME) * 4.0; // 最大5倍
-            proj.mesh.scale.set(scaleFactor, scaleFactor, scaleFactor);
-            
-            // 位置も前方に移動
-            proj.mesh.position.x += proj.direction.x * proj.speed * deltaTimeSec;
-            proj.mesh.position.y += proj.direction.y * proj.speed * deltaTimeSec;
-            proj.mesh.position.z += proj.direction.z * proj.speed * deltaTimeSec;
-            
-            // 透明度をフェードアウト
+            // 時間経過で円弧の半径を拡大
             const lifeFraction = age / this.SLASH_LIFETIME;
-            proj.mesh.material.opacity = (0.7 + proj.intensity * 0.3) * (1 - lifeFraction);
+            const radiusScale = 1.0 + lifeFraction * 15.67; // 最大5m（初期0.3m → 5m）
+            
+            // 新しい円弧メッシュを生成して古いものと置き換える
+            const newStartPos = proj.startPos.clone().multiplyScalar(radiusScale);
+            const newEndPos = proj.endPos.clone().multiplyScalar(radiusScale);
+            
+            // 新メッシュを作成
+            const newMesh = this.createArcMesh(newStartPos, newEndPos, proj.intensity);
+            
+            if (newMesh) {
+                // 位置を設定
+                newMesh.position.copy(proj.mesh.position);
+                
+                // 前方へ移動
+                newMesh.position.add(proj.direction.clone().multiplyScalar(proj.speed * deltaTimeSec));
+                
+                // 透明度をフェードアウト
+                newMesh.material.opacity = (0.7 + proj.intensity * 0.3) * (1 - lifeFraction);
+                
+                // シーンから古いメッシュを削除
+                this.scene.remove(proj.mesh);
+                proj.mesh.geometry.dispose();
+                proj.mesh.material.dispose();
+                
+                // 新メッシュに置き換え
+                this.scene.add(newMesh);
+                proj.mesh = newMesh;
+            } else {
+                // 前方へ移動（メッシュ更新失敗時）
+                proj.mesh.position.add(proj.direction.clone().multiplyScalar(proj.speed * deltaTimeSec));
+                
+                // 透明度をフェードアウト
+                proj.mesh.material.opacity = (0.7 + proj.intensity * 0.3) * (1 - lifeFraction);
+            }
             
             return true;
         });
@@ -384,6 +487,9 @@ export class Renderer {
             proj.mesh.material.dispose();
         }
         this.slashProjectiles = [];
+        
+        // 術式段階の軌跡を削除
+        this.endSwingTracer();
         
         this.renderer.dispose();
     }

@@ -141,6 +141,8 @@ class AROnmyoujiGame {
         this.motionInterpreter.onSwingDetected = (swing) => this.onSwing(swing);
         this.motionInterpreter.onCircleDetected = (circle) => this.onCircle(circle);
         this.motionInterpreter.onPowerModeActivated = (power) => this.onPowerMode(power);
+        this.motionInterpreter.onSwingTracerUpdate = (trajectory) => this.onSwingTracerUpdate(trajectory);
+        this.motionInterpreter.onSwingStarted = () => this.onSwingStarted();
         
         // GameWorld コールバック
         this.gameWorld.onEnemySpawned = (enemy) => this.onEnemySpawned(enemy);
@@ -359,16 +361,39 @@ class AROnmyoujiGame {
     }
     
     /**
+     * 術式段階開始
+     */
+    onSwingStarted() {
+        this.renderer.startSwingTracer();
+    }
+    
+    /**
      * 斬撃検出
      */
     onSwing(swing) {
         this.debugOverlay.logInfo(`斬撃検出: intensity=${swing.intensity.toFixed(2)}`);
         
-        // 斬撃エフェクトを生成（軌跡円弧版）
-        this.renderer.addSlashProjectile(swing.direction, swing.intensity, swing.trajectory);
+        // 術式段階の軌跡表示を終了
+        this.renderer.endSwingTracer();
+        
+        // 軌跡の始点と終点を取得
+        if (swing.trajectory && swing.trajectory.length >= 2) {
+            const startPyr = swing.trajectory[0];
+            const endPyr = swing.trajectory[swing.trajectory.length - 1];
+            
+            // 円弧飛翔体を生成
+            this.renderer.addSlashArcProjectile(startPyr, endPyr, swing.intensity);
+        }
         
         // 命中判定
         this.combatSystem.handleSwing(swing);
+    }
+    
+    /**
+     * 術式段階の軌跡更新
+     */
+    onSwingTracerUpdate(trajectory) {
+        this.renderer.updateSwingTracer(trajectory);
     }
     
     /**

@@ -55,6 +55,8 @@ export class MotionInterpreter {
         this.onSwingDetected = null;
         this.onCircleDetected = null;
         this.onPowerModeActivated = null;
+        this.onSwingTracerUpdate = null; // 術式段階の軌跡更新コールバック
+        this.onSwingStarted = null; // 術式段階開始コールバック
     }
     
     /**
@@ -111,6 +113,11 @@ export class MotionInterpreter {
         
         // 前フレーム更新
         this.prevAMag = frame.a_mag;
+        
+        // 術式段階の軌跡をRenderに送信（リアルタイム表示用）
+        if (this.swingState === 'SwingActive' && this.onSwingTracerUpdate) {
+            this.onSwingTracerUpdate(this.swingTrajectory);
+        }
     }
     
     /**
@@ -127,6 +134,12 @@ export class MotionInterpreter {
                     this.swingState = 'SwingActive';
                     this.swingStartTime = now;
                     this.swingTrajectory = []; // 軌跡記録開始
+                    
+                    // 術式段階開始シグナル
+                    if (this.onSwingStarted) {
+                        this.onSwingStarted();
+                    }
+                    
                     console.log('[Swing] SwingActive開始');
                 }
                 break;

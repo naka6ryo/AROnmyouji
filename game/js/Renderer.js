@@ -15,6 +15,13 @@ export class Renderer {
             0.1,
             1000
         );
+
+        // 手を伸ばして端末を持つ前提で、回転中心とカメラ位置を分離
+        // pivotを身体側に置き、カメラを少し前方かつわずかに下げる
+        this.cameraPivot = new THREE.Object3D();
+        this.scene.add(this.cameraPivot);
+        this.cameraPivot.add(this.camera);
+        this.camera.position.set(0, -0.05, 0.35);
         
         this.renderer = new THREE.WebGLRenderer({
             canvas: this.canvas,
@@ -69,19 +76,8 @@ export class Renderer {
      * 視線方向ベクトルを計算
      */
     calculateViewDirection() {
-        const { alpha, beta, gamma } = this.deviceOrientation;
-        
-        // オイラー角をラジアンに変換
-        const alphaRad = alpha * Math.PI / 180;
-        const betaRad = beta * Math.PI / 180;
-        const gammaRad = gamma * Math.PI / 180;
-        
-        // 簡易的な前方ベクトル（実際の端末姿勢に応じて調整が必要）
-        const x = Math.sin(alphaRad) * Math.cos(betaRad);
-        const y = -Math.sin(betaRad);
-        const z = Math.cos(alphaRad) * Math.cos(betaRad);
-        
-        return { x, y, z };
+        const forward = this.getCameraForward();
+        return { x: forward.x, y: forward.y, z: forward.z };
     }
     
     /**
@@ -89,14 +85,16 @@ export class Renderer {
      */
     updateCameraRotation() {
         const { alpha, beta, gamma } = this.deviceOrientation;
-        
-        // オイラー角でカメラを回転
-        this.camera.rotation.set(
+        const euler = new THREE.Euler(
             beta * Math.PI / 180,
             alpha * Math.PI / 180,
             -gamma * Math.PI / 180,
             'YXZ'
         );
+        this.cameraPivot.rotation.copy(euler);
+        // 実際のワールド前方を再取得（カメラ位置オフセット後）
+        const forward = this.getCameraForward();
+        this.viewDirection = { x: forward.x, y: forward.y, z: forward.z };
     }
     
     /**
@@ -178,6 +176,15 @@ export class Renderer {
      */
     getViewDirection() {
         return this.viewDirection;
+    }
+
+    /**
+     * カメラのワールド前方ベクトルを取得
+     */
+    getCameraForward() {
+        const dir = new THREE.Vector3();
+        this.camera.getWorldDirection(dir);
+        return dir.normalize();
     }
 
     /**

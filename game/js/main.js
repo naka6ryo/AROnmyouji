@@ -404,6 +404,15 @@ class AROnmyoujiGame {
     onPlayerDamaged(data) {
         this.debugOverlay.logWarn(`被弾: HP=${data.hp}`);
         this.combatSystem.sendDamageHaptic();
+        // 被弾した敵とそのインジケータを除去
+        if (data.enemy) {
+            this.renderer.removeEnemy(data.enemy.id);
+            const el = this.enemyIndicatorMap.get(data.enemy.id);
+            if (el && this.ui.enemyIndicators && el.parentElement === this.ui.enemyIndicators) {
+                this.ui.enemyIndicators.removeChild(el);
+            }
+            this.enemyIndicatorMap.delete(data.enemy.id);
+        }
         this.updateHUD();
     }
     

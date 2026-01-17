@@ -364,8 +364,8 @@ class AROnmyoujiGame {
     onSwing(swing) {
         this.debugOverlay.logInfo(`斬撃検出: intensity=${swing.intensity.toFixed(2)}`);
         
-        // 斬撃エフェクトを生成（エアカッター風）
-        this.renderer.addSlashProjectile(swing.direction, swing.intensity);
+        // 斬撃エフェクトを生成（軌跡円弧版）
+        this.renderer.addSlashProjectile(swing.direction, swing.intensity, swing.trajectory);
         
         // 命中判定
         this.combatSystem.handleSwing(swing);

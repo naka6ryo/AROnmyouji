@@ -168,13 +168,86 @@ export class Renderer {
     }
     
     /**
-     * 斬撃飛翔体を追加
+     * 斬撃飛翔体を追加（軌跡円弧版）
      */
-    addSlashProjectile(direction, intensity) {
-        // 斬撃のメッシュ（青白い薄い板）
-        const width = 0.8;
-        const height = 0.2;
-        const geometry = new THREE.PlaneGeometry(width, height);
+    addSlashProjectile(direction, intensity, trajectory) {
+        if (!trajectory || trajectory.length < 2) {
+            console.warn('[Renderer] 軌跡データが不足しています');
+            return;
+        }
+        
+        // 軌跡から円弧メッシュを生成
+        const arcMesh = this.createArcMeshFromTrajectory(trajectory, intensity);
+        
+        if (!arcMesh) {
+            console.warn('[Renderer] 円弧メッシュ生成に失敗');
+            return;
+        }
+        
+        // カメラの現在位置を取得
+        const cameraPos = new THREE.Vector3();
+        this.camera.getWorldPosition(cameraPos);
+        
+        // カメラの前方方向
+        const cameraForward = new THREE.Vector3();
+        this.camera.getWorldDirection(cameraForward);
+        
+        // 円弧の中心をカメラから少し前方に配置
+        arcMesh.position.copy(cameraPos);
+        arcMesh.position.add(cameraForward.multiplyScalar(0.5));
+        
+        this.scene.add(arcMesh);
+        
+        // 飛翔体として記録
+        const projectile = {
+            mesh: arcMesh,
+            direction: { ...direction },
+            speed: this.SLASH_SPEED,
+            spawnTime: performance.now(),
+            intensity,
+            initialScale: 1.0, // 初期スケール
+            trajectory: trajectory // 軌跡データ保持
+        };
+        
+        this.slashProjectiles.push(projectile);
+        
+        console.log(`[Renderer] 斬撃円弧生成: 軌跡点数=${trajectory.length}, 強度=${intensity.toFixed(2)}`);
+    }
+    
+    /**
+     * 軌跡データから円弧メッシュを生成
+     */
+    createArcMeshFromTrajectory(trajectory, intensity) {
+        const points = [];
+        
+        // 軌跡の姿勢角から3D空間の点群を生成
+        for (const point of trajectory) {
+            const pitchRad = point.pitch * Math.PI / 180;
+            const yawRad = point.yaw * Math.PI / 180;
+            
+            // 球面座標から直交座標へ（半径0.3の球面上）
+            const r = 0.3;
+            const x = r * Math.cos(pitchRad) * Math.sin(yawRad);
+            const y = r * Math.sin(pitchRad);
+            const z = -r * Math.cos(pitchRad) * Math.cos(yawRad);
+            
+            points.push(new THREE.Vector3(x, y, z));
+        }
+        
+        if (points.length < 2) return null;
+        
+        // CatmullRomCurveで滑らかな曲線を作成
+        const curve = new THREE.CatmullRomCurve3(points);
+        
+        // 曲線から太い線（チューブ）を生成
+        const tubeGeometry = new THREE.TubeGeometry(
+            curve,
+            Math.max(20, points.length * 2), // セグメント数
+            0.02, // チューブの半径
+            8, // 断面の分割数
+            false // 閉じていない
+        );
+        
         const material = new THREE.MeshBasicMaterial({
             color: 0x00ffff,
             transparent: true,
@@ -182,44 +255,12 @@ export class Renderer {
             side: THREE.DoubleSide,
             blending: THREE.AdditiveBlending
         });
-        const mesh = new THREE.Mesh(geometry, material);
         
-        // カメラの現在位置から少し前方に配置
-        const cameraPos = new THREE.Vector3();
-        this.camera.getWorldPosition(cameraPos);
-        mesh.position.copy(cameraPos);
-        mesh.position.add(new THREE.Vector3(
-            direction.x * 0.5,
-            direction.y * 0.5,
-            direction.z * 0.5
-        ));
-        
-        // 斬撃の向きを設定（進行方向を向くように）
-        const dirVec = new THREE.Vector3(direction.x, direction.y, direction.z).normalize();
-        mesh.lookAt(
-            mesh.position.x + dirVec.x,
-            mesh.position.y + dirVec.y,
-            mesh.position.z + dirVec.z
-        );
-        
-        this.scene.add(mesh);
-        
-        // 飛翔体として記録
-        const projectile = {
-            mesh,
-            direction: { ...direction },
-            speed: this.SLASH_SPEED,
-            spawnTime: performance.now(),
-            intensity
-        };
-        
-        this.slashProjectiles.push(projectile);
-        
-        console.log(`[Renderer] 斬撃飛翔体生成: 方向=${JSON.stringify(direction)}, 強度=${intensity.toFixed(2)}`);
+        return new THREE.Mesh(tubeGeometry, material);
     }
     
     /**
-     * 斬撃飛翔体を更新
+     * 斬撃飛翔体を更新（円弧版：半径を拡大しながら飛ぶ）
      */
     updateSlashProjectiles(deltaTime) {
         const now = performance.now();
@@ -237,7 +278,11 @@ export class Renderer {
                 return false;
             }
             
-            // 位置更新
+            // 時間経過で半径を拡大（スケールを大きくする）
+            const scaleFactor = 1.0 + (age / this.SLASH_LIFETIME) * 4.0; // 最大5倍
+            proj.mesh.scale.set(scaleFactor, scaleFactor, scaleFactor);
+            
+            // 位置も前方に移動
             proj.mesh.position.x += proj.direction.x * proj.speed * deltaTimeSec;
             proj.mesh.position.y += proj.direction.y * proj.speed * deltaTimeSec;
             proj.mesh.position.z += proj.direction.z * proj.speed * deltaTimeSec;

@@ -73,7 +73,7 @@ export class SensorFrameParser {
         const ay_g = ay_raw / 100.0;
         const az_g = az_raw / 100.0;
         
-        const pitch_deg = pitch_raw / 10.0;
+        const pitch_deg = -(pitch_raw / 10.0); // 符号反転（上に傾けたら上向きに飛ぶように）
         const yaw_deg = yaw_raw / 10.0;
         const roll_deg = roll_raw / 10.0;
         

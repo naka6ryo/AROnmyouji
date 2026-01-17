@@ -23,6 +23,9 @@ export class MotionInterpreter {
         this.cooldownEndTime = 0;
         this.lastSwingIntensity = 0;
         
+        // 斬撃軌跡記録（SwingActive中の姿勢角）
+        this.swingTrajectory = [];
+        
         // 前フレームの加速度大きさ
         this.prevAMag = 0;
         
@@ -123,11 +126,21 @@ export class MotionInterpreter {
                 if (a_mag >= this.A_START && da_mag >= this.DA_START && now >= this.cooldownEndTime) {
                     this.swingState = 'SwingActive';
                     this.swingStartTime = now;
+                    this.swingTrajectory = []; // 軌跡記録開始
                     console.log('[Swing] SwingActive開始');
                 }
                 break;
                 
             case 'SwingActive':
+                // 軌跡を記録（相対姿勢角）
+                const pyr_rel = this.getRelativePYR(frame.pitch_deg, frame.yaw_deg, frame.roll_deg);
+                this.swingTrajectory.push({
+                    pitch: pyr_rel.pitch,
+                    yaw: pyr_rel.yaw,
+                    roll: pyr_rel.roll,
+                    timestamp: now
+                });
+                
                 // Cooldown遷移条件
                 const duration = now - this.swingStartTime;
                 if (a_mag <= this.A_END && duration >= this.T_MIN) {
@@ -136,14 +149,14 @@ export class MotionInterpreter {
                     this.lastSwingIntensity = intensity;
                     
                     // 斬撃方向ベクトルを計算
-                    const pyr_rel = this.getRelativePYR(frame.pitch_deg, frame.yaw_deg, frame.roll_deg);
                     const attackDir = this.pyrToDirection(pyr_rel.pitch, pyr_rel.yaw);
                     
-                    // コールバック
+                    // コールバック（軌跡データを含める）
                     if (this.onSwingDetected) {
                         this.onSwingDetected({
                             intensity,
                             direction: attackDir,
+                            trajectory: [...this.swingTrajectory], // 軌跡データ
                             timestamp: now
                         });
                     }
@@ -155,7 +168,7 @@ export class MotionInterpreter {
                     // Cooldown状態へ
                     this.swingState = 'Cooldown';
                     this.cooldownEndTime = now + this.T_COOLDOWN;
-                    console.log(`[Swing] 斬撃検出: intensity=${intensity.toFixed(2)}, dir=${JSON.stringify(attackDir)}`);
+                    console.log(`[Swing] 斬撃検出: intensity=${intensity.toFixed(2)}, 軌跡点数=${this.swingTrajectory.length}`);
                 }
                 break;
                 

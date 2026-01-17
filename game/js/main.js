@@ -63,6 +63,7 @@ class AROnmyoujiGame {
             cameraStatus: document.getElementById('cameraStatus'),
             motionStatus: document.getElementById('motionStatus'),
             permissionError: document.getElementById('permissionError'),
+            permissionDebugLog: document.getElementById('permissionDebugLog'),
             
             // BLE Connect
             connectBleButton: document.getElementById('connectBleButton'),
@@ -161,65 +162,103 @@ class AROnmyoujiGame {
     }
     
     /**
+     * 権限要求画面にデバッグ情報を追加
+     */
+    addPermissionDebugLog(message) {
+        const log = this.ui.permissionDebugLog;
+        if (!log) return;
+        
+        const timestamp = new Date().toLocaleTimeString('ja-JP');
+        const entry = document.createElement('div');
+        entry.textContent = `[${timestamp}] ${message}`;
+        entry.style.padding = '0.3rem';
+        entry.style.borderBottom = '1px solid #333';
+        
+        log.appendChild(entry);
+        
+        // スクロールを最下部に
+        log.parentElement.scrollTop = log.parentElement.scrollHeight;
+        
+        console.log(`[Permission Debug] ${message}`);
+    }
+    
+    /**
      * 権限要求
      */
     async requestPermissions() {
         this.debugOverlay.logInfo('権限要求開始');
-        console.log('[requestPermissions] 呼び出し中... ジェスチャー内実行確認');
+        this.addPermissionDebugLog('権限要求開始...');
         
         try {
             // カメラ権限
+            this.addPermissionDebugLog('📷 カメラ権限を要求中...');
             console.log('[requestPermissions] カメラ権限要求中...');
+            
             this.cameraStream = await navigator.mediaDevices.getUserMedia({
                 video: { facingMode: 'environment' }
             });
             this.videoElement.srcObject = this.cameraStream;
-            this.ui.cameraStatus.textContent = '📷 カメラ: 許可';
+            this.ui.cameraStatus.textContent = '📷 カメラ: 許可 ✓';
             this.debugOverlay.logInfo('カメラ権限: 許可');
+            this.addPermissionDebugLog('✓ カメラ権限取得成功');
             console.log('[requestPermissions] カメラ権限取得成功');
             
             // モーション権限（iOS対応）
             if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+                this.addPermissionDebugLog('📱 iOS環境を検出');
                 console.log('[requestPermissions] iOS環境検出。requestPermissionメソッド実行中...');
                 this.debugOverlay.logInfo('iOS環境: モーション権限を要求中...');
+                this.addPermissionDebugLog('📱 requestPermission()を呼び出し中...');
                 
                 try {
                     const permission = await DeviceOrientationEvent.requestPermission();
+                    this.addPermissionDebugLog(`📱 requestPermission()結果: ${permission}`);
                     console.log('[requestPermissions] requestPermission結果:', permission);
                     this.debugOverlay.logInfo(`requestPermission結果: ${permission}`);
                     
                     if (permission === 'granted') {
-                        this.ui.motionStatus.textContent = '📱 モーション: 許可';
+                        this.ui.motionStatus.textContent = '📱 モーション: 許可 ✓';
                         this.debugOverlay.logInfo('モーション権限: 許可 ✓');
+                        this.addPermissionDebugLog('✓ モーション権限が許可されました');
                         console.log('[requestPermissions] モーション権限: 許可');
                         
                         // 権限取得後にDeviceOrientationイベントリスナーを登録
+                        this.addPermissionDebugLog('📡 deviceorientationリスナーを登録中...');
                         window.addEventListener('deviceorientation', this.deviceOrientationHandler);
+                        this.addPermissionDebugLog('✓ deviceorientationリスナー登録完了');
                         console.log('[requestPermissions] deviceorientationリスナー登録完了');
                     } else if (permission === 'denied') {
-                        this.ui.motionStatus.textContent = '📱 モーション: 拒否';
+                        this.ui.motionStatus.textContent = '📱 モーション: 拒否 ✗';
                         this.debugOverlay.logError('モーション権限: ユーザーが拒否');
+                        this.addPermissionDebugLog('✗ モーション権限が拒否されました');
                         throw new Error('モーション権限が拒否されました');
                     } else if (permission === 'prompt') {
                         this.ui.motionStatus.textContent = '📱 モーション: 未定';
                         this.debugOverlay.logWarn('モーション権限: プロンプト状態（未選択）');
+                        this.addPermissionDebugLog('⚠ モーション権限: プロンプト状態（未選択）');
                         console.log('[requestPermissions] 権限プロンプト未応答');
                     }
                 } catch (permissionError) {
                     console.error('[requestPermissions] requestPermissionエラー:', permissionError);
                     this.debugOverlay.logError(`requestPermissionエラー: ${permissionError.message}`);
+                    this.addPermissionDebugLog(`✗ requestPermissionエラー: ${permissionError.message}`);
                     throw permissionError;
                 }
             } else {
                 // 非iOS環境ではデフォルトで許可とみなす
+                this.addPermissionDebugLog('📱 非iOS環境を検出（requestPermissionなし）');
                 console.log('[requestPermissions] 非iOS環境。自動許可。');
-                this.ui.motionStatus.textContent = '📱 モーション: 許可';
+                this.ui.motionStatus.textContent = '📱 モーション: 許可 ✓';
                 this.debugOverlay.logInfo('モーション権限: 自動許可（非iOS）');
+                this.addPermissionDebugLog('✓ 非iOS環境: 自動許可');
                 
                 // 非iOS環境でも登録
+                this.addPermissionDebugLog('📡 deviceorientationリスナーを登録中...');
                 window.addEventListener('deviceorientation', this.deviceOrientationHandler);
+                this.addPermissionDebugLog('✓ deviceorientationリスナー登録完了');
             }
             
+            this.addPermissionDebugLog('✓ すべての権限取得完了。次画面へ遷移します...');
             // 次の状態へ
             this.appState.permissionGranted();
             
@@ -227,6 +266,7 @@ class AROnmyoujiGame {
             console.error('[requestPermissions] エラー:', error);
             this.ui.permissionError.textContent = `エラー: ${error.message}`;
             this.debugOverlay.logError(`権限エラー: ${error.message}`);
+            this.addPermissionDebugLog(`✗ エラー発生: ${error.message}`);
         }
     }
     

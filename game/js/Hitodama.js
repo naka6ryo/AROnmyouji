@@ -134,12 +134,13 @@ export class Hitodama {
     update(dt) {
         this.time += dt;
         if (this.isPurifying && !this.isDead) {
-            this.purifyTime += dt;
-            const duration = 2000; // ms
+            // dt is in seconds (Renderer passes deltaTime/1000)
+            this.purifyTime += dt; // seconds
+            const duration = 2.0; // seconds
             const progress = Math.min(this.purifyTime / duration, 1.0);
 
-            // 上昇
-            this.pos.y += (dt / 1000) * (1.0 + progress * 3.0);
+            // 上昇（秒単位で増加）
+            this.pos.y += dt * (1.0 + progress * 3.0);
 
             // 色変化: 赤 -> 青白
             if (this.mesh && this.mesh.material && this.mesh.material.color) {
@@ -166,7 +167,7 @@ export class Hitodama {
             // 尾の色・透明度更新
             for (const sprite of this.tailSprites) {
                 sprite.material.color.lerp(new THREE.Color(0xaaddff), 0.1);
-                if (this.mesh && this.mesh.material) sprite.material.opacity *= this.mesh.material.opacity;
+                if (this.mesh && this.mesh.material) sprite.material.opacity = sprite.material.opacity * this.mesh.material.opacity;
             }
 
             if (progress >= 1.0) {

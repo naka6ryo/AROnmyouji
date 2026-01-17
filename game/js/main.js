@@ -478,9 +478,11 @@ class AROnmyoujiGame {
             const killMsg = `敵撃破: id=${enemy.id}`;
             console.log(`[Game] ${killMsg}`);
             this.debugOverlay.logInfo(killMsg);
-            this.renderer.removeEnemy(enemy.id);
-            
-            // ダブルヒット防止マップから削除
+
+            // 注意: GameWorld.killEnemy() は内部で onEnemyKilled コールバックを呼ぶため
+            // そこで `renderer.removeEnemy()` が実行される。ここで再度削除すると
+            // 浄化アニメーションが始まった直後に強制削除される等の不整合が起きる。
+            // よってここでは削除呼び出しを行わず、ダブルヒット防止マップの掃除のみ行う。
             this.lastEnemyHitTime.delete(enemy.id);
         }
         

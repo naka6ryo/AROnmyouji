@@ -4,9 +4,7 @@
  */
 
 import * as THREE from 'three';
-import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
-import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
-import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+// postprocessing removed to simplify rendering and avoid canvas alpha issues
 import { Hitodama } from './Hitodama.js';
 
 export class Renderer {
@@ -59,42 +57,8 @@ export class Renderer {
         this.renderer.toneMapping = THREE.ReinhardToneMapping;
         this.renderer.autoClear = false;
 
-        // --- ポストプロセス（ブルーム発光効果） ---
-        this.renderScene = new RenderPass(this.scene, this.camera);
-        this.renderScene.clear = true;
-
-        // ブルーム設定
-        this.bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
-        this.bloomPass.threshold = 0.1;
-        this.bloomPass.strength = 2.0;
-        this.bloomPass.radius = 0.8;
-
-        // 【背景透過パッチ】
-        if (this.bloomPass.compositeMaterial) {
-            const oldShader = this.bloomPass.compositeMaterial.fragmentShader;
-            const newShader = oldShader.replace(
-                'gl_FragColor = vec4( color.rgb + bloom, 1.0 );',
-                'gl_FragColor = vec4( color.rgb + bloom, min(1.0, color.a + length(bloom)) );'
-            );
-            this.bloomPass.compositeMaterial.fragmentShader = newShader;
-            this.bloomPass.compositeMaterial.transparent = true;
-            this.bloomPass.compositeMaterial.needsUpdate = true;
-        }
-
-        // 透明度を維持するためのRender Target設定
-        const renderTarget = new THREE.WebGLRenderTarget(
-            window.innerWidth * Math.min(window.devicePixelRatio, 2),
-            window.innerHeight * Math.min(window.devicePixelRatio, 2),
-            {
-                // HalfFloat は環境によってサポートが分かれるため幅広い互換性のある値へ
-                type: THREE.UnsignedByteType,
-                format: THREE.RGBAFormat
-            }
-        );
-
-        this.composer = new EffectComposer(this.renderer, renderTarget);
-        this.composer.addPass(this.renderScene);
-        this.composer.addPass(this.bloomPass);
+        // Postprocessing（ブルーム）は不安定な環境があるため使用せず、
+        // 単純なレンダリングに戻す（透明キャンバス経由で下の video が見える）。
 
         this.updateRendererSize();
 
@@ -556,29 +520,8 @@ export class Renderer {
         }
 
         this.updateSlashProjectiles(deltaTime, enemies);
-        // --- 選択的ブルーム実装 ---
-        // 人魂など発光させたいオブジェクトには `userData.bloom = true` を設定しておくこと
-        const darkMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
-        const savedMaterials = new Map();
-
-        // 非ブルームオブジェクトを黒く置き換える
-        this.scene.traverse((obj) => {
-            if ((obj.isMesh || obj.isSprite) && !obj.userData.bloom) {
-                savedMaterials.set(obj, obj.material);
-                obj.material = darkMaterial;
-            }
-        });
-
-        // Bloom を含む Composer でレンダリング（ここでは黒でないオブジェクトのみが発光対象として処理される）
-        this.composer.render();
-
-        // マテリアルを元に戻す
-        for (const [obj, mat] of savedMaterials) {
-            obj.material = mat;
-        }
-
-        // 深度バッファをクリアしてから通常レンダリングを上書き
-        this.renderer.clearDepth();
+        // 簡易レンダリング: Composer を使わず通常レンダリングのみ（キャンバスは透明）
+        this.renderer.clear();
         this.renderer.render(this.scene, this.camera);
     }
 
@@ -631,7 +574,9 @@ export class Renderer {
         const height = this.canvas.clientHeight || window.innerHeight;
         if (this.renderer.domElement.width !== width || this.renderer.domElement.height !== height) {
             this.renderer.setSize(width, height, false);
-            this.composer.setSize(width, height);
+            if (this.composer) {
+                this.composer.setSize(width, height);
+            }
             this.camera.aspect = width / height;
             this.camera.updateProjectionMatrix();
         }

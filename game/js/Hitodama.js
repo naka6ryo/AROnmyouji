@@ -11,13 +11,16 @@ export class Hitodama {
         // 出現サイズ: 半径0.03 (以前の0.3の1/10 = 最大の0.3倍)
         const geometry = new THREE.SphereGeometry(0.1, 64, 64);
 
-        // 赤い発光マテリアル
+        // スプライト用テクスチャを先に読み込む
+        const spriteMap = new THREE.TextureLoader().load('https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/sprites/spark1.png');
+
+        // 赤い発光マテリアル（コアの明るさを元に戻す）
         const material = new THREE.MeshStandardMaterial({
             color: 0xff3300, // 朱色っぽい赤
             emissive: 0xff0000, // 真っ赤に発光
-            emissiveIntensity: 10.0, // コアを強く発光させる（ブルーム向け）
+            emissiveIntensity: 5.0, // 元の発光強度
             transparent: true,
-            opacity: 1.0,
+            opacity: 0.9,
             roughness: 0.1,
             metalness: 0.1
         });
@@ -34,6 +37,19 @@ export class Hitodama {
         this.mesh.scale.set(this.currentScale, this.currentScale, this.currentScale);
 
         this.scene.add(this.mesh);
+
+        // 中心グロウ用スプライト（簡易的な発光表現）
+        const glowMaterial = new THREE.SpriteMaterial({
+            map: spriteMap,
+            color: 0xff6633,
+            blending: THREE.AdditiveBlending,
+            transparent: true,
+            opacity: 0.6
+        });
+        this.coreGlow = new THREE.Sprite(glowMaterial);
+        this.coreGlow.scale.set(0.6, 0.6, 1.0);
+        this.coreGlow.position.copy(this.pos);
+        this.scene.add(this.coreGlow);
 
         // 元の頂点位置を保存（アニメーション用）
         this.originalPositions = geometry.attributes.position.clone();
@@ -52,7 +68,6 @@ export class Hitodama {
         }
 
         // 尾のジオメトリとマテリアル
-        const spriteMap = new THREE.TextureLoader().load('https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/sprites/spark1.png');
         this.tailSprites = [];
 
         // ベースのスプライトスケール (以前の0.75の1/3 = 0.25)
@@ -91,6 +106,12 @@ export class Hitodama {
         // メッシュとライトの位置更新
         this.mesh.position.copy(this.pos);
         this.light.position.copy(this.pos);
+        if (this.coreGlow) {
+            this.coreGlow.position.copy(this.pos);
+            const pulse = 1.0 + Math.sin(this.time * 6.0) * 0.08;
+            const base = 0.6 * this.currentScale;
+            this.coreGlow.scale.set(base * pulse, base * pulse, 1.0);
+        }
 
         // --- 炎のゆらぎアニメーション (メラメラ感強化版) ---
         // ※位置は動きませんが、炎としてのゆらぎ（頂点アニメーション）は維持します。
@@ -174,6 +195,11 @@ export class Hitodama {
         this.mesh.material.dispose();
 
         this.scene.remove(this.light);
+
+        if (this.coreGlow) {
+            this.scene.remove(this.coreGlow);
+            if (this.coreGlow.material) this.coreGlow.material.dispose();
+        }
 
         for (const sprite of this.tailSprites) {
             this.scene.remove(sprite);

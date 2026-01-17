@@ -29,8 +29,6 @@ body {
     z-index: 1;
     /* 白黒化 + コントラスト強め + 少し暗くして雰囲気を出す */
     filter: grayscale(100%) contrast(1.2) brightness(0.7);
-    /* 鏡のように横反転（ユーザー視点で自然になる） */
-    transform: scaleX(-1);
 }
 
 /* 3Dキャンバス */

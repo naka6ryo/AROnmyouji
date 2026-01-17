@@ -7,6 +7,91 @@ import * as THREE from 'three';
 // postprocessing removed to simplify rendering and avoid canvas alpha issues
 import { Hitodama } from './Hitodama.js';
 
+// --- シェーダー: 筆致ライクな軌跡表現 ---
+const tracerVertexShader = `
+    uniform float uTime;
+    attribute float aWidth;
+    varying vec2 vUv;
+    varying float vWidth;
+
+    float random(vec2 st) {
+        return fract(sin(dot(st.xy, vec2(12.9898,78.233))) * 43758.5453123);
+    }
+
+    void main() {
+        vUv = uv;
+        vWidth = aWidth;
+        vec3 pos = position;
+
+        float edgeNoise = (random(uv * 10.0 + uTime) - 0.5) * 0.5;
+        float edgeIntensity = smoothstep(0.0, 0.2, abs(uv.y - 0.5));
+        pos.x += edgeNoise * edgeIntensity * aWidth;
+        pos.y += edgeNoise * edgeIntensity * aWidth;
+
+        float wave = sin(uv.x * 8.0 - uTime * 6.0) * 1.0;
+        pos.z += wave * 0.02;
+
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
+    }
+`;
+
+const tracerFragmentShader = `
+    uniform float uTime;
+    uniform vec3 uColorCore;
+    uniform vec3 uColorEdge;
+    varying vec2 vUv;
+    varying float vWidth;
+
+    vec3 permute(vec3 x) { return mod(((x*34.0)+1.0)*x, 289.0); }
+    float snoise(vec2 v){
+        const vec4 C = vec4(0.211324865405187, 0.366025403784439,
+                -0.577350269189626, 0.024390243902439);
+        vec2 i  = floor(v + dot(v, C.yy) );
+        vec2 x0 = v -   i + dot(i, C.xx);
+        vec2 i1;
+        i1 = (x0.x > x0.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0);
+        vec4 x12 = x0.xyxy + C.xxzz;
+        x12.xy -= i1;
+        i = mod(i, 289.0);
+        vec3 p = permute( permute( i.y + vec3(0.0, i1.y, 1.0 ))
+        + i.x + vec3(0.0, i1.x, 1.0 ));
+        vec3 m = max(0.5 - vec3(dot(x0,x0), dot(x12.xy,x12.xy), dot(x12.zw,x12.zw)), 0.0);
+        m = m*m ;
+        m = m*m ;
+        vec3 x = 2.0 * fract(p * C.www) - 1.0;
+        vec3 h = abs(x) - 0.5;
+        vec3 ox = floor(x + 0.5);
+        vec3 a0 = x - ox;
+        m *= 1.79284291400159 - 0.85373472095314 * ( a0*a0 + h*h );
+        vec3 g;
+        g.x  = a0.x  * x0.x  + h.x  * x0.y;
+        g.yz = a0.yz * x12.xz + h.yz * x12.yw;
+        return 130.0 * dot(m, g);
+    }
+
+    void main() {
+        vec2 noiseUV = vUv * vec2(4.0, 2.0) - vec2(uTime * 1.5, 0.0);
+        float n1 = snoise(noiseUV * 1.5);
+        float n2 = snoise(noiseUV * 3.0 + vec2(uTime, uTime));
+        float fbm = n1 * 0.6 + n2 * 0.4;
+
+        float centerDist = abs(vUv.y - 0.5) * 2.0;
+        float scratchThreshold = 0.4 + centerDist * 0.4;
+        float scratch = smoothstep(scratchThreshold - 0.1, scratchThreshold + 0.1, fbm + 0.5);
+
+        float core = smoothstep(0.3, 0.7, fbm + (1.0 - centerDist) * 0.5);
+        vec3 color = mix(uColorEdge, uColorCore, core);
+        color += uColorEdge * (1.0 - core) * 1.5;
+
+        float alphaSide = smoothstep(1.0, 0.6, centerDist);
+        float alphaLong = smoothstep(0.0, 0.15, vUv.x);
+        float finalAlpha = alphaSide * alphaLong * scratch;
+        if(finalAlpha < 0.01) discard;
+
+        gl_FragColor = vec4(color, finalAlpha);
+    }
+`;
+
 export class Renderer {
     constructor(canvasId, debugOverlay = null) {
         this.canvas = document.getElementById(canvasId);
@@ -81,6 +166,8 @@ export class Renderer {
         // 術式段階の軌跡表示（SwingActive中）
         this.swingTracerMesh = null; // 軌跡メッシュ
         this.TRACER_RADIUS = 0.4; // 球面半径（カメラ回転中心から）
+        this.TRACER_BASE_WIDTH = 0.02; // 軌跡基本幅（メートル換算的）
+        this._tracerStartTime = performance.now();
 
         // ライト
         const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
@@ -249,51 +336,132 @@ export class Renderer {
      * 術式段階の軌跡を更新
      */
     updateSwingTracer(trajectory) {
-        if (!trajectory || trajectory.length === 0) return;
+        if (!trajectory || trajectory.length < 2) return;
 
         // 既存のメッシュを削除
         if (this.swingTracerMesh) {
             this.scene.remove(this.swingTracerMesh);
             this.swingTracerMesh.geometry.dispose();
             this.swingTracerMesh.material.dispose();
+            this.swingTracerMesh = null;
         }
 
-        // 軌跡から3D点群を生成
+        // 軌跡から3D点群を生成（カメラ基準の半径を乗じる）
         const points = [];
-        for (const point of trajectory) {
-            const pitchRad = point.pitch * Math.PI / 180;
-            const yawRad = point.yaw * Math.PI / 180;
-
+        for (const pt of trajectory) {
+            const pitchRad = pt.pitch * Math.PI / 180;
+            const yawRad = pt.yaw * Math.PI / 180;
             const x = this.TRACER_RADIUS * Math.cos(pitchRad) * Math.sin(yawRad);
             const y = this.TRACER_RADIUS * Math.sin(pitchRad);
             const z = -this.TRACER_RADIUS * Math.cos(pitchRad) * Math.cos(yawRad);
-
-            points.push(new THREE.Vector3(x, y, z));
+            points.push({ pos: new THREE.Vector3(x, y, z), t: pt.timestamp });
         }
 
-        if (points.length < 2) return;
+        const n = points.length;
+        if (n < 2) return;
 
-        // CatmullRomCurve3で滑らかな曲線を作成
-        const curve = new THREE.CatmullRomCurve3(points);
+        // 速度（角速度）を簡易算出して幅に反映する
+        const speeds = new Array(n).fill(0);
+        for (let i = 1; i < n; i++) {
+            const dp = points[i].pos.distanceTo(points[i-1].pos);
+            const dt = Math.max(1, points[i].t - points[i-1].t);
+            speeds[i] = dp / dt;
+        }
+        // スムージング
+        const smooth = new Array(n).fill(0);
+        for (let i = 0; i < n; i++) {
+            let s = speeds[i];
+            if (i > 0) s = (speeds[i-1] + speeds[i]) * 0.5;
+            smooth[i] = s;
+        }
 
-        // TubeGeometryで太い線として描画
-        const tubeGeometry = new THREE.TubeGeometry(
-            curve,
-            Math.max(20, points.length * 2),
-            0.015, // やや細めの半径
-            8,
-            false
-        );
+        // バッファ準備（各点2頂点でリボンを作る）
+        const positions = new Float32Array(n * 2 * 3);
+        const uvs = new Float32Array(n * 2 * 2);
+        const widths = new Float32Array(n * 2);
+        const indices = [];
 
-        const material = new THREE.MeshBasicMaterial({
-            color: 0x00ffff,
+        // camera forward を取得して、幅方向の法線を決める
+        const camForward = this.getCameraForward();
+
+        for (let i = 0; i < n; i++) {
+            const p = points[i].pos;
+
+            // 方向ベクトルの近似
+            let dir = new THREE.Vector3();
+            if (i === 0) {
+                dir.subVectors(points[1].pos, p).normalize();
+            } else if (i === n - 1) {
+                dir.subVectors(p, points[i-1].pos).normalize();
+            } else {
+                const d1 = new THREE.Vector3().subVectors(p, points[i-1].pos).normalize();
+                const d2 = new THREE.Vector3().subVectors(points[i+1].pos, p).normalize();
+                dir.addVectors(d1, d2).normalize();
+            }
+
+            // 幅方向の法線: dir x camForward
+            const normal = new THREE.Vector3().crossVectors(dir, camForward).normalize();
+            if (normal.lengthSq() < 1e-6) {
+                // 特異点回避: 代替の法線
+                normal.set(1, 0, 0);
+            }
+
+            // u = 0..1 (末尾->先端)
+            const u = i / (n - 1);
+            // 幅: 速い -> 細く, 遅い -> 太く
+            const speed = smooth[i] || 0;
+            const speedFactor = Math.max(0.25, Math.min(3.0, 1.0 / (speed * 100.0 + 0.05)));
+            const taper = Math.pow(u, 0.45);
+            const w = this.TRACER_BASE_WIDTH * speedFactor * taper;
+
+            const idx = i * 2;
+            // 左右の頂点
+            positions[idx * 3] = p.x + normal.x * w * 5.0;
+            positions[idx * 3 + 1] = p.y + normal.y * w * 5.0;
+            positions[idx * 3 + 2] = p.z + normal.z * w * 5.0;
+
+            positions[(idx + 1) * 3] = p.x - normal.x * w * 5.0;
+            positions[(idx + 1) * 3 + 1] = p.y - normal.y * w * 5.0;
+            positions[(idx + 1) * 3 + 2] = p.z - normal.z * w * 5.0;
+
+            widths[idx] = w;
+            widths[idx + 1] = w;
+
+            uvs[idx * 2] = u;
+            uvs[idx * 2 + 1] = 0.0;
+            uvs[(idx + 1) * 2] = u;
+            uvs[(idx + 1) * 2 + 1] = 1.0;
+        }
+
+        for (let i = 0; i < n - 1; i++) {
+            const base = i * 2;
+            indices.push(base, base + 1, base + 2);
+            indices.push(base + 2, base + 1, base + 3);
+        }
+
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        geometry.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
+        geometry.setAttribute('aWidth', new THREE.BufferAttribute(widths, 1));
+        geometry.setIndex(indices);
+        geometry.setDrawRange(0, (n - 1) * 6);
+
+        const material = new THREE.ShaderMaterial({
+            vertexShader: tracerVertexShader,
+            fragmentShader: tracerFragmentShader,
+            uniforms: {
+                uTime: { value: (performance.now() - this._tracerStartTime) * 0.001 },
+                uColorCore: { value: new THREE.Color(0x000000) },
+                uColorEdge: { value: new THREE.Color(0x0066ff) }
+            },
             transparent: true,
-            opacity: 0.5,
-            side: THREE.DoubleSide,
-            blending: THREE.AdditiveBlending
+            depthTest: false,
+            blending: THREE.AdditiveBlending,
+            side: THREE.DoubleSide
         });
 
-        this.swingTracerMesh = new THREE.Mesh(tubeGeometry, material);
+        this.swingTracerMesh = new THREE.Mesh(geometry, material);
+        this.swingTracerMesh.frustumCulled = false;
         this.scene.add(this.swingTracerMesh);
     }
 
@@ -553,6 +721,10 @@ export class Renderer {
         }
 
         this.updateSlashProjectiles(deltaTime, enemies);
+        // シェーダー軌跡の時間更新
+        if (this.swingTracerMesh && this.swingTracerMesh.material && this.swingTracerMesh.material.uniforms) {
+            this.swingTracerMesh.material.uniforms.uTime.value = (performance.now() - this._tracerStartTime) * 0.001;
+        }
         // 簡易レンダリング: Composer を使わず通常レンダリングのみ（キャンバスは透明）
         this.renderer.clear();
         this.renderer.render(this.scene, this.camera);

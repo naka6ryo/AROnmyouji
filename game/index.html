@@ -27,7 +27,7 @@
 
 <body>
     <!-- ビデオ背景（カメラ映像） -->
-    <video id="cameraVideo" autoplay playsinline></video>
+    <video id="cameraVideo" class="distortion-glitch horror-breathing" autoplay playsinline muted></video>
 
     <!-- 3Dキャンバス -->
     <canvas id="gameCanvas"></canvas>
@@ -155,10 +155,17 @@
                     <button id="sceneStartButton" class="btn-primary">開始</button>
                 </div>
 
-                <!-- Right vertical HP bar (gameplay style) -->
+                <!-- Right: Vertical HP bar (gameplay style) -->
                 <div id="verticalHp" class="vertical-hp">
                     <div class="hp-label-vertical">HP</div>
-                    <div class="hp-track"><div id="verticalHpFill" class="hp-fill"></div></div>
+                    <div class="hp-track relative" aria-hidden="true">
+                        <div class="grid-bg"></div>
+                        <div id="verticalHpFill" class="hp-fill">
+                            <div class="top-highlight"></div>
+                        </div>
+                        <div class="side-line"></div>
+                        <div class="scanline-overlay"></div>
+                    </div>
                     <div class="hp-numbers"><div id="verticalHpNum">5</div><div class="sep">/</div><div id="verticalHpMax">5</div></div>
                 </div>
 

@@ -190,27 +190,16 @@ class AROnmyoujiGame {
         this.addPermissionDebugLog('権限要求開始...');
         
         try {
-            // カメラ権限
-            this.addPermissionDebugLog('📷 カメラ権限を要求中...');
-            console.log('[requestPermissions] カメラ権限要求中...');
-            
-            this.cameraStream = await navigator.mediaDevices.getUserMedia({
-                video: { facingMode: 'environment' }
-            });
-            this.videoElement.srcObject = this.cameraStream;
-            this.ui.cameraStatus.textContent = '📷 カメラ: 許可 ✓';
-            this.debugOverlay.logInfo('カメラ権限: 許可');
-            this.addPermissionDebugLog('✓ カメラ権限取得成功');
-            console.log('[requestPermissions] カメラ権限取得成功');
-            
-            // モーション権限（iOS対応）
+            // ★重要★ モーション権限を FIRST に取得する
+            // ユーザージェスチャーコンテキストを失わないためにカメラより先に実行
             if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
                 this.addPermissionDebugLog('📱 iOS環境を検出');
                 console.log('[requestPermissions] iOS環境検出。requestPermissionメソッド実行中...');
                 this.debugOverlay.logInfo('iOS環境: モーション権限を要求中...');
-                this.addPermissionDebugLog('📱 requestPermission()を呼び出し中...');
+                this.addPermissionDebugLog('📱 requestPermission()を呼び出し中（ユーザージェスチャーコンテキスト内）...');
                 
                 try {
+                    // ジェスチャーコンテキスト内で即座に実行
                     const permission = await DeviceOrientationEvent.requestPermission();
                     this.addPermissionDebugLog(`📱 requestPermission()結果: ${permission}`);
                     console.log('[requestPermissions] requestPermission結果:', permission);
@@ -257,6 +246,19 @@ class AROnmyoujiGame {
                 window.addEventListener('deviceorientation', this.deviceOrientationHandler);
                 this.addPermissionDebugLog('✓ deviceorientationリスナー登録完了');
             }
+            
+            // ★次に★ カメラ権限を取得する
+            this.addPermissionDebugLog('📷 カメラ権限を要求中...');
+            console.log('[requestPermissions] カメラ権限要求中...');
+            
+            this.cameraStream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: 'environment' }
+            });
+            this.videoElement.srcObject = this.cameraStream;
+            this.ui.cameraStatus.textContent = '📷 カメラ: 許可 ✓';
+            this.debugOverlay.logInfo('カメラ権限: 許可');
+            this.addPermissionDebugLog('✓ カメラ権限取得成功');
+            console.log('[requestPermissions] カメラ権限取得成功');
             
             this.addPermissionDebugLog('✓ すべての権限取得完了。次画面へ遷移します...');
             // 次の状態へ

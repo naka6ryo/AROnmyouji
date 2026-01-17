@@ -363,6 +363,11 @@ class AROnmyoujiGame {
      */
     onSwing(swing) {
         this.debugOverlay.logInfo(`斬撃検出: intensity=${swing.intensity.toFixed(2)}`);
+        
+        // 斬撃エフェクトを生成（エアカッター風）
+        this.renderer.addSlashProjectile(swing.direction, swing.intensity);
+        
+        // 命中判定
         this.combatSystem.handleSwing(swing);
     }
     
@@ -519,8 +524,8 @@ class AROnmyoujiGame {
             this.updateHUD();
         }
         
-        // 描画
-        this.renderer.render();
+        // 描画（deltaTimeを渡す）
+        this.renderer.render(this.FIXED_DELTA_TIME);
         
         // 次のフレーム
         requestAnimationFrame(() => this.gameLoop());

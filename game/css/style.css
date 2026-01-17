@@ -39,7 +39,8 @@ body {
     inset: 0;
     width: 100vw;
     height: 100vh;
-    z-index: 10;
+    /* UI より下に配置してボタンをクリック可能にする */
+    z-index: 2;
 }
 
 /* UIコンテナ */

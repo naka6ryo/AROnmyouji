@@ -500,6 +500,17 @@ export class Renderer {
             this.debugOverlay.logInfo(logMsg);
         }
         
+        // 詳細デバッグログ
+        if (this.debugOverlay) {
+            this.debugOverlay.logInfo(
+                `判定詳細: id=${enemy.id} 距離=${enemyDistance.toFixed(2)} [${minDistance.toFixed(2)}~${maxDistance.toFixed(2)}] 判定=${distanceInRange} | ` +
+                `arc半径=${arcRadius.toFixed(2)} margin=${margin} enemyR=${enemyRadius} | ` +
+                `pitchS=${startPitch.toFixed(1)} pitchE=${endPitch.toFixed(1)} elev=${enemyPitch.toFixed(1)} diffS=${pitchDiffStart.toFixed(1)} diffE=${pitchDiffEnd.toFixed(1)} | ` +
+                `yawS=${startYaw.toFixed(1)} yawE=${endYaw.toFixed(1)} azim=${enemyYaw.toFixed(1)} diffS=${yawDiffStart.toFixed(1)} diffE=${yawDiffEnd.toFixed(1)} | ` +
+                `nearStart=${nearStart} nearEnd=${nearEnd} angle閾値=${angleThreshold}`
+            );
+        }
+        
         return true;
     }
     

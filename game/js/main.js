@@ -260,6 +260,42 @@ class AROnmyoujiGame {
                 video: { facingMode: 'environment' }
             });
             this.videoElement.srcObject = this.cameraStream;
+            // ブラウザによっては自動再生がブロックされる、またはsrcObject適用でplayが中断されることがあるため
+            // 'loadedmetadata' イベントで再生を再試行する
+            this.videoElement.muted = true; // ミュートは自動再生許可に有利
+            const tryPlay = async () => {
+                try {
+                    await this.videoElement.play();
+                    this.debugOverlay.logInfo('カメラ映像の再生を開始しました');
+                    return true;
+                } catch (err) {
+                    console.warn('[requestPermissions] video.play() に失敗:', err);
+                    this.addPermissionDebugLog(`⚠ video.play() エラー: ${err.message}`);
+                    return false;
+                }
+            };
+
+            // まず即時試行
+            let played = await tryPlay();
+
+            // AbortError 等で中断された場合、loadedmetadata または canplay イベントで再試行
+            if (!played) {
+                const onLoaded = async () => {
+                    try {
+                        await tryPlay();
+                    } finally {
+                        this.videoElement.removeEventListener('loadedmetadata', onLoaded);
+                        this.videoElement.removeEventListener('canplay', onLoaded);
+                    }
+                };
+                this.videoElement.addEventListener('loadedmetadata', onLoaded);
+                this.videoElement.addEventListener('canplay', onLoaded);
+                // タイムアウト保険（5秒後にリスナーを外す）
+                setTimeout(() => {
+                    this.videoElement.removeEventListener('loadedmetadata', onLoaded);
+                    this.videoElement.removeEventListener('canplay', onLoaded);
+                }, 5000);
+            }
             this.ui.cameraStatus.textContent = '📷 カメラ: 許可 ✓';
             this.debugOverlay.logInfo('カメラ権限: 許可');
             this.addPermissionDebugLog('✓ カメラ権限取得成功');

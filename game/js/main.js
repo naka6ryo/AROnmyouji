@@ -557,6 +557,8 @@ class AROnmyoujiGame {
      */
     onRetry() {
         this.debugOverlay.logInfo('リトライ');
+        this.renderer.dispose(); // 描画リセット
+        this.debugOverlay.clearLogs(); // ログもリセット
         this.appState.retry();
         this.startGameplay();
     }

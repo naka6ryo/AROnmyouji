@@ -5,6 +5,11 @@ export class Hitodama {
         this.scene = scene;
         this.pos = position;
         this.time = 0;
+        // 浄化フラグ
+        this.isPurifying = false;
+        this.purifyTime = 0;
+        this.isDead = false;
+        this.onPurified = null; // コールバック: 浄化完了時に呼ばれる
 
         // 1. コア（球体）
         // 目標最大サイズ: 半径0.1 (以前の0.3の1/3)
@@ -128,6 +133,50 @@ export class Hitodama {
 
     update(dt) {
         this.time += dt;
+        if (this.isPurifying && !this.isDead) {
+            this.purifyTime += dt;
+            const duration = 2000; // ms
+            const progress = Math.min(this.purifyTime / duration, 1.0);
+
+            // 上昇
+            this.pos.y += (dt / 1000) * (1.0 + progress * 3.0);
+
+            // 色変化: 赤 -> 青白
+            if (this.mesh && this.mesh.material && this.mesh.material.color) {
+                const pureColor = new THREE.Color(0xaaddff);
+                this.mesh.material.color.lerp(pureColor, 0.05);
+                if (this.mesh.material.emissive) this.mesh.material.emissive.lerp(new THREE.Color(0x0088ff), 0.05);
+            }
+
+            // フラッシュ & フェードアウト
+            if (progress < 0.15) {
+                if (this.mesh && this.mesh.material) this.mesh.material.emissiveIntensity = THREE.MathUtils.lerp(5.0, 20.0, progress * 6.0);
+                if (this.light) this.light.intensity = THREE.MathUtils.lerp(50, 100, progress * 6.0);
+                const s = 1.0 + progress * 2.0;
+                if (this.mesh) this.mesh.scale.set(s, s, s);
+            } else {
+                const fadeProgress = (progress - 0.15) / 0.85;
+                if (this.mesh && this.mesh.material) this.mesh.material.opacity = THREE.MathUtils.lerp(0.9, 0, fadeProgress);
+                if (this.mesh && this.mesh.material) this.mesh.material.emissiveIntensity = THREE.MathUtils.lerp(20.0, 0, fadeProgress);
+                if (this.light) this.light.intensity = THREE.MathUtils.lerp(100, 0, fadeProgress);
+                const s = 1.3 + fadeProgress * 1.0;
+                if (this.mesh) this.mesh.scale.set(s, s, s);
+            }
+
+            // 尾の色・透明度更新
+            for (const sprite of this.tailSprites) {
+                sprite.material.color.lerp(new THREE.Color(0xaaddff), 0.1);
+                if (this.mesh && this.mesh.material) sprite.material.opacity *= this.mesh.material.opacity;
+            }
+
+            if (progress >= 1.0) {
+                this.isDead = true;
+                if (this.mesh) this.mesh.visible = false;
+                if (this.light) this.light.visible = false;
+                for (const s of this.tailSprites) s.visible = false;
+                if (typeof this.onPurified === 'function') this.onPurified();
+            }
+        }
 
         // --- スケール更新（徐々に大きくなる） ---
         if (this.currentScale < this.targetScale) {
@@ -260,5 +309,14 @@ export class Hitodama {
             if (this.glowShell.material) this.glowShell.material.dispose();
             // geometry is shared with this.mesh; avoid double-dispose here
         }
+    }
+
+    /**
+     * 浄化開始
+     */
+    purify() {
+        if (this.isPurifying || this.isDead) return;
+        this.isPurifying = true;
+        this.purifyTime = 0;
     }
 }

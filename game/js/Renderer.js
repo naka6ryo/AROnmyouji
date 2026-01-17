@@ -181,9 +181,26 @@ export class Renderer {
     removeEnemy(enemyId) {
         const hitodama = this.enemyObjects.get(enemyId);
         if (hitodama) {
-            hitodama.dispose();
-            this.enemyObjects.delete(enemyId);
-            console.log(`[Renderer] 敵(人魂)削除: id=${enemyId}`);
+            // 既に浄化中・死亡なら即時削除
+            if (hitodama.isPurifying || hitodama.isDead) {
+                hitodama.dispose();
+                this.enemyObjects.delete(enemyId);
+                console.log(`[Renderer] 敵(人魂)削除: id=${enemyId}`);
+            } else if (typeof hitodama.purify === 'function') {
+                // 撃破時に浄化アニメーションを開始し、完了時に実際に削除する
+                hitodama.onPurified = () => {
+                    hitodama.dispose();
+                    this.enemyObjects.delete(enemyId);
+                    console.log(`[Renderer] 敵(人魂)浄化完了・削除: id=${enemyId}`);
+                };
+                hitodama.purify();
+                console.log(`[Renderer] 敵(人魂)浄化開始: id=${enemyId}`);
+            } else {
+                // フォールバックで即時削除
+                hitodama.dispose();
+                this.enemyObjects.delete(enemyId);
+                console.log(`[Renderer] 敵(人魂)削除: id=${enemyId}`);
+            }
         }
     }
 

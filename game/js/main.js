@@ -29,6 +29,8 @@ class AROnmyoujiGame {
         this.uiManager = new UIManager();
         this.soundManager = soundManager;
 
+        // Calibration display baseline (for reset behavior)
+        this.calibrationDisplayBaseline = null;
         // UI初期化
         this.uiManager.init();
 
@@ -66,7 +68,7 @@ class AROnmyoujiGame {
             onRequestPermission: () => this.requestPermissions(),
             onConnectBLE: () => this.connectBLE(),
             onConfirmCalibration: () => this.confirmCalibration(),
-            onResetCalibration: () => this.onRecalibrate(),
+            onResetCalibration: () => this.onResetCalibration(),
             onRetry: () => this.onRetry(),
             onReconnect: () => this.onReconnect(),
             onRecalibrate: () => this.onRecalibrate(),
@@ -139,9 +141,12 @@ class AROnmyoujiGame {
                     attack_swipe: 'assets/sfx/attack_swipe.mp3'
                 }).then(() => this.debugOverlay.logInfo('SFXロード完了')).catch(e => console.warn('sound load failed', e));
             }
-        } catch (e) {
-            console.warn('sound init/load failed', e);
-        }
+
+            // 完了したら表示基準は不要にする
+            this.calibrationDisplayBaseline = null;
+
+            this.appState.calibrationComplete();
+            this.startGameplay();
 
         // UIに3-2-1を表示してから開始
         this.uiManager.showCountdown(3, () => {
@@ -305,7 +310,15 @@ class AROnmyoujiGame {
         this.latestFrame = frame;
 
         if (this.appState.getCurrentState() === 'calibrate') {
-            this.uiManager.updateCalibrationValues(frame.pitch_deg, frame.yaw_deg, frame.roll_deg);
+            // If a display baseline was set by reset, show angles relative to that baseline
+            if (this.calibrationDisplayBaseline) {
+                const dp = this.unwrapAngleDeg(frame.pitch_deg - this.calibrationDisplayBaseline.pitch);
+                const dy = this.unwrapAngleDeg(frame.yaw_deg - this.calibrationDisplayBaseline.yaw);
+                const dr = this.unwrapAngleDeg(frame.roll_deg - this.calibrationDisplayBaseline.roll);
+                this.uiManager.updateCalibrationValues(dp, dy, dr);
+            } else {
+                this.uiManager.updateCalibrationValues(frame.pitch_deg, frame.yaw_deg, frame.roll_deg);
+            }
         }
 
         if (this.appState.isGameplay()) {
@@ -320,6 +333,12 @@ class AROnmyoujiGame {
      */
     onBLEDisconnect() {
         this.debugOverlay.logWarn('BLE切断検出');
+    }
+
+    unwrapAngleDeg(angle) {
+        while (angle > 180) angle -= 360;
+        while (angle < -180) angle += 360;
+        return angle;
     }
 
     onSwingStarted() {
@@ -451,8 +470,35 @@ class AROnmyoujiGame {
         try {
             if (this.motionInterpreter) this.motionInterpreter.isCalibrated = false;
         } catch (e) { }
+        // 画面表示用基準をクリアしてキャリブレーション画面へ
+        this.calibrationDisplayBaseline = null;
         this.appState.recalibrate();
         this.debugOverlay.logInfo('再キャリブレーションモードへ移行');
+    }
+
+    onResetCalibration() {
+        // Reset: set display baseline to current device orientation so displayed euler
+        // angles become relative to device pose at reset time.
+        if (!this.latestFrame) {
+            this.debugOverlay.logWarn('リセット: フレームデータなし');
+            return;
+        }
+
+        this.calibrationDisplayBaseline = {
+            pitch: this.latestFrame.pitch_deg,
+            yaw: this.latestFrame.yaw_deg,
+            roll: this.latestFrame.roll_deg
+        };
+
+        // Ensure interpreter is not fully calibrated yet
+        try { if (this.motionInterpreter) this.motionInterpreter.isCalibrated = false; } catch (e) {}
+
+        // Ensure we are in calibrate screen
+        this.appState.recalibrate();
+
+        // Update UI immediately to show zeros (or very small residuals)
+        this.uiManager.updateCalibrationValues(0, 0, 0);
+        this.debugOverlay.logInfo('キャリブレーション表示基準をリセットしました');
     }
 
     gameLoop() {

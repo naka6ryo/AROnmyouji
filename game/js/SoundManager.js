@@ -7,9 +7,23 @@ export class SoundManager {
     constructor() {
         this.sounds = new Map(); // HTMLAudio fallback
         this.buffers = new Map(); // WebAudio decoded buffers
+        this.buffersGain = new Map(); // per-buffer normalization gain
         this.enabled = true;
         this.audioContext = null;
         this.gainNode = null;
+        // マスターゲイン: デバイスに応じて増幅（モバイルは通常低めに聞こえるため多少ブースト）
+        this.masterGain = this._detectMasterGain();
+    }
+
+    _detectMasterGain() {
+        try {
+            const ua = navigator.userAgent || '';
+            if (/iPhone|iPad|iPod/i.test(ua)) return 1.6; // iOS でややブースト
+            if (/Android/i.test(ua)) return 1.4; // Android で少しブースト
+        } catch (e) {
+            // フォールバック
+        }
+        return 1.0;
     }
 
     /** ユーザー操作の直後に呼んでAudioContextを作成／resumeする */
@@ -50,13 +64,29 @@ export class SoundManager {
                 const arr = await resp.arrayBuffer();
                 if (window.AudioContext || window.webkitAudioContext) {
                     await this.initAudioContext();
-                    try {
-                        const decoded = await this.audioContext.decodeAudioData(arr.slice(0));
-                        this.buffers.set(key, decoded);
-                        continue; // decoded OK
-                    } catch (err) {
-                        console.warn('[SoundManager] decodeAudioData failed', key, err);
-                    }
+                        try {
+                            const decoded = await this.audioContext.decodeAudioData(arr.slice(0));
+                            // 正規化のためピーク値を測定
+                            try {
+                                let peak = 0;
+                                for (let ch = 0; ch < decoded.numberOfChannels; ch++) {
+                                    const data = decoded.getChannelData(ch);
+                                    for (let i = 0; i < data.length; i++) {
+                                        const v = Math.abs(data[i]);
+                                        if (v > peak) peak = v;
+                                    }
+                                }
+                                // peak が小さいと音が小さいので、0.95/peak を掛けて正規化（上限は x4）
+                                const normGain = (peak > 0) ? Math.min(4.0, 0.95 / peak) : 1.0;
+                                this.buffersGain.set(key, normGain);
+                            } catch (gerr) {
+                                console.warn('[SoundManager] compute gain failed', key, gerr);
+                            }
+                            this.buffers.set(key, decoded);
+                            continue; // decoded OK
+                        } catch (err) {
+                            console.warn('[SoundManager] decodeAudioData failed', key, err);
+                        }
                 }
             } catch (e) {
                 console.warn('[SoundManager] webaudio fetch/decode failed', key, url, e);
@@ -86,7 +116,9 @@ export class SoundManager {
                 src.buffer = buffer;
                 if (opts.playbackRate !== undefined) src.playbackRate.value = opts.playbackRate;
                 const gain = this.audioContext.createGain();
-                gain.gain.value = (opts.volume !== undefined) ? opts.volume : 1.0;
+                const baseVol = (opts.volume !== undefined) ? opts.volume : 1.0;
+                const norm = this.buffersGain.get(key) || 1.0;
+                gain.gain.value = baseVol * norm * this.masterGain;
                 src.connect(gain);
                 gain.connect(this.gainNode || this.audioContext.destination);
                 src.start(0);
@@ -109,7 +141,8 @@ export class SoundManager {
 
         try {
             const instance = audio.cloneNode();
-            if (opts.volume !== undefined) instance.volume = opts.volume;
+            // HTMLAudioは 0..1 の制約があるため masterGain と正規化を組み合わせて 0..1 に収める
+            if (opts.volume !== undefined) instance.volume = Math.min(1.0, opts.volume * (this.buffersGain.get(key) || 1.0) * this.masterGain);
             if (opts.playbackRate !== undefined) instance.playbackRate = opts.playbackRate;
             instance.play().catch(err => {
                 console.warn('[SoundManager] play failed', key, err);

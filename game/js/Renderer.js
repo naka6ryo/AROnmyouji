@@ -166,7 +166,7 @@ export class Renderer {
         // 術式段階の軌跡表示（SwingActive中）
         this.swingTracerMesh = null; // 軌跡メッシュ
         this.TRACER_RADIUS = 0.4; // 球面半径（カメラ回転中心から）
-        this.TRACER_BASE_WIDTH = 0.02; // 軌跡基本幅（メートル換算的）
+        this.TRACER_BASE_WIDTH = 0.006; // 軌跡基本幅（メートル換算的） - 細く調整
         this._tracerStartTime = performance.now();
 
         // ライト
@@ -416,13 +416,13 @@ export class Renderer {
 
             const idx = i * 2;
             // 左右の頂点
-            positions[idx * 3] = p.x + normal.x * w * 5.0;
-            positions[idx * 3 + 1] = p.y + normal.y * w * 5.0;
-            positions[idx * 3 + 2] = p.z + normal.z * w * 5.0;
+            positions[idx * 3] = p.x + normal.x * w * 3.0;
+            positions[idx * 3 + 1] = p.y + normal.y * w * 3.0;
+            positions[idx * 3 + 2] = p.z + normal.z * w * 3.0;
 
-            positions[(idx + 1) * 3] = p.x - normal.x * w * 5.0;
-            positions[(idx + 1) * 3 + 1] = p.y - normal.y * w * 5.0;
-            positions[(idx + 1) * 3 + 2] = p.z - normal.z * w * 5.0;
+            positions[(idx + 1) * 3] = p.x - normal.x * w * 3.0;
+            positions[(idx + 1) * 3 + 1] = p.y - normal.y * w * 3.0;
+            positions[(idx + 1) * 3 + 2] = p.z - normal.z * w * 3.0;
 
             widths[idx] = w;
             widths[idx + 1] = w;

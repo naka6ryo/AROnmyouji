@@ -143,8 +143,8 @@ export class Renderer {
      * 敵の位置を更新
      */
     updateEnemyPosition(mesh, enemy) {
-        // 人魂型はHitodamaEnemyインスタンス
-        if (mesh instanceof HitodamaEnemy) {
+        // 人魂型はHitodamaEnemyインスタンス（型判定問題切り分けのためconstructor.nameで判定）
+        if (mesh && mesh.constructor && mesh.constructor.name === 'HitodamaEnemy') {
             mesh.update(0, enemy);
         } else {
             const azimRad = enemy.azim * Math.PI / 180;
@@ -164,7 +164,7 @@ export class Renderer {
     removeEnemy(enemyId) {
         const mesh = this.enemyMeshes.get(enemyId);
         if (mesh) {
-            if (mesh instanceof HitodamaEnemy) {
+            if (mesh && mesh.constructor && mesh.constructor.name === 'HitodamaEnemy') {
                 mesh.dispose();
             } else {
                 this.scene.remove(mesh);
@@ -183,7 +183,7 @@ export class Renderer {
         for (const enemy of enemies) {
             const mesh = this.enemyMeshes.get(enemy.id);
             if (mesh) {
-                if (mesh instanceof HitodamaEnemy) {
+                if (mesh && mesh.constructor && mesh.constructor.name === 'HitodamaEnemy') {
                     mesh.update(1/60, enemy); // 仮に1/60秒
                 } else {
                     this.updateEnemyPosition(mesh, enemy);

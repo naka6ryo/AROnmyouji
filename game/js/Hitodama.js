@@ -3,321 +3,272 @@ import * as THREE from 'three';
 export class Hitodama {
     constructor(scene, position = new THREE.Vector3(0, 0, 0)) {
         this.scene = scene;
-        this.pos = position;
+        this.pos = position.clone();
         this.time = 0;
-        // 浄化フラグ
+
         this.isPurifying = false;
-        this.purifyTime = 0;
+        this.fragments = [];
         this.isDead = false;
-        this.onPurified = null; // コールバック: 浄化完了時に呼ばれる
 
-        // 1. コア（球体）
-        // 目標最大サイズ: 半径0.1 (以前の0.3の1/3)
-        // 出現サイズ: 半径0.03 (以前の0.3の1/10 = 最大の0.3倍)
-        const geometry = new THREE.SphereGeometry(0.1, 64, 64);
+        // テクスチャ
+        const loader = new THREE.TextureLoader();
+        const spriteTexture = loader.load('https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/sprites/spark1.png');
+        const glowTexture = loader.load('https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/lensflare/lensflare0.png');
 
-        // スプライト用テクスチャを先に読み込む
-        const spriteMap = new THREE.TextureLoader().load('https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/sprites/spark1.png');
-
-        // コアは揺らぎの形状を見せつつ発光させたいので
-        // 1) 形状表示用に MeshStandardMaterial を使い揺らぎ（頂点変形）を適用
-        // 2) 同一ジオメトリを共有した Additive の MeshBasicMaterial を重ねて
-        //    表面自体が発光しているように見せる（glowShell）
-        const material = new THREE.MeshStandardMaterial({
-            color: 0xff3300,
-            emissive: 0x220000,
-            emissiveIntensity: 1.2,
+        // --- 1. Core ---
+        const coreGeo = new THREE.SphereGeometry(0.25, 32, 32);
+        const coreMat = new THREE.MeshBasicMaterial({
+            color: 0xffddaa,
             transparent: true,
-            opacity: 0.95,
-            roughness: 0.2,
-            metalness: 0.0
+            opacity: 0.8,
+            blending: THREE.AdditiveBlending
         });
+        this.coreMesh = new THREE.Mesh(coreGeo, coreMat);
+        this.coreMesh.position.copy(this.pos);
+        this.coreMesh.scale.set(0.8, 1.4, 0.8);
+        this.scene.add(this.coreMesh);
 
-        this.mesh = new THREE.Mesh(geometry, material);
-        this.mesh.position.copy(this.pos); // 初期位置を設定
-
-        // このオブジェクトはブルーム対象
-        this.mesh.userData.bloom = true;
-
-        // 初期スケール設定 (0.3倍からスタート)
-        this.currentScale = 0.3;
-        this.targetScale = 1.0;
-        this.mesh.scale.set(this.currentScale, this.currentScale, this.currentScale);
-
+        // --- 2. Body ---
+        const bodyGeo = new THREE.SphereGeometry(0.6, 64, 64);
+        const bodyMat = new THREE.MeshBasicMaterial({
+            color: 0xff2200,
+            transparent: true,
+            opacity: 0.5,
+            blending: THREE.AdditiveBlending,
+            side: THREE.DoubleSide,
+            depthWrite: false
+        });
+        this.mesh = new THREE.Mesh(bodyGeo, bodyMat);
+        this.mesh.position.copy(this.pos);
+        this.mesh.position.y += 0.3;
+        this.mesh.scale.set(0.75, 1.8, 0.75);
         this.scene.add(this.mesh);
+        this.originalPositions = bodyGeo.attributes.position.clone();
 
-        // 中心グロウ用スプライト（簡易的な発光表現）
-        const glowMaterial = new THREE.SpriteMaterial({
-            map: spriteMap,
-            color: 0xff6633,
-            blending: THREE.AdditiveBlending,
+        // --- 3. Aura ---
+        const auraMat = new THREE.SpriteMaterial({
+            map: glowTexture,
+            color: 0xff4400,
             transparent: true,
-            opacity: 0.6
+            opacity: 0.4,
+            blending: THREE.AdditiveBlending
         });
-        this.coreGlow = new THREE.Sprite(glowMaterial);
-        this.coreGlow.scale.set(0.6, 0.6, 1.0);
-        this.coreGlow.position.copy(this.pos);
-        this.scene.add(this.coreGlow);
+        this.auraSprite = new THREE.Sprite(auraMat);
+        this.auraSprite.scale.set(3.0, 5.0, 3.0);
+        this.auraSprite.position.copy(this.pos);
+        this.scene.add(this.auraSprite);
 
-        // --- グロー殻: 同一ジオメトリを共有する加算合成メッシュ ---
-        const glowMat = new THREE.MeshBasicMaterial({
-            color: 0xffaa33,
-            blending: THREE.AdditiveBlending,
-            transparent: true,
-            opacity: 0.7,
-            depthWrite: false
-        });
-        this.glowShell = new THREE.Mesh(geometry, glowMat);
-        // 描画順を確実にメッシュ本体の後にする
-        this.glowShell.renderOrder = 1;
-        this.mesh.renderOrder = 0;
-        // 少し拡大してオーラ感を出す（ジオメトリは同じなので頂点変形も反映される）
-        this.glowShell.scale.set(this.currentScale * 1.05, this.currentScale * 1.05, this.currentScale * 1.05);
-        this.glowShell.position.copy(this.pos);
-        this.scene.add(this.glowShell);
-
-        // 内側の小さなハイライト（中心光源）: より明るいコアを表現
-        const innerGeom = new THREE.SphereGeometry(0.05, 32, 32);
-        const innerMat = new THREE.MeshBasicMaterial({
-            color: 0xffdd66,
-            blending: THREE.AdditiveBlending,
-            transparent: true,
-            opacity: 0.9,
-            depthWrite: false
-        });
-        this.innerMesh = new THREE.Mesh(innerGeom, innerMat);
-        this.innerMesh.position.copy(this.pos);
-        this.innerMesh.scale.set(0.6 * this.currentScale, 0.6 * this.currentScale, 0.6 * this.currentScale);
-        this.scene.add(this.innerMesh);
-
-        // 元の頂点位置を保存（アニメーション用）
-        this.originalPositions = geometry.attributes.position.clone();
-
-        // 2. 光源（人魂自体が周りを照らす）
-        this.light = new THREE.PointLight(0xff4400, 50, 20); // 赤橙色の光
+        // --- 4. Light ---
+        this.light = new THREE.PointLight(0xff4400, 30, 10);
         this.light.position.copy(this.pos);
         this.scene.add(this.light);
 
-        // 3. 尾（パーティクルシステム）
+        // --- 5. Tail ---
         this.tailCount = 40;
         this.tailPositions = [];
-        // 尾の初期化
-        for (let i = 0; i < this.tailCount; i++) {
-            this.tailPositions.push(this.pos.clone());
-        }
+        for (let i = 0; i < this.tailCount; i++) this.tailPositions.push(this.pos.clone());
 
-        // 尾のジオメトリとマテリアル
         this.tailSprites = [];
-
-        // ベースのスプライトスケール (以前の0.75の1/3 = 0.25)
-        this.baseSpriteScale = 0.25;
-
         for (let i = 0; i < this.tailCount; i++) {
             const spriteMaterial = new THREE.SpriteMaterial({
-                map: spriteMap,
-                color: 0xff5500, // 尾も赤橙色に設定
+                map: spriteTexture,
+                color: 0xff5500,
                 transparent: true,
-                opacity: 0.5,
+                opacity: 0.4,
                 blending: THREE.AdditiveBlending
             });
             const sprite = new THREE.Sprite(spriteMaterial);
-            // 初期スケール適用
-            const initialS = this.baseSpriteScale * this.currentScale;
-            sprite.scale.set(initialS, initialS, initialS);
+            sprite.scale.set(1.5, 1.5, 1.5);
             this.scene.add(sprite);
             this.tailSprites.push(sprite);
-            // スプライトもブルーム対象
-            sprite.userData.bloom = true;
+        }
+    }
+
+    purify() {
+        if (this.isPurifying || this.isDead) return;
+        this.isPurifying = true;
+
+        // hide body visuals
+        this.mesh.visible = false;
+        this.coreMesh.visible = false;
+        this.auraSprite.visible = false;
+
+        this.light.intensity = 20;
+
+        // fragments
+        const fragmentCount = 50;
+        const fragGeo = new THREE.ConeGeometry(0.15, 0.4, 3);
+        fragGeo.rotateX(Math.PI / 2);
+
+        for (let i = 0; i < fragmentCount; i++) {
+            const fragMat = new THREE.MeshBasicMaterial({
+                color: 0xff5500,
+                transparent: true,
+                opacity: 1.0,
+                blending: THREE.AdditiveBlending,
+                side: THREE.DoubleSide
+            });
+            const fragment = new THREE.Mesh(fragGeo, fragMat);
+            fragment.position.copy(this.pos);
+            fragment.position.x += (Math.random() - 0.5) * 0.8;
+            fragment.position.y += (Math.random() - 0.5) * 0.8;
+            fragment.position.z += (Math.random() - 0.5) * 0.8;
+            fragment.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+            this.scene.add(fragment);
+
+            const speed = 1.0 + Math.random() * 4.0;
+            const theta = Math.random() * Math.PI * 2;
+            const phi = Math.random() * Math.PI;
+            const velocity = new THREE.Vector3(
+                Math.sin(phi) * Math.cos(theta),
+                Math.sin(phi) * Math.sin(theta),
+                Math.cos(phi)
+            ).normalize().multiplyScalar(speed);
+            velocity.y += Math.random() * 3.0 + 1.0;
+
+            this.fragments.push({
+                mesh: fragment,
+                velocity: velocity,
+                rotationSpeed: new THREE.Vector3((Math.random() - 0.5) * 10, (Math.random() - 0.5) * 10, (Math.random() - 0.5) * 10),
+                life: 1.0,
+                decay: 0.5 + Math.random() * 0.5
+            });
         }
     }
 
     update(dt) {
         this.time += dt;
-        if (this.isPurifying && !this.isDead) {
-            // dt is in seconds (Renderer passes deltaTime/1000)
-            this.purifyTime += dt; // seconds
-            const duration = 2.0; // seconds
-            const progress = Math.min(this.purifyTime / duration, 1.0);
 
-            // 上昇（秒単位で増加）
-            this.pos.y += dt * (1.0 + progress * 3.0);
+        if (this.isPurifying) {
+            const pureColor = new THREE.Color(0xaaddff);
+            this.light.color.lerp(pureColor, dt * 2.0);
+            this.light.intensity *= 0.95;
 
-            // 色変化: 赤 -> 青白
-            if (this.mesh && this.mesh.material && this.mesh.material.color) {
-                const pureColor = new THREE.Color(0xaaddff);
-                this.mesh.material.color.lerp(pureColor, 0.05);
-                if (this.mesh.material.emissive) this.mesh.material.emissive.lerp(new THREE.Color(0x0088ff), 0.05);
+            let activeFragments = 0;
+            for (let i = 0; i < this.fragments.length; i++) {
+                const frag = this.fragments[i];
+                if (frag.life <= 0) {
+                    frag.mesh.visible = false;
+                    continue;
+                }
+                activeFragments++;
+                frag.mesh.position.add(frag.velocity.clone().multiplyScalar(dt));
+                frag.mesh.rotation.x += frag.rotationSpeed.x * dt;
+                frag.mesh.rotation.y += frag.rotationSpeed.y * dt;
+                frag.mesh.rotation.z += frag.rotationSpeed.z * dt;
+                frag.velocity.multiplyScalar(0.95);
+                frag.mesh.material.color.lerp(pureColor, dt * 3.0);
+                frag.life -= frag.decay * dt;
+                frag.mesh.material.opacity = Math.max(0, frag.life);
+                const s = Math.max(0.0001, frag.life);
+                frag.mesh.scale.set(s, s, s);
             }
 
-            // フラッシュ & フェードアウト
-            if (progress < 0.15) {
-                if (this.mesh && this.mesh.material) this.mesh.material.emissiveIntensity = THREE.MathUtils.lerp(5.0, 20.0, progress * 6.0);
-                if (this.light) this.light.intensity = THREE.MathUtils.lerp(50, 100, progress * 6.0);
-                const s = 1.0 + progress * 2.0;
-                if (this.mesh) this.mesh.scale.set(s, s, s);
-            } else {
-                const fadeProgress = (progress - 0.15) / 0.85;
-                if (this.mesh && this.mesh.material) this.mesh.material.opacity = THREE.MathUtils.lerp(0.9, 0, fadeProgress);
-                if (this.mesh && this.mesh.material) this.mesh.material.emissiveIntensity = THREE.MathUtils.lerp(20.0, 0, fadeProgress);
-                if (this.light) this.light.intensity = THREE.MathUtils.lerp(100, 0, fadeProgress);
-                const s = 1.3 + fadeProgress * 1.0;
-                if (this.mesh) this.mesh.scale.set(s, s, s);
-            }
-
-            // 尾の色・透明度更新
             for (const sprite of this.tailSprites) {
-                sprite.material.color.lerp(new THREE.Color(0xaaddff), 0.1);
-                if (this.mesh && this.mesh.material) sprite.material.opacity = sprite.material.opacity * this.mesh.material.opacity;
+                sprite.material.opacity *= 0.92;
+                sprite.material.color.lerp(pureColor, 0.1);
+                sprite.position.y += dt * 1.0;
             }
 
-            if (progress >= 1.0) {
+            if (activeFragments === 0 && this.light.intensity < 0.1) {
                 this.isDead = true;
-                if (this.mesh) this.mesh.visible = false;
-                if (this.light) this.light.visible = false;
-                for (const s of this.tailSprites) s.visible = false;
-                if (typeof this.onPurified === 'function') this.onPurified();
+                this.light.visible = false;
+                // cleanup fragments
+                for (const frag of this.fragments) {
+                    if (frag.mesh) {
+                        this.scene.remove(frag.mesh);
+                        if (frag.mesh.geometry) frag.mesh.geometry.dispose();
+                        if (frag.mesh.material) frag.mesh.material.dispose();
+                    }
+                }
+                this.fragments = [];
             }
-        }
 
-        // --- スケール更新（徐々に大きくなる） ---
-        if (this.currentScale < this.targetScale) {
-            this.currentScale += dt * 0.5; // 2秒程度で最大化
-            if (this.currentScale > this.targetScale) this.currentScale = this.targetScale;
+        } else {
+            // normal phase
+            this.mesh.position.copy(this.pos);
+            this.mesh.position.y += 0.3;
+            this.coreMesh.position.copy(this.pos);
+            this.auraSprite.position.copy(this.pos);
+            this.light.position.copy(this.pos);
 
-            this.mesh.scale.set(this.currentScale, this.currentScale, this.currentScale);
-        }
+            const pulse = 1.0 + Math.sin(this.time * 5.0) * 0.1;
+            this.auraSprite.scale.set(3.0 * pulse, 5.0 * pulse, 3.0 * pulse);
 
-        // メッシュとライトの位置更新
-        this.mesh.position.copy(this.pos);
-        this.light.position.copy(this.pos);
-        if (this.coreGlow) {
-            this.coreGlow.position.copy(this.pos);
-            const pulse = 1.0 + Math.sin(this.time * 6.0) * 0.08;
-            const base = 0.6 * this.currentScale;
-            this.coreGlow.scale.set(base * pulse, base * pulse, 1.0);
-        }
-        if (this.innerMesh) {
-            this.innerMesh.position.copy(this.pos);
-            const ipulse = 1.0 + Math.sin(this.time * 10.0) * 0.06;
-            const iscale = 0.6 * this.currentScale * ipulse;
-            this.innerMesh.scale.set(iscale, iscale, iscale);
-        }
-
-        // --- 炎のゆらぎアニメーション (メラメラ感強化版) ---
-        // ※位置は動きませんが、炎としてのゆらぎ（頂点アニメーション）は維持します。
-        const positions = this.mesh.geometry.attributes.position;
-        const originals = this.originalPositions;
-        const count = positions.count;
-        const r = 0.1; // 球の半径 (Base)
-
-        for (let i = 0; i < count; i++) {
-            const px = originals.getX(i);
-            const py = originals.getY(i);
-            const pz = originals.getZ(i);
-
-            // 高さによる影響度: 下部はあまり動かず、上部(炎の先端)ほど激しく動く
-            const h = Math.max(0, (py + r) / (r * 2)); // 0.0(底) ～ 1.0(頂上)
-            const influence = Math.pow(h, 1.2);
-
-            // メラメラ感を作る複数の波の合成
-            const waveBaseX = Math.sin(py * 3.0 - this.time * 8.0);
-            const waveBaseZ = Math.cos(py * 2.5 - this.time * 7.0);
-
-            const waveDetailX = Math.sin(py * 12.0 - this.time * 18.0);
-            const waveDetailZ = Math.cos(py * 14.0 - this.time * 16.0);
-
-            // 振幅設定
-            const amp = 0.12 * influence;
-
-            // 合成
-            const offsetX = (waveBaseX * 0.6 + waveDetailX * 0.4) * amp;
-            const offsetZ = (waveBaseZ * 0.6 + waveDetailZ * 0.4) * amp;
-
-            // 縦方向の脈動
-            const offsetY = Math.sin(px * 8.0 + this.time * 12.0) * 0.08 * influence;
-
-            // 頂点を更新
-            positions.setX(i, px + offsetX);
-            positions.setY(i, py + offsetY);
-            positions.setZ(i, pz + offsetZ);
-        }
-        positions.needsUpdate = true;
-
-        // --- 尾の更新 ---
-        // 現在の位置を履歴の先頭に追加
-        this.tailPositions.unshift(this.pos.clone());
-        if (this.tailPositions.length > this.tailCount) {
-            this.tailPositions.pop();
-        }
-
-        // スプライトを履歴の位置に配置
-        // ※停止している場合、尾は本体と重なってゆらめきます。
-        // 外部コードでHitodamaを動かした場合のみ、尾が伸びます。
-        for (let i = 0; i < this.tailCount; i++) {
-            const sprite = this.tailSprites[i];
-            const targetPos = this.tailPositions[i];
-
-            if (targetPos) {
-                // 少しランダムに散らす
-                const noise = 0.1 * (i / this.tailCount);
-                sprite.position.set(
-                    targetPos.x + (Math.random() - 0.5) * noise,
-                    targetPos.y + (Math.random() - 0.5) * noise,
-                    targetPos.z + (Math.random() - 0.5) * noise
-                );
-
-                // 古い尾ほど小さく、薄く
-                const ratio = 1 - (i / this.tailCount);
-
-                // max scale determined by currentScale and diminishing ratio
-                const s = this.baseSpriteScale * this.currentScale * ratio * 4.0; // x4.0 to correct visibility
-
-                sprite.scale.set(s, s, s);
-                sprite.material.opacity = 0.3 * ratio;
+            // body vertex wobble
+            const positions = this.mesh.geometry.attributes.position;
+            const originals = this.originalPositions;
+            const count = positions.count;
+            const r = 0.6;
+            for (let i = 0; i < count; i++) {
+                const px = originals.getX(i);
+                const py = originals.getY(i);
+                const pz = originals.getZ(i);
+                const h = Math.max(0, (py + r) / (r * 2));
+                const influence = Math.pow(h, 1.2);
+                const waveBaseX = Math.sin(py * 3.0 - this.time * 8.0);
+                const waveBaseZ = Math.cos(py * 2.5 - this.time * 7.0);
+                const waveDetailX = Math.sin(py * 12.0 - this.time * 18.0);
+                const waveDetailZ = Math.cos(py * 14.0 - this.time * 16.0);
+                const amp = 0.12 * influence;
+                const offsetX = (waveBaseX * 0.6 + waveDetailX * 0.4) * amp;
+                const offsetZ = (waveBaseZ * 0.6 + waveDetailZ * 0.4) * amp;
+                const offsetY = Math.sin(px * 8.0 + this.time * 12.0) * 0.08 * influence;
+                positions.setX(i, px + offsetX);
+                positions.setY(i, py + offsetY);
+                positions.setZ(i, pz + offsetZ);
             }
-        }
-        // glowShell はメッシュ本体と同じスケール・変形を反映するため、スケールのみ同期
-        if (this.glowShell) {
-            this.glowShell.scale.set(this.currentScale * 1.05, this.currentScale * 1.05, this.currentScale * 1.05);
-            this.glowShell.position.copy(this.pos);
+            positions.needsUpdate = true;
+
+            // tail update
+            this.tailPositions.unshift(this.pos.clone());
+            if (this.tailPositions.length > this.tailCount) this.tailPositions.pop();
+            for (let i = 0; i < this.tailCount; i++) {
+                const sprite = this.tailSprites[i];
+                const targetPos = this.tailPositions[i];
+                if (targetPos) {
+                    const noise = 0.1 * (i / this.tailCount);
+                    sprite.position.set(
+                        targetPos.x + (Math.random() - 0.5) * noise,
+                        targetPos.y + (Math.random() - 0.5) * noise,
+                        targetPos.z + (Math.random() - 0.5) * noise
+                    );
+                    const ratio = 1 - (i / this.tailCount);
+                    const scale = 2.0 * ratio;
+                    sprite.scale.set(scale, scale, scale);
+                    sprite.material.opacity = 0.4 * ratio;
+                }
+            }
         }
     }
 
     dispose() {
-        // リソース解放
-        this.scene.remove(this.mesh);
-        this.mesh.geometry.dispose();
-        this.mesh.material.dispose();
-
-        this.scene.remove(this.light);
-
-        if (this.coreGlow) {
-            this.scene.remove(this.coreGlow);
-            if (this.coreGlow.material) this.coreGlow.material.dispose();
+        if (this.mesh) {
+            this.scene.remove(this.mesh);
+            if (this.mesh.geometry) this.mesh.geometry.dispose();
+            if (this.mesh.material) this.mesh.material.dispose();
         }
-
+        if (this.coreMesh) {
+            this.scene.remove(this.coreMesh);
+            if (this.coreMesh.geometry) this.coreMesh.geometry.dispose();
+            if (this.coreMesh.material) this.coreMesh.material.dispose();
+        }
+        if (this.auraSprite) {
+            this.scene.remove(this.auraSprite);
+            if (this.auraSprite.material) this.auraSprite.material.dispose();
+        }
+        if (this.light) this.scene.remove(this.light);
         for (const sprite of this.tailSprites) {
             this.scene.remove(sprite);
-            sprite.material.dispose();
+            if (sprite.material) sprite.material.dispose();
         }
-            if (this.innerMesh) {
-                this.scene.remove(this.innerMesh);
-                if (this.innerMesh.geometry) this.innerMesh.geometry.dispose();
-                if (this.innerMesh.material) this.innerMesh.material.dispose();
+        for (const frag of this.fragments) {
+            if (frag.mesh) {
+                this.scene.remove(frag.mesh);
+                if (frag.mesh.geometry) frag.mesh.geometry.dispose();
+                if (frag.mesh.material) frag.mesh.material.dispose();
             }
-        if (this.glowShell) {
-            this.scene.remove(this.glowShell);
-            if (this.glowShell.material) this.glowShell.material.dispose();
-            // geometry is shared with this.mesh; avoid double-dispose here
         }
-    }
-
-    /**
-     * 浄化開始
-     */
-    purify() {
-        if (this.isPurifying || this.isDead) return;
-        this.isPurifying = true;
-        this.purifyTime = 0;
+        this.fragments = [];
     }
 }

@@ -27,7 +27,10 @@ body {
     height: 100vh;
     object-fit: cover;
     z-index: 1;
-    filter: grayscale(1);
+    /* 白黒化 + コントラスト強め + 少し暗くして雰囲気を出す */
+    filter: grayscale(100%) contrast(1.2) brightness(0.7);
+    /* 鏡のように横反転（ユーザー視点で自然になる） */
+    transform: scaleX(-1);
 }
 
 /* 3Dキャンバス */
@@ -36,7 +39,7 @@ body {
     inset: 0;
     width: 100vw;
     height: 100vh;
-    z-index: 2;
+    z-index: 10;
 }
 
 /* UIコンテナ */

@@ -102,17 +102,17 @@ class AROnmyoujiGame {
     /**
      * ゲーム開始
      */
-    async onStartGame() {
+    onStartGame() {
         this.debugOverlay.logInfo('ゲーム開始ボタン押下');
-        // ユーザー操作直後にAudioContextを初期化し、SFXをロード
+        // ユーザー操作直後にAudioContextを初期化（同期）しておく
         try {
-            await this.soundManager.initAudioContext();
-            await this.soundManager.load({
+            this.soundManager.initAudioContext();
+            // ファイルロードは非同期で開始（awaitしないことでユーザージェスチャの同期性を保つ）
+            this.soundManager.load({
                 polygon_burst: 'assets/sfx/polygon_burst.mp3',
                 explosion: 'assets/sfx/explosion.mp3',
                 attack_swipe: 'assets/sfx/attack_swipe.mp3'
-            });
-            this.debugOverlay.logInfo('SFXロード完了');
+            }).then(() => this.debugOverlay.logInfo('SFXロード完了')).catch(e => console.warn('sound load failed', e));
         } catch (e) {
             console.warn('sound init/load failed', e);
         }
@@ -238,6 +238,22 @@ class AROnmyoujiGame {
      * ゲームプレイ開始
      */
     startGameplay() {
+        // Ensure audio context is initialized and SFX loading started
+        try {
+            this.soundManager.initAudioContext();
+            const needLoad = ((this.soundManager.buffers && this.soundManager.buffers.size === 0) &&
+                (this.soundManager.sounds && this.soundManager.sounds.size === 0));
+            if (needLoad) {
+                this.soundManager.load({
+                    polygon_burst: 'assets/sfx/polygon_burst.mp3',
+                    explosion: 'assets/sfx/explosion.mp3',
+                    attack_swipe: 'assets/sfx/attack_swipe.mp3'
+                }).then(() => this.debugOverlay.logInfo('SFXロード完了')).catch(e => console.warn('sound load failed', e));
+            }
+        } catch (e) {
+            console.warn('sound init/load in startGameplay failed', e);
+        }
+
         this.gameWorld.startGame();
         this.isRunning = true;
         this.lastUpdateTime = performance.now();

@@ -13,7 +13,7 @@ export class SoundManager {
     }
 
     /** ユーザー操作の直後に呼んでAudioContextを作成／resumeする */
-    async initAudioContext() {
+    initAudioContext() {
         try {
             if (!this.audioContext) {
                 const AC = window.AudioContext || window.webkitAudioContext;
@@ -25,8 +25,11 @@ export class SoundManager {
                 this.gainNode.gain.value = 1.0;
             }
 
+            // iOS では resume() を同期的に待たないほうがユーザージェスチャに紐づきやすい
             if (this.audioContext.state === 'suspended') {
-                await this.audioContext.resume();
+                this.audioContext.resume().catch(e => {
+                    console.warn('[SoundManager] resume failed', e);
+                });
             }
         } catch (e) {
             console.warn('[SoundManager] initAudioContext failed', e);

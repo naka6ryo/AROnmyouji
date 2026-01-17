@@ -419,6 +419,11 @@ class AROnmyoujiGame {
             this.combatSystem.onHit({ enemy, damage, killed, isCritical });
         }
         
+        // 敵が撃破された場合、敵メッシュを即座に削除
+        if (killed) {
+            this.renderer.removeEnemy(enemy.id);
+        }
+        
         // 触覚フィードバック
         this.combatSystem.sendHitHaptic(isCritical);
         

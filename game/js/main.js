@@ -83,10 +83,6 @@ class AROnmyoujiGame {
             hudPowerMode: document.getElementById('hudPowerMode'),
             powerModeTime: document.getElementById('powerModeTime'),
             enemyIndicators: document.getElementById('enemyIndicators'),
-            
-
-        // 敵インジケータ要素管理
-        this.enemyIndicatorMap = new Map(); // enemyId -> element
             // Result
             resultTitle: document.getElementById('resultTitle'),
             resultKills: document.getElementById('resultKills'),
@@ -98,6 +94,9 @@ class AROnmyoujiGame {
             // Debug
             toggleDebugButton: document.getElementById('toggleDebugButton')
         };
+
+        // 敵インジケータ要素管理
+        this.enemyIndicatorMap = new Map(); // enemyId -> element
     }
     
     /**

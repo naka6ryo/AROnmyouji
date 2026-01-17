@@ -286,7 +286,7 @@ class AROnmyoujiGame {
             return;
         }
 
-        const existingEnemy = this.gameWorld.enemies.find(e => e.id === enemy.id);
+        const existingEnemy = this.gameWorld.getEnemies().find(e => e.id === enemy.id);
         if (!existingEnemy) return;
 
         const damage = this.motionInterpreter.isPowerMode ? this.combatSystem.powerDamage : this.combatSystem.normalDamage;

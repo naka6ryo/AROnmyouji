@@ -1,5 +1,3 @@
-import * as THREE from './three.module.js';
-import { HitodamaEnemy } from './Hitodama.js';
 /**
  * Renderer.js
  * Three.jsを使用したカメラ背景、3D描画、UI同期を行うクラス
@@ -122,41 +120,33 @@ export class Renderer {
      * 敵を追加
      */
     addEnemy(enemy) {
-        // 人魂タイプの敵かどうか判定（type: 'hitodama'）
-        if (enemy.type === 'hitodama') {
-            const hitodama = new HitodamaEnemy(this.scene);
-            hitodama.update(0, enemy);
-            this.enemyMeshes.set(enemy.id, hitodama);
-            console.log(`[Renderer] 人魂敵追加: id=${enemy.id}`);
-        } else {
-            // 既存の球体敵
-            const geometry = new THREE.SphereGeometry(0.3, 16, 16);
-            const material = new THREE.MeshStandardMaterial({ color: 0xff0000 });
-            const mesh = new THREE.Mesh(geometry, material);
-            this.updateEnemyPosition(mesh, enemy);
-            this.scene.add(mesh);
-            this.enemyMeshes.set(enemy.id, mesh);
-            console.log(`[Renderer] 敵メッシュ追加: id=${enemy.id}`);
-        }
+        // 簡易的な敵メッシュ（赤い球体）
+        const geometry = new THREE.SphereGeometry(0.3, 16, 16);
+        const material = new THREE.MeshStandardMaterial({ color: 0xff0000 });
+        const mesh = new THREE.Mesh(geometry, material);
+        
+        // 位置を設定（球面座標 -> デカルト座標）
+        this.updateEnemyPosition(mesh, enemy);
+        
+        this.scene.add(mesh);
+        this.enemyMeshes.set(enemy.id, mesh);
+        
+        console.log(`[Renderer] 敵メッシュ追加: id=${enemy.id}`);
     }
     
     /**
      * 敵の位置を更新
      */
     updateEnemyPosition(mesh, enemy) {
-        // 人魂型はHitodamaEnemyインスタンス
-        if (mesh instanceof HitodamaEnemy) {
-            mesh.update(0, enemy);
-        } else {
-            const azimRad = enemy.azim * Math.PI / 180;
-            const elevRad = enemy.elev * Math.PI / 180;
-            const r = enemy.distance;
-            mesh.position.set(
-                r * Math.cos(elevRad) * Math.sin(azimRad),
-                r * Math.sin(elevRad),
-                -r * Math.cos(elevRad) * Math.cos(azimRad)
-            );
-        }
+        const azimRad = enemy.azim * Math.PI / 180;
+        const elevRad = enemy.elev * Math.PI / 180;
+        const r = enemy.distance;
+        
+        mesh.position.set(
+            r * Math.cos(elevRad) * Math.sin(azimRad),
+            r * Math.sin(elevRad),
+            -r * Math.cos(elevRad) * Math.cos(azimRad)
+        );
     }
     
     /**
@@ -165,13 +155,9 @@ export class Renderer {
     removeEnemy(enemyId) {
         const mesh = this.enemyMeshes.get(enemyId);
         if (mesh) {
-            if (mesh instanceof HitodamaEnemy) {
-                mesh.dispose();
-            } else {
-                this.scene.remove(mesh);
-                mesh.geometry.dispose();
-                mesh.material.dispose();
-            }
+            this.scene.remove(mesh);
+            mesh.geometry.dispose();
+            mesh.material.dispose();
             this.enemyMeshes.delete(enemyId);
             console.log(`[Renderer] 敵メッシュ削除: id=${enemyId}`);
         }
@@ -184,11 +170,7 @@ export class Renderer {
         for (const enemy of enemies) {
             const mesh = this.enemyMeshes.get(enemy.id);
             if (mesh) {
-                if (mesh instanceof HitodamaEnemy) {
-                    mesh.update(1/60, enemy); // 仮に1/60秒
-                } else {
-                    this.updateEnemyPosition(mesh, enemy);
-                }
+                this.updateEnemyPosition(mesh, enemy);
             }
         }
     }

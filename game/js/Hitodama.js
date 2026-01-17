@@ -14,15 +14,14 @@ export class Hitodama {
         // スプライト用テクスチャを先に読み込む
         const spriteMap = new THREE.TextureLoader().load('https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/sprites/spark1.png');
 
-        // 赤い発光マテリアル（コアの明るさを元に戻す）
-        const material = new THREE.MeshStandardMaterial({
-            color: 0xff3300, // 朱色っぽい赤
-            emissive: 0xff0000, // 真っ赤に発光
-            emissiveIntensity: 5.0, // 元の発光強度
+        // コアはライトの影響を受けず常に明るく見せたいので
+        // Additive の MeshBasicMaterial を使って「発行」風に描画する
+        const material = new THREE.MeshBasicMaterial({
+            color: 0xff3300,
+            blending: THREE.AdditiveBlending,
             transparent: true,
-            opacity: 0.9,
-            roughness: 0.1,
-            metalness: 0.1
+            opacity: 0.95,
+            depthWrite: false
         });
 
         this.mesh = new THREE.Mesh(geometry, material);
@@ -50,6 +49,20 @@ export class Hitodama {
         this.coreGlow.scale.set(0.6, 0.6, 1.0);
         this.coreGlow.position.copy(this.pos);
         this.scene.add(this.coreGlow);
+
+        // 内側の小さなハイライト（中心光源）: より明るいコアを表現
+        const innerGeom = new THREE.SphereGeometry(0.05, 32, 32);
+        const innerMat = new THREE.MeshBasicMaterial({
+            color: 0xffdd66,
+            blending: THREE.AdditiveBlending,
+            transparent: true,
+            opacity: 0.9,
+            depthWrite: false
+        });
+        this.innerMesh = new THREE.Mesh(innerGeom, innerMat);
+        this.innerMesh.position.copy(this.pos);
+        this.innerMesh.scale.set(0.6 * this.currentScale, 0.6 * this.currentScale, 0.6 * this.currentScale);
+        this.scene.add(this.innerMesh);
 
         // 元の頂点位置を保存（アニメーション用）
         this.originalPositions = geometry.attributes.position.clone();
@@ -111,6 +124,12 @@ export class Hitodama {
             const pulse = 1.0 + Math.sin(this.time * 6.0) * 0.08;
             const base = 0.6 * this.currentScale;
             this.coreGlow.scale.set(base * pulse, base * pulse, 1.0);
+        }
+        if (this.innerMesh) {
+            this.innerMesh.position.copy(this.pos);
+            const ipulse = 1.0 + Math.sin(this.time * 10.0) * 0.06;
+            const iscale = 0.6 * this.currentScale * ipulse;
+            this.innerMesh.scale.set(iscale, iscale, iscale);
         }
 
         // --- 炎のゆらぎアニメーション (メラメラ感強化版) ---
@@ -205,5 +224,10 @@ export class Hitodama {
             this.scene.remove(sprite);
             sprite.material.dispose();
         }
+            if (this.innerMesh) {
+                this.scene.remove(this.innerMesh);
+                if (this.innerMesh.geometry) this.innerMesh.geometry.dispose();
+                if (this.innerMesh.material) this.innerMesh.material.dispose();
+            }
     }
 }

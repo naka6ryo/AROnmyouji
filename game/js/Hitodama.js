@@ -1,26 +1,20 @@
 import * as THREE from 'three';
 
 export class Hitodama {
-    constructor(scene) {
+    constructor(scene, position = new THREE.Vector3(0, 0, 0)) {
         this.scene = scene;
+        this.pos = position;
         this.time = 0;
 
-        // Parent group for positioning the entire entity
-        this.root = new THREE.Group();
-        this.scene.add(this.root);
+        // 1. コア（球体）
+        // 炎のようなゆらぎを作るために頂点数の多い球体を使用
+        const geometry = new THREE.SphereGeometry(0.6, 64, 64);
 
-        // Local position for floating animation
-        this.localPos = new THREE.Vector3(0, 0, 0);
-
-        // 1. Core (Sphere)
-        // High vertex count for wave animation
-        const geometry = new THREE.SphereGeometry(0.3, 64, 64);
-
-        // Red emissive material
+        // 赤い発光マテリアル
         const material = new THREE.MeshStandardMaterial({
-            color: 0xff3300,
-            emissive: 0xff0000,
-            emissiveIntensity: 5.0,
+            color: 0xff3300, // 朱色っぽい赤
+            emissive: 0xff0000, // 真っ赤に発光
+            emissiveIntensity: 5.0, // メラメラ感を強調するため発光強度をアップ
             transparent: true,
             opacity: 0.9,
             roughness: 0.1,
@@ -28,126 +22,119 @@ export class Hitodama {
         });
 
         this.mesh = new THREE.Mesh(geometry, material);
-        this.root.add(this.mesh);
+        this.mesh.position.copy(this.pos); // 初期位置を設定
+        this.scene.add(this.mesh);
 
-        // Save original positions for animation
+        // 元の頂点位置を保存（アニメーション用）
         this.originalPositions = geometry.attributes.position.clone();
 
-        // 2. Light
-        this.light = new THREE.PointLight(0xff4400, 50, 20);
-        this.root.add(this.light);
+        // 2. 光源（人魂自体が周りを照らす）
+        this.light = new THREE.PointLight(0xff4400, 50, 20); // 赤橙色の光
+        this.light.position.copy(this.pos);
+        this.scene.add(this.light);
 
-        // 3. Tail (Particle System)
+        // 3. 尾（パーティクルシステム）
         this.tailCount = 40;
         this.tailPositions = [];
-        // Initialize tail
+        // 尾の初期化
         for (let i = 0; i < this.tailCount; i++) {
-            this.tailPositions.push(this.localPos.clone());
+            this.tailPositions.push(this.pos.clone());
         }
 
-        // Tail sprites
+        // 尾のジオメトリとマテリアル
+        // シンプルなスプライトを使用
         const spriteMap = new THREE.TextureLoader().load('https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/sprites/spark1.png');
         this.tailSprites = [];
 
         for (let i = 0; i < this.tailCount; i++) {
             const spriteMaterial = new THREE.SpriteMaterial({
                 map: spriteMap,
-                color: 0xff5500,
+                color: 0xff5500, // 尾も赤橙色に設定
                 transparent: true,
                 opacity: 0.5,
                 blending: THREE.AdditiveBlending
             });
             const sprite = new THREE.Sprite(spriteMaterial);
+            // パーティクルの初期サイズ
             sprite.scale.set(1.5, 1.5, 1.5);
-            this.root.add(sprite); // Add to root so they move with enemy
+            this.scene.add(sprite);
             this.tailSprites.push(sprite);
         }
-    }
-
-    // Set the world position of the enemy (anchor point)
-    setPosition(x, y, z) {
-        this.root.position.set(x, y, z);
-    }
-
-    getPosition() {
-        return this.root.position;
-    }
-
-    // Get the actual visual position of the core mesh (including floating offset)
-    getMeshWorldPosition(target) {
-        return this.mesh.getWorldPosition(target);
     }
 
     update(dt) {
         this.time += dt;
 
-        // --- Motion (Lissajous figure floating) ---
-        const floatSpeed = 1.5;
-        const radius = 2.0; // Floating radius relative to anchor
+        // メッシュとライトの位置更新
+        this.mesh.position.copy(this.pos);
+        this.light.position.copy(this.pos);
 
-        // Calculate local floating position
-        this.localPos.x = Math.sin(this.time * 0.7 * floatSpeed) * radius;
-        this.localPos.y = Math.sin(this.time * 1.3 * floatSpeed) * 0.8;
-        this.localPos.z = Math.cos(this.time * 0.5 * floatSpeed) * radius;
-
-        // Update mesh and light relative to root
-        this.mesh.position.copy(this.localPos);
-        this.light.position.copy(this.localPos);
-
-        // --- Flame wave animation ---
+        // --- 炎のゆらぎアニメーション (メラメラ感強化版) ---
+        // ※位置は動きませんが、炎としてのゆらぎ（頂点アニメーション）は維持します。
         const positions = this.mesh.geometry.attributes.position;
         const originals = this.originalPositions;
         const count = positions.count;
-        const r = 0.6;
+        const r = 0.6; // 球の半径
 
         for (let i = 0; i < count; i++) {
             const px = originals.getX(i);
             const py = originals.getY(i);
             const pz = originals.getZ(i);
 
-            const h = Math.max(0, (py + r) / (r * 2));
+            // 高さによる影響度: 下部はあまり動かず、上部(炎の先端)ほど激しく動く
+            const h = Math.max(0, (py + r) / (r * 2)); // 0.0(底) ～ 1.0(頂上)
             const influence = Math.pow(h, 1.2);
 
+            // メラメラ感を作る複数の波の合成
             const waveBaseX = Math.sin(py * 3.0 - this.time * 8.0);
             const waveBaseZ = Math.cos(py * 2.5 - this.time * 7.0);
 
             const waveDetailX = Math.sin(py * 12.0 - this.time * 18.0);
             const waveDetailZ = Math.cos(py * 14.0 - this.time * 16.0);
 
+            // 振幅設定
             const amp = 0.12 * influence;
 
+            // 合成
             const offsetX = (waveBaseX * 0.6 + waveDetailX * 0.4) * amp;
             const offsetZ = (waveBaseZ * 0.6 + waveDetailZ * 0.4) * amp;
 
+            // 縦方向の脈動
             const offsetY = Math.sin(px * 8.0 + this.time * 12.0) * 0.08 * influence;
 
+            // 頂点を更新
             positions.setX(i, px + offsetX);
             positions.setY(i, py + offsetY);
             positions.setZ(i, pz + offsetZ);
         }
         positions.needsUpdate = true;
 
-        // --- Tail Update ---
-        this.tailPositions.unshift(this.localPos.clone());
+        // --- 尾の更新 ---
+        // 現在の位置を履歴の先頭に追加
+        this.tailPositions.unshift(this.pos.clone());
         if (this.tailPositions.length > this.tailCount) {
             this.tailPositions.pop();
         }
 
+        // スプライトを履歴の位置に配置
+        // ※停止している場合、尾は本体と重なってゆらめきます。
+        // 外部コードでHitodamaを動かした場合のみ、尾が伸びます。
         for (let i = 0; i < this.tailCount; i++) {
             const sprite = this.tailSprites[i];
             const targetPos = this.tailPositions[i];
 
             if (targetPos) {
+                // 少しランダムに散らす
                 const noise = 0.1 * (i / this.tailCount);
-                // Position is relative to root
                 sprite.position.set(
                     targetPos.x + (Math.random() - 0.5) * noise,
                     targetPos.y + (Math.random() - 0.5) * noise,
                     targetPos.z + (Math.random() - 0.5) * noise
                 );
 
+                // 古い尾ほど小さく、薄く
                 const ratio = 1 - (i / this.tailCount);
-                const scale = 2.0 * ratio;
+                const scale = 2.0 * ratio; // ユーザーコードでは2.0
                 sprite.scale.set(scale, scale, scale);
                 sprite.material.opacity = 0.3 * ratio;
             }
@@ -155,9 +142,16 @@ export class Hitodama {
     }
 
     dispose() {
-        this.scene.remove(this.root);
+        // リソース解放
+        this.scene.remove(this.mesh);
         this.mesh.geometry.dispose();
         this.mesh.material.dispose();
-        this.tailSprites.forEach(s => s.material.dispose());
+
+        this.scene.remove(this.light);
+
+        for (const sprite of this.tailSprites) {
+            this.scene.remove(sprite);
+            sprite.material.dispose();
+        }
     }
 }

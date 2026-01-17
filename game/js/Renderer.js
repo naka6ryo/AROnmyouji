@@ -35,23 +35,28 @@ export class Renderer {
 
         this.renderer = new THREE.WebGLRenderer({
             canvas: this.canvas,
-            alpha: true, // 背景透過 (Bloomと共存させるためClearColorに注意)
-            antialias: true // Bloomを使う場合はfalse推奨だが、ユーザーコードがtrueなので維持。パフォーマンス注意
+            alpha: true, // 背景透過
+            antialias: true
         });
+        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        // クリアカラーを透明に設定 (Bloom用)
+        this.renderer.setClearColor(0x000000, 0);
+        this.renderer.toneMapping = THREE.ReinhardToneMapping;
 
         // --- ポストプロセス（ブルーム発光効果） ---
-        const renderScene = new RenderPass(this.scene, this.camera);
+        this.renderScene = new RenderPass(this.scene, this.camera);
 
         // ブルーム設定 (強さ, 半径, しきい値)
-        const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
-        bloomPass.threshold = 0.1;
-        bloomPass.strength = 2.0; // 発光の強さ
-        bloomPass.radius = 0.8;   // 発光の広がり
+        // 解像度は updateRendererSize で設定するためここでは仮
+        this.bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
+        this.bloomPass.threshold = 0.1;
+        this.bloomPass.strength = 2.0; // 発光の強さ
+        this.bloomPass.radius = 0.8;   // 発光の広がり
 
         this.composer = new EffectComposer(this.renderer);
-        this.composer.addPass(renderScene);
-        this.composer.addPass(bloomPass);
-        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        this.composer.addPass(this.renderScene);
+        this.composer.addPass(this.bloomPass);
+
         this.updateRendererSize();
 
         // 端末姿勢（視点制御用）
@@ -59,8 +64,8 @@ export class Renderer {
         this.viewDirection = { x: 0, y: 0, z: 1 };
 
         // 敵のメッシュ管理
-        // 敵の管理
-        this.hitodamas = new Map(); // enemyId -> Hitodama instance
+        // 敵の管理 (Hitodamaインスタンス)
+        this.enemyObjects = new Map(); // enemyId -> Hitodama instance
 
         // 斬撃飛翔体の管理
         this.slashProjectiles = [];
@@ -140,15 +145,15 @@ export class Renderer {
      * 敵を追加
      */
     addEnemy(enemy) {
-        // Hitodamaインスタンス生成
+        // 人魂インスタンス生成
         const hitodama = new Hitodama(this.scene);
 
         // 位置を設定
         this.updateEnemyPosition(hitodama, enemy);
 
-        this.hitodamas.set(enemy.id, hitodama);
+        this.enemyObjects.set(enemy.id, hitodama);
 
-        console.log(`[Renderer] Hitodama追加: id=${enemy.id}`);
+        console.log(`[Renderer] 敵(人魂)追加: id=${enemy.id}`);
     }
 
     /**
@@ -159,7 +164,8 @@ export class Renderer {
         const elevRad = enemy.elev * Math.PI / 180;
         const r = enemy.distance;
 
-        hitodama.setPosition(
+        // Hitodamaのposプロパティを更新
+        hitodama.pos.set(
             r * Math.cos(elevRad) * Math.sin(azimRad),
             r * Math.sin(elevRad),
             -r * Math.cos(elevRad) * Math.cos(azimRad)
@@ -170,20 +176,21 @@ export class Renderer {
      * 敵を削除
      */
     removeEnemy(enemyId) {
-        const hitodama = this.hitodamas.get(enemyId);
+        const hitodama = this.enemyObjects.get(enemyId);
         if (hitodama) {
             hitodama.dispose();
-            this.hitodamas.delete(enemyId);
-            console.log(`[Renderer] Hitodama削除: id=${enemyId}`);
+            this.enemyObjects.delete(enemyId);
+            console.log(`[Renderer] 敵(人魂)削除: id=${enemyId}`);
         }
     }
+
 
     /**
      * 全敵の位置を更新
      */
     updateEnemies(enemies) {
         for (const enemy of enemies) {
-            const hitodama = this.hitodamas.get(enemy.id);
+            const hitodama = this.enemyObjects.get(enemy.id);
             if (hitodama) {
                 this.updateEnemyPosition(hitodama, enemy);
             }
@@ -462,66 +469,14 @@ export class Renderer {
         const pivotPos = this.getPivotWorldPosition();
 
         // 敵のワールド座標を計算
-        // 敵のワールド座標を計算
-        // Hitodamaの場合は見た目の位置（浮遊含む）を取得
-        let enemyWorld;
-        const hitodama = this.hitodamas.get(enemy.id);
-
-        if (hitodama) {
-            enemyWorld = new THREE.Vector3();
-            hitodama.getMeshWorldPosition(enemyWorld);
-            // これは既にワールド座標なのでpivotPosを加算する必要はないが、
-            // getMeshWorldPositionはsceneルートからの座標を返す。
-            // cameraPivotはsceneの子。
-            // 待てよ、hitodama.rootはscene直下に追加されている(Hitodama.js L10: this.scene.add(this.root))
-            // cameraPivotもscene直下(Renderer.js L29: this.scene.add(this.cameraPivot))
-            // したがって、hitodama.getMeshWorldPosition()はワールド座標そのもの。
-            // 一方、pivotPosはcameraPivotのワールド座標。
-            // checkSlashEnemyCollisionの元のロジックは:
-            // enemyWorld = (敵の相対位置) + pivotPos
-            // これは「敵がpivot中心に配置されている」前提？
-            // updateEnemyPositionでは:
-            // hitodama.setPosition(...)
-            // これは `this.root.position.set(...)` 
-            // rootはscene直下。
-            // つまり (x, y, z) は scene 原点からの位置。
-            // 元のコードでは `updateEnemyPosition` は `mesh.position.set(...)` だったが、
-            // そもそも `mesh` は `scene` に add されていた (`this.scene.add(mesh)`).
-            // なので、元の `enemyWorld` 計算:
-            // (r * ...) .add(pivotPos)
-            // は、「敵の位置は pivotPos からの相対座標で管理されている」という意味だったのか？
-
-            // Renderer.js L129: updateEnemyPosition(mesh, enemy)
-            // L145: mesh.position.set(...)
-            // L131: this.scene.add(mesh)
-            // メッシュはscene直下。mesh.positionは(0,0,0)基準。
-            // なのに collision check で `.add(pivotPos)` しているということは、
-            // 「enemy.distance 等は pivot からの相対値を表すが、描画時は原点(0,0,0)からの位置としてセットしている」...？
-            // いや、L145の計算式 `r * cos...` は原点中心の計算。
-            // もし `pivotPos` が (0,0,0) なら問題ない。
-            // `cameraPivot` は `this.scene.add` されている。初期位置は明示されていないが、通常 (0,0,0).
-            // `updateCameraRotation` で回転はするが、位置変更はない。
-            // じゃあ `.add(pivotPos)` は `+ (0,0,0)` なので無意味？
-            // いや、ARで「自分が動く」場合、cameraPivotごと移動する設計か？
-            // ユーザーコードを見る限り、cameraPivotの位置を変更するコードはない。
-            // よって pivotPos は常に (0,0,0) のはず。
-            // 念のため、hitodama.getMeshWorldPosition(enemyWorld) をそのまま使うだけで正しいはず。
-            // ただし、元のロジックと合わせるなら、
-            // 「startWorld/endWorld も pivotPos 加算している」
-            // これらも pivotPos=(0,0,0) なら影響なし。
-            // とりあえず `getMeshWorldPosition` で「絶対座標」が取れるのでそれを採用する。
-        } else {
-            // Hitodamaが見つからない場合（通常ありえないがフォールバック）
-            const azimRad = enemy.azim * Math.PI / 180;
-            const elevRad = enemy.elev * Math.PI / 180;
-            const r = enemy.distance;
-            // pivotPosを含める（既存ロジック準拠）
-            enemyWorld = new THREE.Vector3(
-                r * Math.cos(elevRad) * Math.sin(azimRad),
-                r * Math.sin(elevRad),
-                -r * Math.cos(elevRad) * Math.cos(azimRad)
-            ).add(pivotPos);
-        }
+        const azimRad = enemy.azim * Math.PI / 180;
+        const elevRad = enemy.elev * Math.PI / 180;
+        const r = enemy.distance;
+        const enemyWorld = new THREE.Vector3(
+            r * Math.cos(elevRad) * Math.sin(azimRad),
+            r * Math.sin(elevRad),
+            -r * Math.cos(elevRad) * Math.cos(azimRad)
+        ).add(pivotPos);
 
         // 斬撃円弧の始点・終点もpivot基準
         const startWorld = startPosNormalized.clone().multiplyScalar(radiusScale).add(pivotPos);
@@ -553,15 +508,17 @@ export class Renderer {
      * 描画（敵情報を受け取って衝突判定）
      */
     render(deltaTime, enemies) {
-        // Hitodamaの更新
-        const dt = deltaTime / 1000;
-        for (const hitodama of this.hitodamas.values()) {
-            hitodama.update(dt);
+        this.updateRendererSize();
+
+        // 人魂のアニメーション更新
+        const dtSec = deltaTime / 1000;
+        for (const hitodama of this.enemyObjects.values()) {
+            hitodama.update(dtSec);
         }
 
-        this.updateRendererSize();
         this.updateSlashProjectiles(deltaTime, enemies);
-        // post-processing render
+        // this.renderer.render(this.scene, this.camera);
+        // Bloomを使うためComposerを使用
         this.composer.render();
     }
 
@@ -641,10 +598,11 @@ export class Renderer {
      */
     dispose() {
         // 全メッシュを削除
-        for (const [id, hitodama] of this.hitodamas.entries()) {
+        // 全敵を削除
+        for (const hitodama of this.enemyObjects.values()) {
             hitodama.dispose();
         }
-        this.hitodamas.clear();
+        this.enemyObjects.clear();
 
         // 斬撃飛翔体を削除
         for (const proj of this.slashProjectiles) {

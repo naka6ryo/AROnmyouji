@@ -141,14 +141,13 @@ class AROnmyoujiGame {
                     attack_swipe: 'assets/sfx/attack_swipe.mp3'
                 }).then(() => this.debugOverlay.logInfo('SFXロード完了')).catch(e => console.warn('sound load failed', e));
             }
+        } catch (e) {
+            console.warn('sound init/load failed', e);
+        }
 
-            // 完了したら表示基準は不要にする
-            this.calibrationDisplayBaseline = null;
-
-            this.appState.calibrationComplete();
-            this.startGameplay();
-
-        // UIに3-2-1を表示してから開始
+        // カウントダウン表示後にゲームを開始
+        // 表示基準は開始時点で不要にする
+        this.calibrationDisplayBaseline = null;
         this.uiManager.showCountdown(3, () => {
             this.startGameplay();
         });

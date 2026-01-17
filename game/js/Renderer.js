@@ -162,8 +162,8 @@ export class Renderer {
      * 描画
      */
     render() {
-        this.renderer.render(this.scene, this.camera);
         this.updateRendererSize();
+        this.renderer.render(this.scene, this.camera);
     }
     
     /**
@@ -178,9 +178,12 @@ export class Renderer {
      */
     getViewDirection() {
         return this.viewDirection;
-        /**
-         * レンダラーとカメラのサイズをキャンバス実寸に合わせる
-         */
+    }
+
+    /**
+     * レンダラーとカメラのサイズをキャンバス実寸に合わせる
+     */
+    updateRendererSize() {
         const width = this.canvas.clientWidth || window.innerWidth;
         const height = this.canvas.clientHeight || window.innerHeight;
         if (this.renderer.domElement.width !== width || this.renderer.domElement.height !== height) {

@@ -261,7 +261,18 @@ class AROnmyoujiGame {
         this.debugOverlay.logInfo(`キャリブレーション完了: ${pitch_deg.toFixed(1)}, ${yaw_deg.toFixed(1)}, ${roll_deg.toFixed(1)}`);
 
         this.appState.calibrationComplete();
-        this.startGameplay();
+
+        // ユーザー操作直後にAudioContextを初期化（同期）
+        try {
+            this.soundManager.initAudioContext();
+        } catch (e) {
+            console.warn('sound init failed', e);
+        }
+
+        // カウントダウンしてからゲーム開始
+        this.uiManager.showCountdown(3, () => {
+            this.startGameplay();
+        });
     }
 
     /**
@@ -329,7 +340,7 @@ class AROnmyoujiGame {
         try {
             const rate = Math.min(1.6, 0.9 + swing.intensity * 0.25);
             this.soundManager.play('attack_swipe', { volume: 0.7, playbackRate: rate });
-        } catch (e) {}
+        } catch (e) { }
         if (swing.trajectory && swing.trajectory.length >= 2) {
             const startPyr = swing.trajectory[0];
             const endPyr = swing.trajectory[swing.trajectory.length - 1];
@@ -390,14 +401,14 @@ class AROnmyoujiGame {
     onEnemyKilled(data) {
         this.renderer.removeEnemy(data.enemy.id);
         // 敵撃破サウンド
-        try { this.soundManager.play('polygon_burst', { volume: 0.9 }); } catch (e) {}
+        try { this.soundManager.play('polygon_burst', { volume: 0.9 }); } catch (e) { }
         this.updateHUD();
     }
 
     onPlayerDamaged(data) {
         this.combatSystem.sendDamageHaptic();
         // 被弾時爆発音
-        try { this.soundManager.play('explosion', { volume: 0.8 }); } catch (e) {}
+        try { this.soundManager.play('explosion', { volume: 0.8 }); } catch (e) { }
         if (data.enemy) {
             this.uiManager.triggerDamageEffect();
             this.renderer.removeEnemy(data.enemy.id, { playerDamage: true });
@@ -446,7 +457,7 @@ class AROnmyoujiGame {
         // 再キャリブレーション：既存の校正フラグをクリアしてキャリブレーション画面へ
         try {
             if (this.motionInterpreter) this.motionInterpreter.isCalibrated = false;
-        } catch (e) {}
+        } catch (e) { }
         this.appState.recalibrate();
         this.debugOverlay.logInfo('再キャリブレーションモードへ移行');
     }

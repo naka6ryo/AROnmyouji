@@ -440,88 +440,46 @@ export class Renderer {
     }
     
     /**
-     * 斬撃と敵の衝突判定（改善版）
+     * 斬撃と敵の衝突判定（pivot原点ベースで完全一致）
      */
     checkSlashEnemyCollision(startPosNormalized, endPosNormalized, radiusScale, enemy) {
-        // 敵の極座標を取得
-        const enemyPitch = enemy.elev; // 仰角（度）
-        const enemyYaw = enemy.azim;   // 方位角（度）
-        const enemyDistance = enemy.distance; // 距離（m）
-        
-        // 円弧の半径
-        const arcRadius = radiusScale * 0.3; // 初期0.3m → 最大5m
-        
-        // 距離判定：円弧の半径 ± マージンの範囲
-        const enemyRadius = 0.5; // 敵のコリジョン半径
-        const margin = 1.5; // 距離チェックのマージン（フレーム間隔を考慮して大きめ）
-        
-        const minDistance = Math.max(0, arcRadius - enemyRadius - margin);
-        const maxDistance = arcRadius + enemyRadius + margin;
-        const distanceInRange = enemyDistance >= minDistance && enemyDistance <= maxDistance;
-        
-        if (!distanceInRange) {
-            return false; // 距離が範囲外なら判定不要
-        }
-        
-        // 距離が範囲内の場合、角度も判定
-        // 円弧の始点と終点から角度を計算
-        const startPitch = startPosNormalized.y > 0 
-            ? Math.asin(Math.min(1, startPosNormalized.y / 0.3)) * 180 / Math.PI
-            : -Math.asin(Math.min(1, -startPosNormalized.y / 0.3)) * 180 / Math.PI;
-        const startYaw = Math.atan2(startPosNormalized.x, -startPosNormalized.z) * 180 / Math.PI;
-        
-        const endPitch = endPosNormalized.y > 0 
-            ? Math.asin(Math.min(1, endPosNormalized.y / 0.3)) * 180 / Math.PI
-            : -Math.asin(Math.min(1, -endPosNormalized.y / 0.3)) * 180 / Math.PI;
-        const endYaw = Math.atan2(endPosNormalized.x, -endPosNormalized.z) * 180 / Math.PI;
-        
-        // 起点と敵の角度差
-        const pitchDiffStart = Math.abs(this.normalizeAngleDiff(enemyPitch - startPitch));
-        const yawDiffStart = Math.abs(this.normalizeAngleDiff(enemyYaw - startYaw));
-        
-        // 終点と敵の角度差
-        const pitchDiffEnd = Math.abs(this.normalizeAngleDiff(enemyPitch - endPitch));
-        const yawDiffEnd = Math.abs(this.normalizeAngleDiff(enemyYaw - endYaw));
-        
-        // どちらかの端に近いかを判定（±40度以内で十分寛容に）
-        const angleThreshold = 40; // 度（より寛容に）
-        const nearStart = pitchDiffStart <= angleThreshold && yawDiffStart <= angleThreshold;
-        const nearEnd = pitchDiffEnd <= angleThreshold && yawDiffEnd <= angleThreshold;
-        const angleInRange = nearStart || nearEnd;
-        
-        if (!angleInRange) {
-            return false; // 角度が範囲外
-        }
-        
-        // 衝突判定成功
-        const logMsg = `🎯 衝突: id=${enemy.id}, 距離=${enemyDistance.toFixed(2)}m/${arcRadius.toFixed(2)}m(±${enemyRadius + margin}m), 角度=(elev=${enemyPitch.toFixed(1)}°, azim=${enemyYaw.toFixed(1)}°)`;
-        console.log(`[Renderer] ${logMsg}`);
-        if (this.debugOverlay) {
-            this.debugOverlay.logInfo(logMsg);
-        }
-        
-        // 詳細デバッグログ
+        // cameraPivotのワールド座標を基準にする
+        const pivotPos = this.getPivotWorldPosition();
+
+        // 敵のワールド座標を計算
+        const azimRad = enemy.azim * Math.PI / 180;
+        const elevRad = enemy.elev * Math.PI / 180;
+        const r = enemy.distance;
+        const enemyWorld = new THREE.Vector3(
+            r * Math.cos(elevRad) * Math.sin(azimRad),
+            r * Math.sin(elevRad),
+            -r * Math.cos(elevRad) * Math.cos(azimRad)
+        ).add(pivotPos);
+
+        // 斬撃円弧の始点・終点もpivot基準
+        const startWorld = startPosNormalized.clone().multiplyScalar(radiusScale).add(pivotPos);
+        const endWorld = endPosNormalized.clone().multiplyScalar(radiusScale).add(pivotPos);
+
+        // 敵と円弧の中心の距離
+        const distToArc = (() => {
+            const ab = endWorld.clone().sub(startWorld);
+            const ap = enemyWorld.clone().sub(startWorld);
+            const t = Math.max(0, Math.min(1, ab.dot(ap) / ab.lengthSq()));
+            const closest = startWorld.clone().add(ab.multiplyScalar(t));
+            return enemyWorld.distanceTo(closest);
+        })();
+
+        // 距離判定
+        const enemyRadius = 0.5;
+        const margin = 0.3;
+        const hit = distToArc <= enemyRadius + margin;
+
         if (this.debugOverlay) {
             this.debugOverlay.logInfo(
-                `判定詳細: id=${enemy.id} 距離=${enemyDistance.toFixed(2)} [${minDistance.toFixed(2)}~${maxDistance.toFixed(2)}] 判定=${distanceInRange} | ` +
-                `arc半径=${arcRadius.toFixed(2)} margin=${margin} enemyR=${enemyRadius} | ` +
-                `pitchS=${startPitch.toFixed(1)} pitchE=${endPitch.toFixed(1)} elev=${enemyPitch.toFixed(1)} diffS=${pitchDiffStart.toFixed(1)} diffE=${pitchDiffEnd.toFixed(1)} | ` +
-                `yawS=${startYaw.toFixed(1)} yawE=${endYaw.toFixed(1)} azim=${enemyYaw.toFixed(1)} diffS=${yawDiffStart.toFixed(1)} diffE=${yawDiffEnd.toFixed(1)} | ` +
-                `nearStart=${nearStart} nearEnd=${nearEnd} angle閾値=${angleThreshold}`
+                `pivot一致判定: id=${enemy.id} 距離=${distToArc.toFixed(2)} 判定=${hit} | arcR=${(radiusScale*0.3).toFixed(2)} enemyR=${enemyRadius} margin=${margin}`
             );
         }
-        
-        return true;
-    }
-    
-    /**
-     * 角度差を-180〜180に正規化
-     */
-    normalizeAngleDiff(diff) {
-        let normalized = diff;
-        while (normalized > 180) normalized -= 360;
-        while (normalized < -180) normalized += 360;
-        return normalized;
+        return hit;
     }
     
     /**
@@ -563,6 +521,15 @@ export class Renderer {
         const dir = new THREE.Vector3();
         this.camera.getWorldDirection(dir);
         return dir.normalize();
+    }
+
+    /**
+     * cameraPivotのワールド座標を取得
+     */
+    getPivotWorldPosition() {
+        const pivotPos = new THREE.Vector3();
+        this.cameraPivot.getWorldPosition(pivotPos);
+        return pivotPos;
     }
 
     /**

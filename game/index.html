@@ -2,153 +2,201 @@
 <html lang="ja">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AR陰陽師 - MVP</title>
-    <link rel="stylesheet" href="css/style.css">
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Zanbarai Mobile AR HUD</title>
+    <link href="https://fonts.googleapis.com" rel="preconnect"/>
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&amp;family=Orbitron:wght@400;700;900&amp;family=Shippori+Mincho:wght@400;700;800&amp;display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <style>
+        /* Minimal resets and ensure canvas/video fill */
+        html,body{height:100%;margin:0}
+        #cameraVideo,#gameCanvas{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+        #gameCanvas{z-index:5;pointer-events:none}
+        #cameraVideo{z-index:0}
+        #uiContainer{position:absolute;inset:0;z-index:50;pointer-events:none;font-family: 'Noto Sans JP', sans-serif}
+        /* Basic overlays used by UIManager */
+        #flash-overlay{position:absolute;inset:0;background:rgba(255,255,255,0.5);opacity:0;transition:opacity 120ms;z-index:60;pointer-events:none}
+        #damage-vignette{position:absolute;inset:0;pointer-events:none;opacity:0}
+        .hidden{display:none}
+        .screen{display:none}
+        .screen.active{display:block}
+        /* small shake for damage effect */
+        .shake-screen{animation:shake 200ms}
+        @keyframes shake{0%{transform:translateX(0)}25%{transform:translateX(-4px)}50%{transform:translateX(4px)}75%{transform:translateX(-2px)}100%{transform:translateX(0)}}
+    </style>
+    <style>
+        /* UI visual styles adapted from the attached design (trimmed) */
+        .font-display{font-family:'Orbitron',sans-serif}
+        .font-mono{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace}
+        .primary{color:#FF0000}
+        .parallelogram{clip-path:polygon(15% 0, 100% 0, 85% 100%, 0% 100%)}
+        .scanlines{background-size:100% 4px}
+        .random-glitch-lines{pointer-events:none}
+    </style>
 </head>
 
-<body>
-    <!-- ビデオ背景（カメラ映像） -->
-    <video id="cameraVideo" autoplay playsinline></video>
-
-    <!-- 3Dキャンバス -->
+<body class="bg-gray-900 h-screen w-full overflow-hidden relative font-sans selection:bg-primary selection:text-white">
+    <!-- Video feed used by Renderer (must be 'cameraVideo' for existing JS) -->
+    <video id="cameraVideo" class="w-full h-full object-cover" autoplay playsinline muted></video>
     <canvas id="gameCanvas"></canvas>
 
-    <!-- UI コンテナ -->
     <div id="uiContainer">
-        <!-- ダメージ演出オーバーレイ -->
+        <!-- TV Effects Overlay -->
+        <div class="absolute inset-0 z-50 pointer-events-none">
+            <div class="absolute inset-0 scanlines opacity-50"></div>
+            <div class="absolute inset-0 grid-overlay"></div>
+            <div class="absolute inset-0 opacity-[0.08]" style="background-image: url('data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noiseFilter%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.85%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noiseFilter)%22/%3E%3C/svg%3E');"></div>
+            <div class="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/60 pointer-events-none"></div>
+        </div>
+
+        <!-- Header / Top HUD -->
+        <header class="w-full relative z-30 pointer-events-none">
+            <div class="absolute top-0 left-0 w-full h-16 bg-gradient-to-b from-black/80 to-transparent pointer-events-none"></div>
+            <div class="flex justify-between items-start pt-6 px-6 w-full">
+                <div class="flex flex-col gap-1 items-start">
+                    <div class="flex items-center gap-2 bg-black/40 backdrop-blur-sm px-2 py-0.5 border-l border-primary/80">
+                        <span class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse shadow-[0_0_5px_#ff0000]"></span>
+                        <span class="font-display font-bold text-[10px] tracking-widest text-white/90">SCANNING</span>
+                    </div>
+                    <div id="permissionStatusText" class="text-[8px] text-white/50 font-mono tracking-wider ml-1">34.69°N, 139.69°E</div>
+                </div>
+
+                <div class="absolute top-24 left-1/2 transform -translate-x-1/2 flex items-center justify-center">
+                    <div class="flex items-center bg-black/60 backdrop-blur-md border-t border-b border-primary/30 px-6 py-1 gap-8 relative overflow-hidden clip-path-notch">
+                        <div class="flex flex-col items-center">
+                            <span class="font-display text-[9px] text-primary tracking-[0.2em] font-bold uppercase mb-0.5 shadow-black drop-shadow-sm">Elapsed Time</span>
+                            <span id="timeLeft" class="font-mono text-2xl text-white font-medium leading-none tracking-widest">04:21</span>
+                        </div>
+                        <div class="h-6 w-px bg-white/10 relative">
+                            <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3 h-px bg-primary/50"></div>
+                        </div>
+                        <div class="flex flex-col items-center">
+                            <span class="font-display text-[9px] text-primary tracking-[0.2em] font-bold uppercase mb-0.5 shadow-black drop-shadow-sm">Defeated</span>
+                            <span id="killCount" class="font-mono text-2xl text-white font-medium leading-none tracking-widest">12</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex flex-col items-end gap-1 pointer-events-none">
+                    <div class="flex items-center gap-1.5 opacity-80">
+                        <span class="material-symbols-outlined text-white text-sm animate-pulse-fast">wifi</span>
+                        <span class="font-mono text-[10px] text-white font-bold tracking-wider">L:42ms</span>
+                    </div>
+                    <div class="flex gap-0.5">
+                        <div class="w-1 h-2 bg-primary"></div>
+                        <div class="w-1 h-2 bg-primary"></div>
+                        <div class="w-1 h-2 bg-primary"></div>
+                        <div class="w-1 h-2 bg-white/30"></div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Center: Reticle / Crosshair -->
+        <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none opacity-90">
+            <div class="w-64 h-64 border border-white/20 rounded-full flex items-center justify-center relative animate-spin-slower">
+                <div class="absolute top-0 w-1 h-2 bg-white"></div>
+                <div class="absolute bottom-0 w-1 h-2 bg-white"></div>
+                <div class="absolute left-0 w-2 h-1 bg-white"></div>
+                <div class="absolute right-0 w-2 h-1 bg-white"></div>
+            </div>
+            <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-32 h-32 border-l border-r border-primary/60 rounded-full flex items-center justify-center"></div>
+            <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+                <div class="w-12 h-12 relative">
+                    <div class="absolute top-0 left-1/2 transform -translate-x-1/2 w-0.5 h-full bg-white/80"></div>
+                    <div class="absolute top-1/2 left-0 transform -translate-y-1/2 w-full h-0.5 bg-white/80"></div>
+                    <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-1.5 h-1.5 bg-primary rounded-full shadow-[0_0_10px_#FF0000]"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Controls & Status (HP etc.) -->
+        <div class="w-full p-6 pb-8 flex flex-col justify-end pointer-events-none mt-auto relative h-full">
+            <div class="absolute bottom-12 right-6 flex flex-col items-end gap-1 pointer-events-none z-20">
+                <div class="flex items-center gap-2 mb-1">
+                    <span class="w-1.5 h-1.5 bg-primary animate-pulse"></span>
+                    <span class="font-display font-black text-xl text-primary tracking-[0.2em]">HP</span>
+                </div>
+                <div class="relative w-8 h-64 border border-white/20 bg-black/60 backdrop-blur-md overflow-hidden group">
+                    <div class="absolute inset-0 opacity-20" style="background-image: linear-gradient(to bottom, transparent 4px, #525252 5px); background-size: 100% 5px;"></div>
+                    <div id="hpFill" class="absolute bottom-0 w-full bg-primary transition-all duration-500 ease-out shadow-[0_0_20px_rgba(255,0,0,0.4)]" style="height:81%">
+                        <div class="w-full h-0.5 bg-white shadow-[0_0_8px_#fff]"></div>
+                    </div>
+                    <div class="absolute top-0 right-0 w-1 h-full bg-black/30 border-l border-white/10"></div>
+                    <div class="absolute inset-0 bg-gradient-to-b from-transparent via-primary/5 to-transparent h-1/4 w-full animate-scanline opacity-30"></div>
+                </div>
+                <div class="flex flex-col items-end gap-0.5 mt-1">
+                    <span id="playerHP" class="font-display font-black text-2xl text-white tracking-tighter">2840</span>
+                    <span class="font-display text-[10px] text-white/60 tracking-widest font-bold">/ 3500</span>
+                </div>
+            </div>
+
+            <div class="flex w-full justify-start items-end gap-4 mt-auto pr-32 pb-4">
+                <button id="startButton" class="parallelogram bg-black/60 border border-white/40 text-white h-12 w-32 flex items-center justify-center backdrop-blur-md pointer-events-auto">
+                    <span class="font-display font-bold tracking-widest text-sm skew-x-[15deg] uppercase">Cancel</span>
+                </button>
+            </div>
+
+            <div class="absolute bottom-4 left-6 right-6 h-px bg-white/20 flex justify-between items-center">
+                <div class="w-16 h-1 bg-white/60"></div>
+                <div class="flex gap-1">
+                    <div class="w-1 h-1 bg-primary"></div>
+                    <div class="w-1 h-1 bg-white/40"></div>
+                    <div class="w-1 h-1 bg-white/40"></div>
+                </div>
+                <div class="text-[8px] font-mono text-white/40">ZANBARAI_AR_V2.1</div>
+            </div>
+        </div>
+
+        <!-- Overlays required by UIManager -->
         <div id="flash-overlay"></div>
         <div id="damage-vignette"></div>
-        <!-- Splash画面 (S0) -->
-        <div id="splashScreen" class="screen active">
-            <h1>AR陰陽師</h1>
-            <p>疑似AR グローブコントローラ対応</p>
-            <button id="startButton" class="btn-primary">開始</button>
+
+        <!-- Hidden screens and elements used by existing UIManager -->
+        <div id="permissionScreen" class="hidden">
+            <p id="cameraStatus">📷 カメラ: 未確認</p>
+            <p id="motionStatus">📱 モーション: 未確認</p>
+            <button id="requestPermissionButton" class="pointer-events-auto">権限を許可</button>
+            <div id="permissionDebugInfo" style="display:none;"><div id="permissionDebugLog"></div></div>
         </div>
 
-        <!-- Permission画面 (S1) -->
-        <div id="permissionScreen" class="screen">
-            <h2>権限の確認</h2>
-            <div id="permissionStatus">
-                <p id="cameraStatus">📷 カメラ: 未確認</p>
-                <p id="motionStatus">📱 モーション: 未確認</p>
-            </div>
-            <button id="requestPermissionButton" class="btn-primary">権限を許可</button>
-            <p id="permissionError" class="error-message"></p>
-
-            <!-- デバッグ情報表示 -->
-            <div id="permissionDebugInfo"
-                style="margin-top: 2rem; padding: 1rem; background: rgba(0,0,0,0.5); border: 1px solid #666; border-radius: 8px; max-height: 300px; overflow-y: auto; font-size: 0.9rem; color: #aaa; width: 90%;">
-                <p id="permissionDebugLog"></p>
-            </div>
-        </div>
-
-        <!-- BLE接続画面 (S2) -->
-        <div id="bleConnectScreen" class="screen">
-            <h2>コントローラ接続</h2>
-            <p>グローブ型コントローラをBLEで接続します</p>
-            <button id="connectBleButton" class="btn-primary">BLE接続</button>
+        <div id="bleConnectScreen" class="hidden">
+            <button id="connectBleButton" class="pointer-events-auto">BLE接続</button>
             <p id="bleStatus">未接続</p>
             <p id="bleError" class="error-message"></p>
         </div>
 
-        <!-- キャリブレーション画面 (S3) -->
-        <div id="calibrateScreen" class="screen">
-            <h2>キャリブレーション</h2>
-            <p>端末を正面に向け、グローブも正面へ構えてください</p>
-            <div id="calibrationData">
-                <p>Pitch: <span id="calibPitch">--</span>°</p>
-                <p>Yaw: <span id="calibYaw">--</span>°</p>
-                <p>Roll: <span id="calibRoll">--</span>°</p>
-            </div>
-            <div class="calib-actions">
-                <button id="resetCalibrationButton" class="btn-secondary">リセット</button>
-                <button id="startCalibrationButton" class="btn-primary">ゲーム開始</button>
-            </div>
+        <div id="calibrateScreen" class="hidden">
+            <p>Pitch: <span id="calibPitch">--</span>°</p>
+            <p>Yaw: <span id="calibYaw">--</span>°</p>
+            <p>Roll: <span id="calibRoll">--</span>°</p>
+            <button id="resetCalibrationButton" class="pointer-events-auto">リセット</button>
+            <button id="startCalibrationButton" class="pointer-events-auto">ゲーム開始</button>
         </div>
 
-        <!-- ゲームプレイ画面 (S4) -->
-        <div id="gameplayScreen" class="screen">
-            <!-- HUD -->
-            <div id="hud">
-                <div id="enemyIndicators"></div>
-                <div id="hudTop">
-                    <div id="hudHP">HP: <span id="playerHP">5</span></div>
-                    <div id="hudKills">撃破数: <span id="killCount">0</span></div>
-                    <div id="hudTimer">残り時間: <span id="timeLeft">120</span>秒</div>
-                </div>
-                <div id="hudCenter">
-                    <div id="reticle">+</div>
-                </div>
-                <div id="hudBottom">
-                    <div id="hudPowerMode" class="hidden">
-                        強化モード: <span id="powerModeTime">10</span>秒
-                    </div>
-                    <div id="bleConnectionIndicator">🔗</div>
-                </div>
-                <!-- ゲーム画面用スタートボタン（ゲーム内から開始するため） -->
-                <button id="sceneStartButton" class="btn-primary">ゲーム開始</button>
-
-                <!-- カウントダウンオーバーレイ -->
-                <div id="countdownOverlay" class="hidden">
-                    <div id="countdownValue"></div>
-                </div>
-            </div>
-
-            <!-- デバッグHUD切替ボタン -->
-            <button id="toggleDebugButton" class="btn-debug">DEBUG</button>
+        <div id="gameplayScreen" class="hidden">
+            <div id="enemyIndicators"></div>
+            <button id="sceneStartButton" class="pointer-events-auto">ゲーム開始</button>
+            <div id="countdownOverlay" class="hidden"><div id="countdownValue"></div></div>
         </div>
 
-        <!-- Result画面 (S5) -->
-        <div id="resultScreen" class="screen">
+        <div id="resultScreen" class="hidden">
             <h2 id="resultTitle">結果</h2>
-            <div id="resultStats">
-                <p>撃破数: <span id="resultKills">0</span></p>
-                <p>経過時間: <span id="resultTime">0</span>秒</p>
-            </div>
-            <button id="retryButton" class="btn-primary">リトライ</button>
-            <button id="reconnectButton" class="btn-secondary">再接続</button>
-            <button id="recalibrateButton" class="btn-secondary">再キャリブレーション</button>
-
-            <!-- デバッグHUD切替ボタン -->
-            <button id="toggleDebugButtonResult" class="btn-debug">DEBUG</button>
+            <p>撃破数: <span id="resultKills">0</span></p>
+            <p>経過時間: <span id="resultTime">0</span>秒</p>
+            <button id="retryButton" class="pointer-events-auto">リトライ</button>
+            <button id="reconnectButton" class="pointer-events-auto">再接続</button>
+            <button id="recalibrateButton" class="pointer-events-auto">再キャリブレーション</button>
         </div>
+
+        <button id="toggleDebugButton" class="hidden pointer-events-auto">DEBUG</button>
+        <button id="toggleDebugButtonResult" class="hidden pointer-events-auto">DEBUG</button>
     </div>
 
-    <!-- デバッグオーバーレイ -->
-    <div id="debugOverlay" class="hidden">
-        <h3>デバッグ情報</h3>
-        <div id="debugContent">
-            <p>BLE状態: <span id="debugBleState">--</span></p>
-            <p>受信Hz: <span id="debugHz">--</span></p>
-            <p>欠落数: <span id="debugDrops">--</span> (<span id="debugDropRate">--</span>%)</p>
-            <p>a_mag: <span id="debugAmag">--</span> g</p>
-            <p>Pitch: <span id="debugPitch">--</span>° / Yaw: <span id="debugYaw">--</span>° / Roll: <span
-                    id="debugRoll">--</span>°</p>
-            <p>斬撃状態: <span id="debugSwingState">--</span></p>
-            <p>クールダウン: <span id="debugCooldown">--</span>ms</p>
-            <p>円判定: <span id="debugCircle">--</span></p>
-            <p>触覚送信: <span id="debugHaptics">--</span></p>
-            <p>エラー: <span id="debugError">--</span></p>
-        </div>
-        <div id="debugLog">
-            <h4>ログ</h4>
-            <div id="logContent"></div>
-        </div>
-    </div>
-
-    <!-- Three.js Library -->
-    <script type="importmap">
-        {
-            "imports": {
-                "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
-                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
-            }
-        }
-    </script>
-
-    <!-- ゲームモジュール -->
+    <!-- Load game module -->
     <script type="module" src="js/main.js"></script>
 </body>
 

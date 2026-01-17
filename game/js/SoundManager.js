@@ -18,12 +18,13 @@ export class SoundManager {
     _detectMasterGain() {
         try {
             const ua = navigator.userAgent || '';
-            if (/iPhone|iPad|iPod/i.test(ua)) return 1.6; // iOS でややブースト
-            if (/Android/i.test(ua)) return 1.4; // Android で少しブースト
+            // モバイルではより大きめにブースト
+            if (/iPhone|iPad|iPod/i.test(ua)) return 2.6; // iOS を強めにブースト
+            if (/Android/i.test(ua)) return 2.0; // Android で強めにブースト
         } catch (e) {
             // フォールバック
         }
-        return 1.0;
+        return 1.4;
     }
 
     /** ユーザー操作の直後に呼んでAudioContextを作成／resumeする */

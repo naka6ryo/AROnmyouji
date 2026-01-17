@@ -18,6 +18,36 @@ const tracerVertexShader = `
         return fract(sin(dot(st.xy, vec2(12.9898,78.233))) * 43758.5453123);
     }
 
+    /**
+     * プレーン型の斬撃メッシュを生成（シェーダ表現）
+     */
+    createPlaneSlashMesh(direction, intensity) {
+        const geometry = new THREE.PlaneGeometry(8, 8);
+        const material = new THREE.ShaderMaterial({
+            vertexShader: slashVertexShader,
+            fragmentShader: slashFragmentShader,
+            uniforms: {
+                uTime: { value: 0 },
+                uLife: { value: 1.0 },
+                uColor: { value: new THREE.Color(0xaaddff) }
+            },
+            transparent: true,
+            depthWrite: false,
+            side: THREE.DoubleSide,
+            blending: THREE.AdditiveBlending
+        });
+
+        const mesh = new THREE.Mesh(geometry, material);
+        mesh.userData.type = 'planeSlash';
+
+        // 回転と初期向きを設定する（地面と水平、進行方向基準）
+        mesh.rotation.x = -Math.PI / 2;
+        const angle = Math.atan2(direction.x, direction.z);
+        mesh.rotation.z = angle - Math.PI / 2;
+
+        return mesh;
+    }
+
     void main() {
         vUv = uv;
         vWidth = aWidth;
@@ -111,6 +141,54 @@ const tubeVertexShader = `
         pos += normal * n;
 
         gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
+    }
+`;
+
+// --- シェーダー: 飛翔する斬撃プレーン ---
+const slashVertexShader = `
+    varying vec2 vUv;
+    varying vec3 vPosition;
+    void main() {
+        vUv = uv;
+        vPosition = position;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }
+`;
+
+const slashFragmentShader = `
+    uniform float uTime;
+    uniform float uLife; // 1.0 で誕生, 0.0 で消滅
+    uniform vec3 uColor;
+    varying vec2 vUv;
+
+    #define PI 3.14159265359
+
+    void main() {
+        vec2 uv = vUv - 0.5;
+        float angle = atan(uv.y, uv.x);
+        float radius = length(uv);
+
+        // 形状幅
+        float shapeFactor = smoothstep(-0.5, 1.0, cos(angle));
+        shapeFactor = pow(shapeFactor, 3.0);
+        float w = 0.02 + shapeFactor * 0.18;
+
+        // 風切りノイズ
+        float distortion = sin(angle * 10.0 - uTime * 8.0) * 0.005;
+        float dist = abs(radius - 0.4 + distortion);
+
+        float ring = smoothstep(w, w * 0.2, dist);
+        float mask = smoothstep(-0.8, 0.2, cos(angle));
+
+        vec3 color = uColor;
+        float core = smoothstep(w * 0.6, 0.0, dist);
+        color += vec3(1.0) * core * 0.8;
+
+        float alpha = ring * mask;
+        alpha *= smoothstep(0.0, 0.2, uLife) * smoothstep(1.0, 0.8, uLife);
+        if (alpha < 0.01) discard;
+
+        gl_FragColor = vec4(color, alpha);
     }
 `;
 
@@ -444,33 +522,33 @@ export class Renderer {
             -baseRadius * Math.cos(endPitchRad) * Math.cos(endYawRad)
         );
 
-        // 2点を含む円弧を作成
-        const arcMesh = this.createArcMesh(startPos, endPos, intensity);
-        if (!arcMesh) return;
+        // プレーン型の斬撃を生成して飛ばす（シェーダ表現）
+        const direction = this.camera.getWorldDirection(new THREE.Vector3()).normalize();
+        const plane = this.createPlaneSlashMesh(direction, intensity);
+        if (!plane) return;
 
-        // カメラの現在位置を基準に配置
+        // カメラの現在位置を基準に配置（始点のオフセットを適用）
         const cameraPos = new THREE.Vector3();
         this.camera.getWorldPosition(cameraPos);
+        const spawnPos = cameraPos.clone().add(startPos);
+        plane.position.copy(spawnPos);
+        this.scene.add(plane);
 
-        arcMesh.position.copy(cameraPos);
-        this.scene.add(arcMesh);
-
-        // 飛翔体として記録
         const projectile = {
-            mesh: arcMesh,
+            mesh: plane,
             startPos: startPos.clone(),
             endPos: endPos.clone(),
             speed: this.SLASH_SPEED,
             spawnTime: performance.now(),
             intensity,
-            currentRadius: baseRadius, // 現在の半径
-            direction: this.camera.getWorldDirection(new THREE.Vector3()).normalize(),
-            hitEnemies: new Set() // 既に判定した敵のIDを記録（二重判定防止）
+            currentRadius: baseRadius,
+            direction,
+            hitEnemies: new Set()
         };
 
         this.slashProjectiles.push(projectile);
 
-        console.log(`[Renderer] 円弧飛翔体生成: 始点=${JSON.stringify(startPyr)}, 終点=${JSON.stringify(endPyr)}`);
+        console.log(`[Renderer] プレーン斬撃生成: 始点=${JSON.stringify(startPyr)}, 終点=${JSON.stringify(endPyr)}`);
     }
 
     /**
@@ -532,9 +610,33 @@ export class Renderer {
                 return false;
             }
 
-            // 時間経過で円弧の半径を拡大
+            // 時間経過で寿命割合を算出
             const lifeFraction = age / this.SLASH_LIFETIME;
             const radiusScale = 1.0 + lifeFraction * 15.67; // 最大5m（初期0.3m → 5m）
+
+            // プレーン型斬撃の更新処理
+            if (proj.mesh && proj.mesh.userData && proj.mesh.userData.type === 'planeSlash') {
+                // シェーダ uniforms 更新
+                if (proj.mesh.material && proj.mesh.material.uniforms) {
+                    proj.mesh.material.uniforms.uTime.value += deltaTimeSec;
+                    proj.mesh.material.uniforms.uLife.value = 1.0 - lifeFraction;
+                }
+
+                // 前方へ移動
+                proj.mesh.position.add(proj.direction.clone().multiplyScalar(proj.speed * deltaTimeSec));
+
+                // サイズ変化（出現時に拡大し、死に際でフェード）
+                let scale;
+                if (lifeFraction < 0.2) {
+                    scale = THREE.MathUtils.lerp(0.2, 1.2, lifeFraction / 0.2);
+                } else {
+                    scale = 1.2;
+                }
+                proj.mesh.scale.set(scale, scale, scale);
+
+                // 透明度はシェーダ側の uLife に委ねる
+                // 敵判定は既存の判定を用いるため、そのまま処理を続行
+            }
 
             // 敵との衝突判定（フレームごと）
             if (enemies && this.onSlashHitEnemy) {
@@ -570,6 +672,11 @@ export class Renderer {
                         break; // 1フレーム1体のみ処理
                     }
                 }
+            }
+
+            // プレーン型はここでメッシュ交換不要のためスキップ
+            if (proj.mesh && proj.mesh.userData && proj.mesh.userData.type === 'planeSlash') {
+                return true;
             }
 
             // 新しい円弧メッシュを生成して古いものと置き換える

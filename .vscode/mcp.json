@@ -1,0 +1,13 @@
+{
+  "servers": {
+    "beep-mcp": {
+      "type": "stdio",
+      "command": "${env:LOCALAPPDATA}\\dotnet\\dotnet.exe",
+      "args": [
+        "run",
+        "--project",
+        "C:\\work\\CopilotBeepMCP\\BeepMcp\\BeepMcp.csproj"
+      ]
+    }
+  }
+}

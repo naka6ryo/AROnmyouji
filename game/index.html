@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AR陰陽師 - MVP</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- ビデオ背景（カメラ映像） -->
+    <video id="cameraVideo" autoplay playsinline></video>
+    
+    <!-- 3Dキャンバス -->
+    <canvas id="gameCanvas"></canvas>
+    
+    <!-- UI コンテナ -->
+    <div id="uiContainer">
+        <!-- Splash画面 (S0) -->
+        <div id="splashScreen" class="screen active">
+            <h1>AR陰陽師</h1>
+            <p>疑似AR グローブコントローラ対応</p>
+            <button id="startButton" class="btn-primary">開始</button>
+        </div>
+
+        <!-- Permission画面 (S1) -->
+        <div id="permissionScreen" class="screen">
+            <h2>権限の確認</h2>
+            <div id="permissionStatus">
+                <p id="cameraStatus">📷 カメラ: 未確認</p>
+                <p id="motionStatus">📱 モーション: 未確認</p>
+            </div>
+            <button id="requestPermissionButton" class="btn-primary">権限を許可</button>
+            <p id="permissionError" class="error-message"></p>
+        </div>
+
+        <!-- BLE接続画面 (S2) -->
+        <div id="bleConnectScreen" class="screen">
+            <h2>コントローラ接続</h2>
+            <p>グローブ型コントローラをBLEで接続します</p>
+            <button id="connectBleButton" class="btn-primary">BLE接続</button>
+            <p id="bleStatus">未接続</p>
+            <p id="bleError" class="error-message"></p>
+        </div>
+
+        <!-- キャリブレーション画面 (S3) -->
+        <div id="calibrateScreen" class="screen">
+            <h2>キャリブレーション</h2>
+            <p>端末を正面に向け、グローブも正面へ構えてください</p>
+            <div id="calibrationData">
+                <p>Pitch: <span id="calibPitch">--</span>°</p>
+                <p>Yaw: <span id="calibYaw">--</span>°</p>
+                <p>Roll: <span id="calibRoll">--</span>°</p>
+            </div>
+            <button id="confirmCalibrationButton" class="btn-primary">確定</button>
+        </div>
+
+        <!-- ゲームプレイ画面 (S4) -->
+        <div id="gameplayScreen" class="screen">
+            <!-- HUD -->
+            <div id="hud">
+                <div id="hudTop">
+                    <div id="hudHP">HP: <span id="playerHP">5</span></div>
+                    <div id="hudKills">撃破数: <span id="killCount">0</span></div>
+                    <div id="hudTimer">残り時間: <span id="timeLeft">120</span>秒</div>
+                </div>
+                <div id="hudCenter">
+                    <div id="reticle">+</div>
+                </div>
+                <div id="hudBottom">
+                    <div id="hudPowerMode" class="hidden">
+                        強化モード: <span id="powerModeTime">10</span>秒
+                    </div>
+                    <div id="bleConnectionIndicator">🔗</div>
+                </div>
+            </div>
+
+            <!-- デバッグHUD切替ボタン -->
+            <button id="toggleDebugButton" class="btn-debug">DEBUG</button>
+        </div>
+
+        <!-- Result画面 (S5) -->
+        <div id="resultScreen" class="screen">
+            <h2 id="resultTitle">結果</h2>
+            <div id="resultStats">
+                <p>撃破数: <span id="resultKills">0</span></p>
+                <p>経過時間: <span id="resultTime">0</span>秒</p>
+            </div>
+            <button id="retryButton" class="btn-primary">リトライ</button>
+            <button id="reconnectButton" class="btn-secondary">再接続</button>
+            <button id="recalibrateButton" class="btn-secondary">再キャリブレーション</button>
+        </div>
+    </div>
+
+    <!-- デバッグオーバーレイ -->
+    <div id="debugOverlay" class="hidden">
+        <h3>デバッグ情報</h3>
+        <div id="debugContent">
+            <p>BLE状態: <span id="debugBleState">--</span></p>
+            <p>受信Hz: <span id="debugHz">--</span></p>
+            <p>欠落数: <span id="debugDrops">--</span> (<span id="debugDropRate">--</span>%)</p>
+            <p>a_mag: <span id="debugAmag">--</span> g</p>
+            <p>Pitch: <span id="debugPitch">--</span>° / Yaw: <span id="debugYaw">--</span>° / Roll: <span id="debugRoll">--</span>°</p>
+            <p>斬撃状態: <span id="debugSwingState">--</span></p>
+            <p>クールダウン: <span id="debugCooldown">--</span>ms</p>
+            <p>円判定: <span id="debugCircle">--</span></p>
+            <p>触覚送信: <span id="debugHaptics">--</span></p>
+            <p>エラー: <span id="debugError">--</span></p>
+        </div>
+        <div id="debugLog">
+            <h4>ログ</h4>
+            <div id="logContent"></div>
+        </div>
+    </div>
+
+    <!-- Three.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    
+    <!-- ゲームモジュール -->
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>

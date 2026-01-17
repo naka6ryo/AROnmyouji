@@ -1,0 +1,195 @@
+/**
+ * Renderer.js
+ * Three.jsを使用したカメラ背景、3D描画、UI同期を行うクラス
+ */
+
+export class Renderer {
+    constructor(canvasId) {
+        this.canvas = document.getElementById(canvasId);
+        
+        // Three.js セットアップ
+        this.scene = new THREE.Scene();
+        this.camera = new THREE.PerspectiveCamera(
+            60, // FOV
+            window.innerWidth / window.innerHeight,
+            0.1,
+            1000
+        );
+        
+        this.renderer = new THREE.WebGLRenderer({
+            canvas: this.canvas,
+            alpha: true, // 背景透過
+            antialias: true
+        });
+        this.renderer.setSize(window.innerWidth, window.innerHeight);
+        this.renderer.setPixelRatio(window.devicePixelRatio);
+        
+        // 端末姿勢（視点制御用）
+        this.deviceOrientation = { alpha: 0, beta: 0, gamma: 0 };
+        this.viewDirection = { x: 0, y: 0, z: 1 };
+        
+        // 敵のメッシュ管理
+        this.enemyMeshes = new Map(); // enemyId -> mesh
+        
+        // ライト
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        this.scene.add(ambientLight);
+        
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight.position.set(1, 1, 1);
+        this.scene.add(directionalLight);
+        
+        // リサイズ対応
+        window.addEventListener('resize', () => this.onResize());
+        
+        console.log('[Renderer] 初期化完了');
+    }
+    
+    /**
+     * 端末姿勢を更新（DeviceOrientationEvent）
+     */
+    updateDeviceOrientation(event) {
+        this.deviceOrientation = {
+            alpha: event.alpha || 0,  // Z軸回転
+            beta: event.beta || 0,    // X軸回転
+            gamma: event.gamma || 0   // Y軸回転
+        };
+        
+        // 視線方向ベクトルを計算
+        this.viewDirection = this.calculateViewDirection();
+        
+        // カメラの向きを更新
+        this.updateCameraRotation();
+    }
+    
+    /**
+     * 視線方向ベクトルを計算
+     */
+    calculateViewDirection() {
+        const { alpha, beta, gamma } = this.deviceOrientation;
+        
+        // オイラー角をラジアンに変換
+        const alphaRad = alpha * Math.PI / 180;
+        const betaRad = beta * Math.PI / 180;
+        const gammaRad = gamma * Math.PI / 180;
+        
+        // 簡易的な前方ベクトル（実際の端末姿勢に応じて調整が必要）
+        const x = Math.sin(alphaRad) * Math.cos(betaRad);
+        const y = -Math.sin(betaRad);
+        const z = Math.cos(alphaRad) * Math.cos(betaRad);
+        
+        return { x, y, z };
+    }
+    
+    /**
+     * カメラの回転を更新
+     */
+    updateCameraRotation() {
+        const { alpha, beta, gamma } = this.deviceOrientation;
+        
+        // オイラー角でカメラを回転
+        this.camera.rotation.set(
+            beta * Math.PI / 180,
+            alpha * Math.PI / 180,
+            -gamma * Math.PI / 180,
+            'YXZ'
+        );
+    }
+    
+    /**
+     * 敵を追加
+     */
+    addEnemy(enemy) {
+        // 簡易的な敵メッシュ（赤い球体）
+        const geometry = new THREE.SphereGeometry(0.3, 16, 16);
+        const material = new THREE.MeshStandardMaterial({ color: 0xff0000 });
+        const mesh = new THREE.Mesh(geometry, material);
+        
+        // 位置を設定（球面座標 -> デカルト座標）
+        this.updateEnemyPosition(mesh, enemy);
+        
+        this.scene.add(mesh);
+        this.enemyMeshes.set(enemy.id, mesh);
+        
+        console.log(`[Renderer] 敵メッシュ追加: id=${enemy.id}`);
+    }
+    
+    /**
+     * 敵の位置を更新
+     */
+    updateEnemyPosition(mesh, enemy) {
+        const azimRad = enemy.azim * Math.PI / 180;
+        const elevRad = enemy.elev * Math.PI / 180;
+        const r = enemy.distance;
+        
+        mesh.position.set(
+            r * Math.cos(elevRad) * Math.sin(azimRad),
+            r * Math.sin(elevRad),
+            -r * Math.cos(elevRad) * Math.cos(azimRad)
+        );
+    }
+    
+    /**
+     * 敵を削除
+     */
+    removeEnemy(enemyId) {
+        const mesh = this.enemyMeshes.get(enemyId);
+        if (mesh) {
+            this.scene.remove(mesh);
+            mesh.geometry.dispose();
+            mesh.material.dispose();
+            this.enemyMeshes.delete(enemyId);
+            console.log(`[Renderer] 敵メッシュ削除: id=${enemyId}`);
+        }
+    }
+    
+    /**
+     * 全敵の位置を更新
+     */
+    updateEnemies(enemies) {
+        for (const enemy of enemies) {
+            const mesh = this.enemyMeshes.get(enemy.id);
+            if (mesh) {
+                this.updateEnemyPosition(mesh, enemy);
+            }
+        }
+    }
+    
+    /**
+     * 描画
+     */
+    render() {
+        this.renderer.render(this.scene, this.camera);
+    }
+    
+    /**
+     * リサイズ処理
+     */
+    onResize() {
+        this.camera.aspect = window.innerWidth / window.innerHeight;
+        this.camera.updateProjectionMatrix();
+        this.renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+    
+    /**
+     * 視線方向を取得
+     */
+    getViewDirection() {
+        return this.viewDirection;
+    }
+    
+    /**
+     * クリーンアップ
+     */
+    dispose() {
+        // 全メッシュを削除
+        for (const [id, mesh] of this.enemyMeshes.entries()) {
+            this.scene.remove(mesh);
+            mesh.geometry.dispose();
+            mesh.material.dispose();
+        }
+        this.enemyMeshes.clear();
+        
+        this.renderer.dispose();
+    }
+}

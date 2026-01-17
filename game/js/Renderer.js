@@ -434,15 +434,15 @@ export class Renderer {
     }
     
     /**
-     * 斬撃と敵の衝突判定
+     * 斬撃と敵の衝突判定（シンプル版）
      */
     checkSlashEnemyCollision(startPosNormalized, endPosNormalized, radiusScale, enemy) {
         // 敵の極座標を取得
-        const enemyPitch = enemy.elev; // 仰角
-        const enemyYaw = enemy.azim;   // 方位角
-        const enemyDistance = enemy.distance;
+        const enemyPitch = enemy.elev; // 仰角（度）
+        const enemyYaw = enemy.azim;   // 方位角（度）
+        const enemyDistance = enemy.distance; // 距離（m）
         
-        // 円弧の始点と終点の角度を直接比較
+        // 円弧の始点と終点の角度
         const startPitch = startPosNormalized.y > 0 
             ? Math.asin(Math.min(1, startPosNormalized.y / 0.3)) * 180 / Math.PI
             : -Math.asin(Math.min(1, -startPosNormalized.y / 0.3)) * 180 / Math.PI;
@@ -453,70 +453,49 @@ export class Renderer {
             : -Math.asin(Math.min(1, -endPosNormalized.y / 0.3)) * 180 / Math.PI;
         const endYaw = Math.atan2(endPosNormalized.x, -endPosNormalized.z) * 180 / Math.PI;
         
-        // 敵の角度が円弧の範囲内にあるか（厳密な判定）
-        const pitchInRange = this.isAngleInArc(startPitch, endPitch, enemyPitch);
-        const yawInRange = this.isAngleInArc(startYaw, endYaw, enemyYaw);
+        // 角度判定：シンプルに両端の角度に近いかを判定
+        const pitchMinDiff = Math.min(
+            Math.abs(this.normalizeAngleDiff(enemyPitch - startPitch)),
+            Math.abs(this.normalizeAngleDiff(enemyPitch - endPitch))
+        );
+        const yawMinDiff = Math.min(
+            Math.abs(this.normalizeAngleDiff(enemyYaw - startYaw)),
+            Math.abs(this.normalizeAngleDiff(enemyYaw - endYaw))
+        );
         
-        // 敵の距離判定：敵の中心 ± 敵の半径が円弧の半径範囲に入っているか
+        // 敵が円弧の角度範囲内か（起点と終点どちらかに±30度以内）
+        const angleThreshold = 30; // 度
+        const angleInRange = pitchMinDiff <= angleThreshold && yawMinDiff <= angleThreshold;
+        
+        if (!angleInRange) {
+            return false; // 角度が範囲外なら判定不要
+        }
+        
+        // 敵の距離判定：円弧の半径 ± より大きなマージンの範囲
         const arcRadius = radiusScale * 0.3; // 円弧の現在の半径
         const enemyRadius = 0.5; // 敵のコリジョン半径
+        const margin = 1.0; // 距離チェックのマージン（より大きく）
         
-        // 敵が円弧と衝突する条件：敵の球体と円弧の軌道が交差
-        const distanceDiff = Math.abs(enemyDistance - arcRadius);
-        const distanceInRange = distanceDiff <= enemyRadius;
+        // 敵の球体が円弧の軌道と交差するか
+        const minDistance = arcRadius - enemyRadius - margin;
+        const maxDistance = arcRadius + enemyRadius + margin;
+        const distanceInRange = enemyDistance >= minDistance && enemyDistance <= maxDistance;
         
-        // 全条件を満たせば衝突
-        const collision = pitchInRange && yawInRange && distanceInRange;
-        
-        if (collision) {
-            console.log(`[Renderer] 衝突判定成功: 敵pitch=${enemyPitch.toFixed(1)}°(始点${startPitch.toFixed(1)}°-終点${endPitch.toFixed(1)}°), 敵yaw=${enemyYaw.toFixed(1)}°(始点${startYaw.toFixed(1)}°-終点${endYaw.toFixed(1)}°), 敵距離=${enemyDistance.toFixed(2)}m(円弧${arcRadius.toFixed(2)}m±${enemyRadius}m)`);
+        if (distanceInRange) {
+            console.log(`[Renderer] 衝突成功: 敵id=${enemy.id}, 敵角度=(pitch${enemyPitch.toFixed(1)}°, yaw${enemyYaw.toFixed(1)}°), 敵距離${enemyDistance.toFixed(2)}m, 円弧半径${arcRadius.toFixed(2)}m(範囲${minDistance.toFixed(2)}m~${maxDistance.toFixed(2)}m)`);
         }
         
-        return collision;
+        return distanceInRange;
     }
     
     /**
-     * 角度がアーク範囲内にあるかを判定
+     * 角度差を-180〜180に正規化
      */
-    isAngleInArc(startAngle, endAngle, targetAngle) {
-        // 角度差を正規化（-180〜180）
-        const start = this.normalizeAngle(startAngle);
-        const end = this.normalizeAngle(endAngle);
-        const target = this.normalizeAngle(targetAngle);
-        
-        // アークの方向を判定
-        const arcDirection = this.angleDiff(start, end);
-        
-        // 始点から終点への角度差
-        const targetFromStart = this.angleDiff(start, target);
-        
-        if (arcDirection >= 0) {
-            // 正方向のアーク
-            return targetFromStart >= 0 && targetFromStart <= arcDirection;
-        } else {
-            // 負方向のアーク
-            return targetFromStart <= 0 && targetFromStart >= arcDirection;
-        }
-    }
-    
-    /**
-     * 角度を-180〜180に正規化
-     */
-    normalizeAngle(angle) {
-        let normalized = angle;
+    normalizeAngleDiff(diff) {
+        let normalized = diff;
         while (normalized > 180) normalized -= 360;
         while (normalized < -180) normalized += 360;
         return normalized;
-    }
-    
-    /**
-     * 角度差を計算
-     */
-    angleDiff(a, b) {
-        let diff = a - b;
-        while (diff > 180) diff -= 360;
-        while (diff < -180) diff += 360;
-        return diff;
     }
     
     /**

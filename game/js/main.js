@@ -37,6 +37,10 @@ class AROnmyoujiGame {
         this.FIXED_DELTA_TIME = 1000 / 60; // 60 FPS
         this.isRunning = false;
         
+        // ダブルヒット防止用：敵ID→最後にダメージを受けた時刻
+        this.lastEnemyHitTime = new Map();
+        this.MIN_HIT_INTERVAL_MS = 100; // 同じ敵に対して100ms以内の連続ヒットを防ぐ
+        
         // UI要素
         this.initUIElements();
         
@@ -406,6 +410,15 @@ class AROnmyoujiGame {
         const enemy = data.enemy;
         const intensity = data.intensity;
         const isCritical = intensity >= this.combatSystem.CRITICAL_INTENSITY_THRESHOLD;
+        const now = performance.now();
+        
+        // ダブルヒット防止：同じ敵が100ms以内に連続でダメージを受けないようにする
+        const lastHitTime = this.lastEnemyHitTime.get(enemy.id);
+        if (lastHitTime && (now - lastHitTime) < this.MIN_HIT_INTERVAL_MS) {
+            console.warn(`[Game] ダブルヒット検出、スキップ: 敵id=${enemy.id}, 経過時間=${(now - lastHitTime).toFixed(1)}ms`);
+            this.debugOverlay.logInfo(`ダブルヒット防止: 敵id=${enemy.id}`);
+            return;
+        }
         
         this.debugOverlay.logInfo(`斬撃が敵に当たった: 敵id=${enemy.id}`);
         
@@ -420,6 +433,9 @@ class AROnmyoujiGame {
         const damage = this.motionInterpreter.isPowerMode ? this.combatSystem.powerDamage : this.combatSystem.normalDamage;
         const killed = this.gameWorld.damageEnemy(enemy.id, damage);
         
+        // 最後のヒット時刻を記録
+        this.lastEnemyHitTime.set(enemy.id, now);
+        
         console.log(`[Game] 斬撃衝突ダメージ: 敵id=${enemy.id}, ダメージ=${damage}, 撃破=${killed}`);
         
         if (this.combatSystem.onHit) {
@@ -430,6 +446,9 @@ class AROnmyoujiGame {
         if (killed) {
             console.log(`[Game] 敵メッシュを削除: 敵id=${enemy.id}`);
             this.renderer.removeEnemy(enemy.id);
+            
+            // ダブルヒット防止マップから削除
+            this.lastEnemyHitTime.delete(enemy.id);
         }
         
         // 触覚フィードバック

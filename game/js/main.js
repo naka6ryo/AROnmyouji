@@ -101,12 +101,32 @@ class AROnmyoujiGame {
         this.deviceOrientationHandler = (e) => this.renderer.updateDeviceOrientation(e);
     }
 
+    confirmCalibration() {
+        if (!this.latestFrame) {
+            this.debugOverlay.logWarn('キャリブレーション: フレームデータなし');
+            return;
+        }
+
+        const { pitch_deg, yaw_deg, roll_deg } = this.latestFrame;
+        this.motionInterpreter.calibrate(pitch_deg, yaw_deg, roll_deg);
+        this.debugOverlay.logInfo(`キャリブレーション完了: ${pitch_deg.toFixed(1)}, ${yaw_deg.toFixed(1)}, ${roll_deg.toFixed(1)}`);
+
+        // 校正完了 -> ゲーム画面へ遷移するが、ゲームはまだ開始しない
+        this.appState.calibrationComplete();
+        // ここでスタートボタンを表示確実にONにする
+        this.uiManager.toggleSceneStartButton(true);
+    }
+
     /**
      * ゲーム画面内のスタートボタンから呼ばれる処理。
      * カウントダウンをUIに表示してから `startGameplay()` を呼ぶ。
      */
     onStartInScene() {
         this.debugOverlay.logInfo('シーン内スタートボタン押下');
+
+        // スタートボタンを隠す
+        this.uiManager.toggleSceneStartButton(false);
+
         try {
             this.soundManager.initAudioContext();
             // kick off load if not already loaded
@@ -130,14 +150,13 @@ class AROnmyoujiGame {
     }
 
     /**
-     * ゲーム開始
+     * ゲーム開始 (GameWorld開始)
      */
     onStartGame() {
+        // ... (unchanged)
         this.debugOverlay.logInfo('ゲーム開始ボタン押下');
-        // ユーザー操作直後にAudioContextを初期化（同期）しておく
         try {
             this.soundManager.initAudioContext();
-            // ファイルロードは非同期で開始（awaitしないことでユーザージェスチャの同期性を保つ）
             this.soundManager.load({
                 polygon_burst: 'assets/sfx/polygon_burst.mp3',
                 explosion: 'assets/sfx/explosion.mp3',
@@ -146,139 +165,18 @@ class AROnmyoujiGame {
         } catch (e) {
             console.warn('sound init/load failed', e);
         }
-
         this.appState.startGame();
     }
 
-    /**
-     * 権限要求
-     */
-    async requestPermissions() {
-        this.debugOverlay.logInfo('権限要求開始');
-        this.uiManager.addPermissionLog('権限要求開始...');
-
-        try {
-            // モーション権限
-            if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
-                this.uiManager.addPermissionLog('📱 iOS環境: requestPermission実行...');
-
-                try {
-                    const permission = await DeviceOrientationEvent.requestPermission();
-                    this.uiManager.addPermissionLog(`📱 requestPermission結果: ${permission}`);
-
-                    if (permission === 'granted') {
-                        this.uiManager.updatePermissionStatus('motion', 'granted');
-                        this.uiManager.addPermissionLog('✓ モーション権限許可');
-                        window.addEventListener('deviceorientation', this.deviceOrientationHandler);
-                    } else if (permission === 'denied') {
-                        this.uiManager.updatePermissionStatus('motion', 'denied');
-                        throw new Error('モーション権限が拒否されました');
-                    } else {
-                        this.uiManager.updatePermissionStatus('motion', 'prompt');
-                    }
-                } catch (permissionError) {
-                    this.uiManager.showPermissionError(permissionError.message);
-                    throw permissionError;
-                }
-            } else {
-                this.uiManager.updatePermissionStatus('motion', 'granted');
-                this.uiManager.addPermissionLog('✓ 非iOS環境: 自動許可');
-                window.addEventListener('deviceorientation', this.deviceOrientationHandler);
-            }
-
-            // カメラ権限
-            this.uiManager.addPermissionLog('📷 カメラ権限要求中...');
-
-            this.cameraStream = await navigator.mediaDevices.getUserMedia({
-                video: { facingMode: 'environment' }
-            });
-            this.videoElement.srcObject = this.cameraStream;
-            this.videoElement.muted = true;
-
-            const tryPlay = async () => {
-                try {
-                    await this.videoElement.play();
-                    this.debugOverlay.logInfo('カメラ映像再生開始');
-                    return true;
-                } catch (err) {
-                    console.warn('video.play failed', err);
-                    return false;
-                }
-            };
-
-            let played = await tryPlay();
-            if (!played) {
-                const onLoaded = async () => {
-                    await tryPlay();
-                    this.videoElement.removeEventListener('loadedmetadata', onLoaded);
-                };
-                this.videoElement.addEventListener('loadedmetadata', onLoaded);
-                setTimeout(() => this.videoElement.removeEventListener('loadedmetadata', onLoaded), 5000);
-            }
-
-            this.uiManager.updatePermissionStatus('camera', 'granted');
-            this.uiManager.addPermissionLog('✓ カメラ権限取得成功');
-            this.uiManager.addPermissionLog('✓ 全権限取得完了');
-
-            this.appState.permissionGranted();
-
-        } catch (error) {
-            console.error(error);
-            this.uiManager.showPermissionError(error.message);
-            this.uiManager.addPermissionLog(`✗ エラー: ${error.message}`);
-        }
-    }
-
-    /**
-     * BLE接続
-     */
-    async connectBLE() {
-        this.debugOverlay.logInfo('BLE接続開始');
-        this.uiManager.updateBLEStatus('接続中...');
-
-        try {
-            await this.bleAdapter.connect();
-            this.uiManager.updateBLEStatus('接続成功');
-            this.debugOverlay.logInfo('BLE接続成功');
-            this.appState.bleConnected();
-        } catch (error) {
-            this.uiManager.showBLEError(error.message);
-            this.debugOverlay.logError(`BLE接続エラー: ${error.message}`);
-        }
-    }
-
-    /**
-     * キャリブレーション確定
-     */
-    confirmCalibration() {
-        if (!this.latestFrame) {
-            this.debugOverlay.logWarn('キャリブレーション: フレームデータなし');
-            return;
-        }
-
-        const { pitch_deg, yaw_deg, roll_deg } = this.latestFrame;
-        this.motionInterpreter.calibrate(pitch_deg, yaw_deg, roll_deg);
-        this.debugOverlay.logInfo(`キャリブレーション完了: ${pitch_deg.toFixed(1)}, ${yaw_deg.toFixed(1)}, ${roll_deg.toFixed(1)}`);
-
-        this.appState.calibrationComplete();
-
-        // ユーザー操作直後にAudioContextを初期化（同期）
-        try {
-            this.soundManager.initAudioContext();
-        } catch (e) {
-            console.warn('sound init failed', e);
-        }
-
-        // カウントダウンしてからゲーム開始
-        this.uiManager.showCountdown(3, () => {
-            this.startGameplay();
-        });
-    }
+    // ...
 
     /**
      * ゲームプレイ開始
      */
     startGameplay() {
+        // 念のためスタートボタンを隠す
+        this.uiManager.toggleSceneStartButton(false);
+
         // Ensure audio context is initialized and SFX loading started
         try {
             this.soundManager.initAudioContext();

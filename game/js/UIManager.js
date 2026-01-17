@@ -286,6 +286,12 @@ export class UIManager {
         }
     }
 
+    toggleSceneStartButton(show) {
+        if (this.elements.sceneStartButton) {
+            this.elements.sceneStartButton.style.display = show ? 'block' : 'none';
+        }
+    }
+
     /**
      * カウントダウン表示を開始する。
      * countFrom: number (例: 3)

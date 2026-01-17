@@ -21,8 +21,8 @@ export class Renderer {
             alpha: true, // 背景透過
             antialias: true
         });
-        this.renderer.setSize(window.innerWidth, window.innerHeight);
-        this.renderer.setPixelRatio(window.devicePixelRatio);
+        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        this.updateRendererSize();
         
         // 端末姿勢（視点制御用）
         this.deviceOrientation = { alpha: 0, beta: 0, gamma: 0 };
@@ -41,6 +41,9 @@ export class Renderer {
         
         // リサイズ対応
         window.addEventListener('resize', () => this.onResize());
+        if (window.visualViewport) {
+            window.visualViewport.addEventListener('resize', () => this.onResize());
+        }
         
         console.log('[Renderer] 初期化完了');
     }
@@ -160,15 +163,14 @@ export class Renderer {
      */
     render() {
         this.renderer.render(this.scene, this.camera);
+        this.updateRendererSize();
     }
     
     /**
      * リサイズ処理
      */
     onResize() {
-        this.camera.aspect = window.innerWidth / window.innerHeight;
-        this.camera.updateProjectionMatrix();
-        this.renderer.setSize(window.innerWidth, window.innerHeight);
+        this.updateRendererSize();
     }
     
     /**
@@ -176,6 +178,16 @@ export class Renderer {
      */
     getViewDirection() {
         return this.viewDirection;
+        /**
+         * レンダラーとカメラのサイズをキャンバス実寸に合わせる
+         */
+        const width = this.canvas.clientWidth || window.innerWidth;
+        const height = this.canvas.clientHeight || window.innerHeight;
+        if (this.renderer.domElement.width !== width || this.renderer.domElement.height !== height) {
+            this.renderer.setSize(width, height, false);
+            this.camera.aspect = width / height;
+            this.camera.updateProjectionMatrix();
+        }
     }
 
     /**

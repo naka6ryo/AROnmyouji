@@ -22,8 +22,8 @@ class AROnmyoujiGame {
         this.motionInterpreter = new MotionInterpreter();
         this.gameWorld = new GameWorld();
         this.combatSystem = new CombatSystem(this.gameWorld, this.motionInterpreter);
-        this.renderer = new Renderer('gameCanvas');
         this.debugOverlay = new DebugOverlay();
+        this.renderer = new Renderer('gameCanvas', this.debugOverlay);
         
         // カメラストリーム
         this.cameraStream = null;
@@ -436,7 +436,9 @@ class AROnmyoujiGame {
         // 最後のヒット時刻を記録
         this.lastEnemyHitTime.set(enemy.id, now);
         
-        console.log(`[Game] 斬撃衝突ダメージ: 敵id=${enemy.id}, ダメージ=${damage}, 撃破=${killed}`);
+        const damageMsg = `ダメージ: id=${enemy.id}, ダメ=${damage}, 撃破=${killed}`;
+        console.log(`[Game] ${damageMsg}`);
+        this.debugOverlay.logInfo(damageMsg);
         
         if (this.combatSystem.onHit) {
             this.combatSystem.onHit({ enemy, damage, killed, isCritical });
@@ -444,7 +446,9 @@ class AROnmyoujiGame {
         
         // 敵が撃破された場合、敵メッシュを即座に削除
         if (killed) {
-            console.log(`[Game] 敵メッシュを削除: 敵id=${enemy.id}`);
+            const killMsg = `敵撃破: id=${enemy.id}`;
+            console.log(`[Game] ${killMsg}`);
+            this.debugOverlay.logInfo(killMsg);
             this.renderer.removeEnemy(enemy.id);
             
             // ダブルヒット防止マップから削除

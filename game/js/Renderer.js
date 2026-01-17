@@ -4,8 +4,9 @@
  */
 
 export class Renderer {
-    constructor(canvasId) {
+    constructor(canvasId, debugOverlay = null) {
         this.canvas = document.getElementById(canvasId);
+        this.debugOverlay = debugOverlay; // デバッグUIへのログ出力
         
         // Three.js セットアップ
         this.scene = new THREE.Scene();
@@ -386,6 +387,11 @@ export class Renderer {
                         proj.hitEnemies.add(enemy.id);
                         
                         // 衝突した敵を通知
+                        const callbackMsg = `敵衝突コールバック: id=${enemy.id}`;
+                        console.log(`[Renderer] ${callbackMsg}`);
+                        if (this.debugOverlay) {
+                            this.debugOverlay.logInfo(callbackMsg);
+                        }
                         this.onSlashHitEnemy({
                             enemy: enemy,
                             intensity: proj.intensity
@@ -434,7 +440,7 @@ export class Renderer {
     }
     
     /**
-     * 斬撃と敵の衝突判定（シンプル版）
+     * 斬撃と敵の衝突判定（改善版）
      */
     checkSlashEnemyCollision(startPosNormalized, endPosNormalized, radiusScale, enemy) {
         // 敵の極座標を取得
@@ -442,7 +448,23 @@ export class Renderer {
         const enemyYaw = enemy.azim;   // 方位角（度）
         const enemyDistance = enemy.distance; // 距離（m）
         
-        // 円弧の始点と終点の角度
+        // 円弧の半径
+        const arcRadius = radiusScale * 0.3; // 初期0.3m → 最大5m
+        
+        // 距離判定：円弧の半径 ± マージンの範囲
+        const enemyRadius = 0.5; // 敵のコリジョン半径
+        const margin = 1.5; // 距離チェックのマージン（フレーム間隔を考慮して大きめ）
+        
+        const minDistance = Math.max(0, arcRadius - enemyRadius - margin);
+        const maxDistance = arcRadius + enemyRadius + margin;
+        const distanceInRange = enemyDistance >= minDistance && enemyDistance <= maxDistance;
+        
+        if (!distanceInRange) {
+            return false; // 距離が範囲外なら判定不要
+        }
+        
+        // 距離が範囲内の場合、角度も判定
+        // 円弧の始点と終点から角度を計算
         const startPitch = startPosNormalized.y > 0 
             ? Math.asin(Math.min(1, startPosNormalized.y / 0.3)) * 180 / Math.PI
             : -Math.asin(Math.min(1, -startPosNormalized.y / 0.3)) * 180 / Math.PI;
@@ -453,39 +475,32 @@ export class Renderer {
             : -Math.asin(Math.min(1, -endPosNormalized.y / 0.3)) * 180 / Math.PI;
         const endYaw = Math.atan2(endPosNormalized.x, -endPosNormalized.z) * 180 / Math.PI;
         
-        // 角度判定：シンプルに両端の角度に近いかを判定
-        const pitchMinDiff = Math.min(
-            Math.abs(this.normalizeAngleDiff(enemyPitch - startPitch)),
-            Math.abs(this.normalizeAngleDiff(enemyPitch - endPitch))
-        );
-        const yawMinDiff = Math.min(
-            Math.abs(this.normalizeAngleDiff(enemyYaw - startYaw)),
-            Math.abs(this.normalizeAngleDiff(enemyYaw - endYaw))
-        );
+        // 起点と敵の角度差
+        const pitchDiffStart = Math.abs(this.normalizeAngleDiff(enemyPitch - startPitch));
+        const yawDiffStart = Math.abs(this.normalizeAngleDiff(enemyYaw - startYaw));
         
-        // 敵が円弧の角度範囲内か（起点と終点どちらかに±30度以内）
-        const angleThreshold = 30; // 度
-        const angleInRange = pitchMinDiff <= angleThreshold && yawMinDiff <= angleThreshold;
+        // 終点と敵の角度差
+        const pitchDiffEnd = Math.abs(this.normalizeAngleDiff(enemyPitch - endPitch));
+        const yawDiffEnd = Math.abs(this.normalizeAngleDiff(enemyYaw - endYaw));
+        
+        // どちらかの端に近いかを判定（±40度以内で十分寛容に）
+        const angleThreshold = 40; // 度（より寛容に）
+        const nearStart = pitchDiffStart <= angleThreshold && yawDiffStart <= angleThreshold;
+        const nearEnd = pitchDiffEnd <= angleThreshold && yawDiffEnd <= angleThreshold;
+        const angleInRange = nearStart || nearEnd;
         
         if (!angleInRange) {
-            return false; // 角度が範囲外なら判定不要
+            return false; // 角度が範囲外
         }
         
-        // 敵の距離判定：円弧の半径 ± より大きなマージンの範囲
-        const arcRadius = radiusScale * 0.3; // 円弧の現在の半径
-        const enemyRadius = 0.5; // 敵のコリジョン半径
-        const margin = 1.0; // 距離チェックのマージン（より大きく）
-        
-        // 敵の球体が円弧の軌道と交差するか
-        const minDistance = arcRadius - enemyRadius - margin;
-        const maxDistance = arcRadius + enemyRadius + margin;
-        const distanceInRange = enemyDistance >= minDistance && enemyDistance <= maxDistance;
-        
-        if (distanceInRange) {
-            console.log(`[Renderer] 衝突成功: 敵id=${enemy.id}, 敵角度=(pitch${enemyPitch.toFixed(1)}°, yaw${enemyYaw.toFixed(1)}°), 敵距離${enemyDistance.toFixed(2)}m, 円弧半径${arcRadius.toFixed(2)}m(範囲${minDistance.toFixed(2)}m~${maxDistance.toFixed(2)}m)`);
+        // 衝突判定成功
+        const logMsg = `🎯 衝突: id=${enemy.id}, 距離=${enemyDistance.toFixed(2)}m/${arcRadius.toFixed(2)}m(±${enemyRadius + margin}m), 角度=(elev=${enemyPitch.toFixed(1)}°, azim=${enemyYaw.toFixed(1)}°)`;
+        console.log(`[Renderer] ${logMsg}`);
+        if (this.debugOverlay) {
+            this.debugOverlay.logInfo(logMsg);
         }
         
-        return distanceInRange;
+        return true;
     }
     
     /**

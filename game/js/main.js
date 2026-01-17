@@ -137,6 +137,9 @@ class AROnmyoujiGame {
         this.bleAdapter.setOnDataCallback((data) => this.onBLEData(data));
         this.bleAdapter.setOnDisconnectCallback(() => this.onBLEDisconnect());
         
+        // Renderer コールバック
+        this.renderer.onSlashHitEnemy = (data) => this.onRendererSlashHit(data);
+        
         // Motion Interpreter コールバック
         this.motionInterpreter.onSwingDetected = (swing) => this.onSwing(swing);
         this.motionInterpreter.onCircleDetected = (circle) => this.onCircle(circle);
@@ -383,10 +386,10 @@ class AROnmyoujiGame {
             
             // 円弧飛翔体を生成
             this.renderer.addSlashArcProjectile(startPyr, endPyr, swing.intensity);
+            
+            // 注：命中判定は Renderer の updateSlashProjectiles() で行われます
+            // 円弧が敵に当たった瞬間に onRendererSlashHit() が呼ばれます
         }
-        
-        // 命中判定
-        this.combatSystem.handleSwing(swing);
     }
     
     /**
@@ -394,6 +397,33 @@ class AROnmyoujiGame {
      */
     onSwingTracerUpdate(trajectory) {
         this.renderer.updateSwingTracer(trajectory);
+    }
+    
+    /**
+     * 斬撃が敵に当たった（Renderer側の衝突判定）
+     */
+    onRendererSlashHit(data) {
+        const enemy = data.enemy;
+        const intensity = data.intensity;
+        const isCritical = intensity >= this.combatSystem.CRITICAL_INTENSITY_THRESHOLD;
+        
+        this.debugOverlay.logInfo(`斬撃が敵に当たった: 敵id=${enemy.id}`);
+        
+        // ダメージを与える
+        const damage = this.motionInterpreter.isPowerMode ? this.combatSystem.powerDamage : this.combatSystem.normalDamage;
+        const killed = this.gameWorld.damageEnemy(enemy.id, damage);
+        
+        console.log(`[Game] 斬撃衝突ダメージ: 敵id=${enemy.id}, ダメージ=${damage}, 撃破=${killed}`);
+        
+        if (this.combatSystem.onHit) {
+            this.combatSystem.onHit({ enemy, damage, killed, isCritical });
+        }
+        
+        // 触覚フィードバック
+        this.combatSystem.sendHitHaptic(isCritical);
+        
+        // HUD更新
+        this.updateHUD();
     }
     
     /**
@@ -549,8 +579,8 @@ class AROnmyoujiGame {
             this.updateHUD();
         }
         
-        // 描画（deltaTimeを渡す）
-        this.renderer.render(this.FIXED_DELTA_TIME);
+        // 描画（敵情報を渡して衝突判定）
+        this.renderer.render(this.FIXED_DELTA_TIME, this.gameWorld.getEnemies());
         
         // 次のフレーム
         requestAnimationFrame(() => this.gameLoop());

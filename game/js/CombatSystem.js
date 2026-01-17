@@ -53,28 +53,51 @@ export class CombatSystem {
     }
     
     /**
-     * 斬撃命中判定
+     * 斬撃命中判定（軌跡ベース・極座標判定）
      */
     handleSwing(swingData) {
-        const attackDir = swingData.direction;
         const intensity = swingData.intensity;
+        const trajectory = swingData.trajectory;
         const enemies = this.gameWorld.getEnemies();
         
         let hitAny = false;
         let isCritical = intensity >= this.CRITICAL_INTENSITY_THRESHOLD;
         
+        // 軌跡の始点と終点を取得
+        if (!trajectory || trajectory.length < 2) {
+            console.warn('[Combat] 軌跡データが不足しています');
+            return false;
+        }
+        
+        const startPyr = trajectory[0];
+        const endPyr = trajectory[trajectory.length - 1];
+        
+        // 円弧の初期半径（描画での基準）
+        const arcMinRadius = 0.3;  // m
+        const arcMaxRadius = 5.0;  // m
+        
         for (const enemy of enemies) {
-            const enemyDir = this.gameWorld.getEnemyDirection(enemy);
-            const angle = this.calculateAngleBetween(attackDir, enemyDir);
+            // 敵の極座標を取得
+            const enemyPitch = enemy.elev; // 仰角
+            const enemyYaw = enemy.azim;   // 方位角
+            const enemyDistance = enemy.distance;
             
-            if (angle <= this.SWING_HIT_ANGLE) {
+            // 敵の角度が始点と終点の間の角度範囲に入っているかを判定
+            const pitchInRange = this.isAngleInArc(startPyr.pitch, endPyr.pitch, enemyPitch);
+            const yawInRange = this.isAngleInArc(startPyr.yaw, endPyr.yaw, enemyYaw);
+            
+            // 敵の距離が円弧の半径範囲に入っているかを判定
+            const distanceInRange = enemyDistance >= arcMinRadius && enemyDistance <= arcMaxRadius;
+            
+            // 角度範囲内かつ距離範囲内なら命中
+            if (pitchInRange && yawInRange && distanceInRange) {
                 // 命中
                 const damage = this.motionInterpreter.isPowerMode ? this.powerDamage : this.normalDamage;
                 const killed = this.gameWorld.damageEnemy(enemy.id, damage);
                 
                 hitAny = true;
                 
-                console.log(`[Combat] 斬撃命中: 敵id=${enemy.id}, 角度=${angle.toFixed(2)}°, ダメージ=${damage}, 撃破=${killed}, クリティカル=${isCritical}`);
+                console.log(`[Combat] 斬撃命中: 敵id=${enemy.id}, 敵方向=(pitch=${enemyPitch.toFixed(1)}°, yaw=${enemyYaw.toFixed(1)}°), 距離=${enemyDistance.toFixed(2)}m, ダメージ=${damage}, 撃破=${killed}, クリティカル=${isCritical}`);
                 
                 if (this.onHit) {
                     this.onHit({ enemy, damage, killed, isCritical });
@@ -88,6 +111,42 @@ export class CombatSystem {
         }
         
         return hitAny;
+    }
+    
+    /**
+     * 角度がアーク範囲内にあるかを判定
+     */
+    isAngleInArc(startAngle, endAngle, targetAngle) {
+        // 角度差を正規化（-180〜180）
+        const start = this.normalizeAngle(startAngle);
+        const end = this.normalizeAngle(endAngle);
+        const target = this.normalizeAngle(targetAngle);
+        
+        // 短い方のアークで判定
+        let angleDiffStart = this.angleDiff(start, target);
+        let angleDiffEnd = this.angleDiff(end, target);
+        
+        // アークの方向を判定
+        const arcDirection = this.angleDiff(start, end);
+        
+        // 始点から終点への角度差
+        if (arcDirection >= 0) {
+            // 正方向のアーク
+            return angleDiffStart >= 0 && angleDiffStart <= arcDirection;
+        } else {
+            // 負方向のアーク
+            return angleDiffStart <= 0 && angleDiffStart >= arcDirection;
+        }
+    }
+    
+    /**
+     * 角度を-180〜180に正規化
+     */
+    normalizeAngle(angle) {
+        let normalized = angle;
+        while (normalized > 180) normalized -= 360;
+        while (normalized < -180) normalized += 360;
+        return normalized;
     }
     
     /**

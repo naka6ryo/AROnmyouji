@@ -46,6 +46,9 @@ export class Renderer {
         this.SLASH_SPEED = 8.0; // m/s
         this.SLASH_LIFETIME = 1500; // ms
         
+        // コールバック
+        this.onSlashHitEnemy = null; // 斬撃が敵に当たった時
+        
         // 術式段階の軌跡表示（SwingActive中）
         this.swingTracerMesh = null; // 軌跡メッシュ
         this.TRACER_RADIUS = 0.4; // 球面半径（カメラ回転中心から）
@@ -339,9 +342,9 @@ export class Renderer {
     }
     
     /**
-     * 斬撃飛翔体を更新（円弧拡大版：両端の半径を同じ比率で大きくする）
+     * 斬撃飛翔体を更新（円弧拡大版・敵衝突判定付き）
      */
-    updateSlashProjectiles(deltaTime) {
+    updateSlashProjectiles(deltaTime, enemies) {
         const now = performance.now();
         const deltaTimeSec = deltaTime / 1000;
         
@@ -360,6 +363,31 @@ export class Renderer {
             // 時間経過で円弧の半径を拡大
             const lifeFraction = age / this.SLASH_LIFETIME;
             const radiusScale = 1.0 + lifeFraction * 15.67; // 最大5m（初期0.3m → 5m）
+            
+            // 敵との衝突判定（フレームごと）
+            if (enemies && this.onSlashHitEnemy) {
+                for (const enemy of enemies) {
+                    // 敵との衝突判定
+                    const hitEnemy = this.checkSlashEnemyCollision(
+                        proj.startPos, 
+                        proj.endPos, 
+                        radiusScale, 
+                        enemy
+                    );
+                    
+                    if (hitEnemy) {
+                        // 衝突した敵を通知
+                        this.onSlashHitEnemy({
+                            enemy: enemy,
+                            intensity: proj.intensity
+                        });
+                        
+                        // この敵は既に処理されたので、新しい判定では対象外にする
+                        // 配列から削除はしない（main.jsで処理）
+                        break; // 1体のみ処理
+                    }
+                }
+            }
             
             // 新しい円弧メッシュを生成して古いものと置き換える
             const newStartPos = proj.startPos.clone().multiplyScalar(radiusScale);
@@ -399,11 +427,87 @@ export class Renderer {
     }
     
     /**
-     * 描画
+     * 斬撃と敵の衝突判定
      */
-    render(deltaTime) {
+    checkSlashEnemyCollision(startPosNormalized, endPosNormalized, radiusScale, enemy) {
+        // 円弧の現在の始点と終点（拡大後）
+        const currentStartPos = startPosNormalized.clone().multiplyScalar(radiusScale);
+        const currentEndPos = endPosNormalized.clone().multiplyScalar(radiusScale);
+        
+        // 敵の極座標を取得
+        const enemyPitch = enemy.elev; // 仰角
+        const enemyYaw = enemy.azim;   // 方位角
+        const enemyDistance = enemy.distance;
+        
+        // 敵の角度が始点と終点の間の角度範囲に入っているかを判定
+        const startPitch = Math.asin(currentStartPos.y / radiusScale) * 180 / Math.PI;
+        const startYaw = Math.atan2(currentStartPos.x, -currentStartPos.z) * 180 / Math.PI;
+        const endPitch = Math.asin(currentEndPos.y / radiusScale) * 180 / Math.PI;
+        const endYaw = Math.atan2(currentEndPos.x, -currentEndPos.z) * 180 / Math.PI;
+        
+        // 敵の角度が円弧の範囲内にあるか
+        const pitchInRange = this.isAngleInArc(startPitch, endPitch, enemyPitch);
+        const yawInRange = this.isAngleInArc(startYaw, endYaw, enemyYaw);
+        
+        // 敵の距離が円弧の半径範囲に入っているか（±0.3m の判定幅）
+        const minRadius = radiusScale * 0.3 - 0.3;
+        const maxRadius = radiusScale * 0.3 + 0.3;
+        const distanceInRange = enemyDistance >= minRadius && enemyDistance <= maxRadius;
+        
+        // 全条件を満たせば衝突
+        return pitchInRange && yawInRange && distanceInRange;
+    }
+    
+    /**
+     * 角度がアーク範囲内にあるかを判定
+     */
+    isAngleInArc(startAngle, endAngle, targetAngle) {
+        // 角度差を正規化（-180〜180）
+        const start = this.normalizeAngle(startAngle);
+        const end = this.normalizeAngle(endAngle);
+        const target = this.normalizeAngle(targetAngle);
+        
+        // アークの方向を判定
+        const arcDirection = this.angleDiff(start, end);
+        
+        // 始点から終点への角度差
+        const targetFromStart = this.angleDiff(start, target);
+        
+        if (arcDirection >= 0) {
+            // 正方向のアーク
+            return targetFromStart >= 0 && targetFromStart <= arcDirection;
+        } else {
+            // 負方向のアーク
+            return targetFromStart <= 0 && targetFromStart >= arcDirection;
+        }
+    }
+    
+    /**
+     * 角度を-180〜180に正規化
+     */
+    normalizeAngle(angle) {
+        let normalized = angle;
+        while (normalized > 180) normalized -= 360;
+        while (normalized < -180) normalized += 360;
+        return normalized;
+    }
+    
+    /**
+     * 角度差を計算
+     */
+    angleDiff(a, b) {
+        let diff = a - b;
+        while (diff > 180) diff -= 360;
+        while (diff < -180) diff += 360;
+        return diff;
+    }
+    
+    /**
+     * 描画（敵情報を受け取って衝突判定）
+     */
+    render(deltaTime, enemies) {
         this.updateRendererSize();
-        this.updateSlashProjectiles(deltaTime);
+        this.updateSlashProjectiles(deltaTime, enemies);
         this.renderer.render(this.scene, this.camera);
     }
     

@@ -10,7 +10,7 @@ export class GameWorld {
         this.nextEnemyId = 0;
         
         // 敵仕様（仕様書の値）
-        this.ENEMY_HP = 2;
+        this.ENEMY_HP = 1; // 1発で撃破
         this.ENEMY_DISTANCE_INITIAL = 3.5; // m相当
         this.ENEMY_APPROACH_SPEED = 0.45;  // r/秒
         this.ENEMY_HIT_DISTANCE = 0.9;     // r

@@ -439,3 +439,14 @@ body {
 .flash-quick-hide {
     transition: opacity 0.15s ease-in;
 }
+
+#sceneStartButton {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 50;
+    pointer-events: auto;
+    font-size: 2rem;
+    padding: 20px 60px;
+}

@@ -555,9 +555,30 @@ export class Renderer {
         }
 
         this.updateSlashProjectiles(deltaTime, enemies);
-        // this.renderer.render(this.scene, this.camera);
-        // Bloomを使うためComposerを使用
+        // --- 選択的ブルーム実装 ---
+        // 人魂など発光させたいオブジェクトには `userData.bloom = true` を設定しておくこと
+        const darkMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
+        const savedMaterials = new Map();
+
+        // 非ブルームオブジェクトを黒く置き換える
+        this.scene.traverse((obj) => {
+            if ((obj.isMesh || obj.isSprite) && !obj.userData.bloom) {
+                savedMaterials.set(obj, obj.material);
+                obj.material = darkMaterial;
+            }
+        });
+
+        // Bloom を含む Composer でレンダリング（ここでは黒でないオブジェクトのみが発光対象として処理される）
         this.composer.render();
+
+        // マテリアルを元に戻す
+        for (const [obj, mat] of savedMaterials) {
+            obj.material = mat;
+        }
+
+        // 深度バッファをクリアしてから通常レンダリングを上書き
+        this.renderer.clearDepth();
+        this.renderer.render(this.scene, this.camera);
     }
 
     /**

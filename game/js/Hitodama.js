@@ -25,6 +25,9 @@ export class Hitodama {
         this.mesh = new THREE.Mesh(geometry, material);
         this.mesh.position.copy(this.pos); // 初期位置を設定
 
+        // このオブジェクトはブルーム対象
+        this.mesh.userData.bloom = true;
+
         // 初期スケール設定 (0.3倍からスタート)
         this.currentScale = 0.3;
         this.targetScale = 1.0;
@@ -69,6 +72,8 @@ export class Hitodama {
             sprite.scale.set(initialS, initialS, initialS);
             this.scene.add(sprite);
             this.tailSprites.push(sprite);
+            // スプライトもブルーム対象
+            sprite.userData.bloom = true;
         }
     }
 

@@ -18,36 +18,6 @@ const tracerVertexShader = `
         return fract(sin(dot(st.xy, vec2(12.9898,78.233))) * 43758.5453123);
     }
 
-    /**
-     * プレーン型の斬撃メッシュを生成（シェーダ表現）
-     */
-    createPlaneSlashMesh(direction, intensity) {
-        const geometry = new THREE.PlaneGeometry(8, 8);
-        const material = new THREE.ShaderMaterial({
-            vertexShader: slashVertexShader,
-            fragmentShader: slashFragmentShader,
-            uniforms: {
-                uTime: { value: 0 },
-                uLife: { value: 1.0 },
-                uColor: { value: new THREE.Color(0xaaddff) }
-            },
-            transparent: true,
-            depthWrite: false,
-            side: THREE.DoubleSide,
-            blending: THREE.AdditiveBlending
-        });
-
-        const mesh = new THREE.Mesh(geometry, material);
-        mesh.userData.type = 'planeSlash';
-
-        // 回転と初期向きを設定する（地面と水平、進行方向基準）
-        mesh.rotation.x = -Math.PI / 2;
-        const angle = Math.atan2(direction.x, direction.z);
-        mesh.rotation.z = angle - Math.PI / 2;
-
-        return mesh;
-    }
-
     void main() {
         vUv = uv;
         vWidth = aWidth;
@@ -144,8 +114,8 @@ const tubeVertexShader = `
     }
 `;
 
-// --- シェーダー: 飛翔する斬撃プレーン ---
-const slashVertexShader = `
+// --- 円弧 (Slash Arc) シェーダ ---
+const arcVertexShader = `
     varying vec2 vUv;
     varying vec3 vPosition;
     void main() {
@@ -155,40 +125,30 @@ const slashVertexShader = `
     }
 `;
 
-const slashFragmentShader = `
+const arcFragmentShader = `
     uniform float uTime;
-    uniform float uLife; // 1.0 で誕生, 0.0 で消滅
+    uniform float uAlpha;
     uniform vec3 uColor;
     varying vec2 vUv;
 
-    #define PI 3.14159265359
-
     void main() {
-        vec2 uv = vUv - 0.5;
-        float angle = atan(uv.y, uv.x);
-        float radius = length(uv);
+        // vUv.y: 0..1 around tube cross-section, center ~0.5
+        float c = abs(vUv.y - 0.5);
+        // core width
+        float w = 0.12;
+        float core = smoothstep(w, 0.0, c);
 
-        // 形状幅
-        float shapeFactor = smoothstep(-0.5, 1.0, cos(angle));
-        shapeFactor = pow(shapeFactor, 3.0);
-        float w = 0.02 + shapeFactor * 0.18;
+        // 長さ方向でフェード（先端が強調されるように）
+        float lenFade = 1.0 - smoothstep(0.0, 1.0, abs(vUv.x - 0.8));
 
-        // 風切りノイズ
-        float distortion = sin(angle * 10.0 - uTime * 8.0) * 0.005;
-        float dist = abs(radius - 0.4 + distortion);
+        // 微かなノイズで縁を揺らす
+        float flicker = 0.8 + 0.2 * sin(uTime * 10.0 + vUv.x * 30.0);
 
-        float ring = smoothstep(w, w * 0.2, dist);
-        float mask = smoothstep(-0.8, 0.2, cos(angle));
+        vec3 col = uColor * (0.6 * core + 0.4 * core * lenFade) * flicker;
+        float alpha = (core * (0.9 * lenFade + 0.1)) * uAlpha;
 
-        vec3 color = uColor;
-        float core = smoothstep(w * 0.6, 0.0, dist);
-        color += vec3(1.0) * core * 0.8;
-
-        float alpha = ring * mask;
-        alpha *= smoothstep(0.0, 0.2, uLife) * smoothstep(1.0, 0.8, uLife);
         if (alpha < 0.01) discard;
-
-        gl_FragColor = vec4(color, alpha);
+        gl_FragColor = vec4(col, alpha);
     }
 `;
 
@@ -522,33 +482,44 @@ export class Renderer {
             -baseRadius * Math.cos(endPitchRad) * Math.cos(endYawRad)
         );
 
-        // プレーン型の斬撃を生成して飛ばす（シェーダ表現）
-        const direction = this.camera.getWorldDirection(new THREE.Vector3()).normalize();
-        const plane = this.createPlaneSlashMesh(direction, intensity);
-        if (!plane) return;
+        // 2点を含む円弧を作成
+        const arcMesh = this.createArcMesh(startPos, endPos, intensity);
+        if (!arcMesh) return;
 
-        // カメラの現在位置を基準に配置（始点のオフセットを適用）
+        // カメラの現在位置を基準に配置
         const cameraPos = new THREE.Vector3();
         this.camera.getWorldPosition(cameraPos);
-        const spawnPos = cameraPos.clone().add(startPos);
-        plane.position.copy(spawnPos);
-        this.scene.add(plane);
 
+        arcMesh.position.copy(cameraPos);
+        this.scene.add(arcMesh);
+
+        // 初期 uniforms 設定
+        try {
+            if (arcMesh.material && arcMesh.material.uniforms) {
+                arcMesh.material.uniforms.uTime.value = (performance.now()) * 0.001;
+                arcMesh.material.uniforms.uAlpha.value = 0.9 + intensity * 0.3;
+                // 色は intensity によって少し変える
+                const base = new THREE.Color(0x88eeff).multiplyScalar(0.6 + intensity * 0.8);
+                arcMesh.material.uniforms.uColor.value = base;
+            }
+        } catch (e) {}
+
+        // 飛翔体として記録
         const projectile = {
-            mesh: plane,
+            mesh: arcMesh,
             startPos: startPos.clone(),
             endPos: endPos.clone(),
             speed: this.SLASH_SPEED,
             spawnTime: performance.now(),
             intensity,
-            currentRadius: baseRadius,
-            direction,
-            hitEnemies: new Set()
+            currentRadius: baseRadius, // 現在の半径
+            direction: this.camera.getWorldDirection(new THREE.Vector3()).normalize(),
+            hitEnemies: new Set() // 既に判定した敵のIDを記録（二重判定防止）
         };
 
         this.slashProjectiles.push(projectile);
 
-        console.log(`[Renderer] プレーン斬撃生成: 始点=${JSON.stringify(startPyr)}, 終点=${JSON.stringify(endPyr)}`);
+        console.log(`[Renderer] 円弧飛翔体生成: 始点=${JSON.stringify(startPyr)}, 終点=${JSON.stringify(endPyr)}`);
     }
 
     /**
@@ -574,21 +545,30 @@ export class Renderer {
         const curve = new THREE.CatmullRomCurve3(points);
         const tubeGeometry = new THREE.TubeGeometry(
             curve,
-            20,
+            64,
             0.02,
-            8,
+            12,
             false
         );
 
-        const material = new THREE.MeshBasicMaterial({
-            color: 0x00ffff,
+        const mat = new THREE.ShaderMaterial({
+            vertexShader: arcVertexShader,
+            fragmentShader: arcFragmentShader,
+            uniforms: {
+                uTime: { value: (performance.now()) * 0.001 },
+                uAlpha: { value: 1.0 },
+                uColor: { value: new THREE.Color(0x88eeff) }
+            },
             transparent: true,
-            opacity: 0.7 + intensity * 0.3,
-            side: THREE.DoubleSide,
-            blending: THREE.AdditiveBlending
+            blending: THREE.AdditiveBlending,
+            depthTest: false,
+            depthWrite: false,
+            side: THREE.DoubleSide
         });
 
-        return new THREE.Mesh(tubeGeometry, material);
+        const mesh = new THREE.Mesh(tubeGeometry, mat);
+        mesh.frustumCulled = false;
+        return mesh;
     }
 
     /**
@@ -610,33 +590,9 @@ export class Renderer {
                 return false;
             }
 
-            // 時間経過で寿命割合を算出
+            // 時間経過で円弧の半径を拡大
             const lifeFraction = age / this.SLASH_LIFETIME;
             const radiusScale = 1.0 + lifeFraction * 15.67; // 最大5m（初期0.3m → 5m）
-
-            // プレーン型斬撃の更新処理
-            if (proj.mesh && proj.mesh.userData && proj.mesh.userData.type === 'planeSlash') {
-                // シェーダ uniforms 更新
-                if (proj.mesh.material && proj.mesh.material.uniforms) {
-                    proj.mesh.material.uniforms.uTime.value += deltaTimeSec;
-                    proj.mesh.material.uniforms.uLife.value = 1.0 - lifeFraction;
-                }
-
-                // 前方へ移動
-                proj.mesh.position.add(proj.direction.clone().multiplyScalar(proj.speed * deltaTimeSec));
-
-                // サイズ変化（出現時に拡大し、死に際でフェード）
-                let scale;
-                if (lifeFraction < 0.2) {
-                    scale = THREE.MathUtils.lerp(0.2, 1.2, lifeFraction / 0.2);
-                } else {
-                    scale = 1.2;
-                }
-                proj.mesh.scale.set(scale, scale, scale);
-
-                // 透明度はシェーダ側の uLife に委ねる
-                // 敵判定は既存の判定を用いるため、そのまま処理を続行
-            }
 
             // 敵との衝突判定（フレームごと）
             if (enemies && this.onSlashHitEnemy) {
@@ -674,11 +630,6 @@ export class Renderer {
                 }
             }
 
-            // プレーン型はここでメッシュ交換不要のためスキップ
-            if (proj.mesh && proj.mesh.userData && proj.mesh.userData.type === 'planeSlash') {
-                return true;
-            }
-
             // 新しい円弧メッシュを生成して古いものと置き換える
             const newStartPos = proj.startPos.clone().multiplyScalar(radiusScale);
             const newEndPos = proj.endPos.clone().multiplyScalar(radiusScale);
@@ -693,8 +644,15 @@ export class Renderer {
                 // 前方へ移動
                 newMesh.position.add(proj.direction.clone().multiplyScalar(proj.speed * deltaTimeSec));
 
-                // 透明度をフェードアウト
-                newMesh.material.opacity = (0.7 + proj.intensity * 0.3) * (1 - lifeFraction);
+                // uniforms 更新 (時間・フェード)
+                try {
+                    if (newMesh.material && newMesh.material.uniforms) {
+                        newMesh.material.uniforms.uTime.value = now * 0.001;
+                        newMesh.material.uniforms.uAlpha.value = (0.7 + proj.intensity * 0.3) * (1 - lifeFraction);
+                    } else if (newMesh.material && 'opacity' in newMesh.material) {
+                        newMesh.material.opacity = (0.7 + proj.intensity * 0.3) * (1 - lifeFraction);
+                    }
+                } catch (e) {}
 
                 // シーンから古いメッシュを削除
                 this.scene.remove(proj.mesh);
@@ -709,7 +667,14 @@ export class Renderer {
                 proj.mesh.position.add(proj.direction.clone().multiplyScalar(proj.speed * deltaTimeSec));
 
                 // 透明度をフェードアウト
-                proj.mesh.material.opacity = (0.7 + proj.intensity * 0.3) * (1 - lifeFraction);
+                try {
+                    if (proj.mesh.material && proj.mesh.material.uniforms) {
+                        proj.mesh.material.uniforms.uAlpha.value = (0.7 + proj.intensity * 0.3) * (1 - lifeFraction);
+                        proj.mesh.material.uniforms.uTime.value = now * 0.001;
+                    } else if (proj.mesh.material && 'opacity' in proj.mesh.material) {
+                        proj.mesh.material.opacity = (0.7 + proj.intensity * 0.3) * (1 - lifeFraction);
+                    }
+                } catch (e) {}
             }
 
             return true;

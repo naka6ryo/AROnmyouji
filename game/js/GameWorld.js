@@ -107,8 +107,8 @@ export class GameWorld {
     spawnEnemy() {
         // ランダムな方向（球面座標）
         const azim = Math.random() * 360; // 0-360度
-        // 上半球のみ。水平面からやや上（10〜85度）に限定して手元視野に入れやすくする
-        const elev = 10 + Math.random() * 75; // 10〜85度
+        // 上半球のみ。水平面付近に寄せて偏りを緩和（0〜60度）
+        const elev = Math.random() * 60; // 0〜60度
         
         const enemy = {
             id: this.nextEnemyId++,

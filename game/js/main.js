@@ -47,9 +47,6 @@ class AROnmyoujiGame {
         // イベントハンドラ設定
         this.setupEventHandlers();
         
-        // デバッグ長押し用
-        this.debugPressTimer = null;
-        
         console.log('[Game] 初期化完了');
         this.debugOverlay.logInfo('ゲーム初期化完了');
     }
@@ -124,17 +121,9 @@ class AROnmyoujiGame {
         this.ui.reconnectButton.addEventListener('click', () => this.onReconnect());
         this.ui.recalibrateButton.addEventListener('click', () => this.onRecalibrate());
         
-        // Debug toggle（3秒長押し）
-        this.ui.toggleDebugButton.addEventListener('pointerdown', () => {
-            this.debugPressTimer = setTimeout(() => {
-                this.debugOverlay.toggle();
-            }, 3000);
-        });
-        this.ui.toggleDebugButton.addEventListener('pointerup', () => {
-            if (this.debugPressTimer) {
-                clearTimeout(this.debugPressTimer);
-                this.debugPressTimer = null;
-            }
+        // Debug toggle
+        this.ui.toggleDebugButton.addEventListener('click', () => {
+            this.debugOverlay.toggle();
         });
         
         // BLE コールバック

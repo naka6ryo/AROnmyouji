@@ -197,6 +197,16 @@ export class UIManager {
             void container.offsetWidth; // reflow
             container.classList.add('shake-screen');
         }
+        // モバイル端末の振動（対応している場合）
+        try {
+            if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
+                // 短い振動パターン: 100ms - 40ms - 100ms
+                navigator.vibrate([100, 40, 100]);
+            }
+        } catch (e) {
+            // 安全のため例外は無視
+            console.warn('vibrate failed', e);
+        }
     }
 
     // --- Enemy Indicators ---

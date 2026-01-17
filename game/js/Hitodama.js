@@ -278,6 +278,12 @@ export class Hitodama {
             sprite.position.add(new THREE.Vector3((Math.random() - 0.5) * 0.5, (Math.random() - 0.5) * 0.5, (Math.random() - 0.5) * 0.5));
         }
 
+        // Light decay: explosive light is large; ensure it fades so finalizeDeath() can run
+        if (this.light) {
+            this.light.intensity = Math.max(0, this.light.intensity - 200 * dt);
+            if (typeof this.light.distance === 'number') this.light.distance *= Math.max(0.9, 1 - 0.5 * dt);
+        }
+
         if (activeFragments === 0 && (!this.shockwaves || this.shockwaves.length === 0) && this.light.intensity < 0.1) {
             this.finalizeDeath();
             if (this.onExploded) this.onExploded();

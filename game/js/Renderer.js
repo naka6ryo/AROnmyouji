@@ -16,6 +16,19 @@ export class Renderer {
 
         // Three.js セットアップ
         this.scene = new THREE.Scene();
+        // カメラ映像を Three.js の背景テクスチャとして扱う（HTML video 要素から VideoTexture を作成）
+        this.videoElement = document.getElementById('cameraVideo');
+        if (this.videoElement) {
+            try {
+                this.videoTexture = new THREE.VideoTexture(this.videoElement);
+                this.videoTexture.minFilter = THREE.LinearFilter;
+                this.videoTexture.magFilter = THREE.LinearFilter;
+                // フォーマットやエンコーディングは環境依存なので Three.js に任せる
+                this.scene.background = this.videoTexture;
+            } catch (e) {
+                console.warn('[Renderer] VideoTexture の作成に失敗:', e);
+            }
+        }
         this.camera = new THREE.PerspectiveCamera(
             60, // FOV
             window.innerWidth / window.innerHeight,
@@ -72,9 +85,9 @@ export class Renderer {
             window.innerWidth * Math.min(window.devicePixelRatio, 2),
             window.innerHeight * Math.min(window.devicePixelRatio, 2),
             {
-                type: THREE.HalfFloatType,
-                format: THREE.RGBAFormat,
-                encoding: THREE.sRGBEncoding
+                // HalfFloat は環境によってサポートが分かれるため幅広い互換性のある値へ
+                type: THREE.UnsignedByteType,
+                format: THREE.RGBAFormat
             }
         );
 

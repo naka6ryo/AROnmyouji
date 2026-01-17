@@ -336,11 +336,16 @@ export class UIManager {
     }
 
     toggleSceneStartButton(show) {
-        if (this.elements.sceneStartButton) {
-            this.elements.sceneStartButton.style.display = show ? 'block' : 'none';
+        const btn = this.elements.sceneStartButton;
+        const overlay = this.elements.startOverlay;
+        if (btn) {
+            btn.style.display = show ? 'block' : 'none';
+            btn.style.pointerEvents = show ? 'auto' : 'none';
         }
-        if (this.elements.startOverlay) {
-            this.elements.startOverlay.style.display = show ? 'flex' : 'none';
+        if (overlay) {
+            overlay.style.display = show ? 'flex' : 'none';
+            overlay.style.pointerEvents = show ? 'auto' : 'none';
+            if (show) overlay.classList.remove('hidden'); else overlay.classList.add('hidden');
         }
     }
 

@@ -131,21 +131,37 @@ const arcFragmentShader = `
     uniform vec3 uColor;
     varying vec2 vUv;
 
+    // ガウス関数
+    float gauss(float x, float sigma) {
+        return exp(-0.5 * (x * x) / (sigma * sigma));
+    }
+
     void main() {
         // vUv.y: 0..1 around tube cross-section, center ~0.5
         float c = abs(vUv.y - 0.5);
-        // core width
-        float w = 0.12;
+
+        // 長さ方向の中央付近で太く、端へ行くほど細くするプロファイル
+        // vUv.x == 0..1 が長さ方向
+        float center = gauss((vUv.x - 0.5), 0.18); // 中央が最大になるガウス
+
+        // 基本幅 (小さめにして中央で膨らませる)
+        float baseW = 0.04;
+        float extraW = 0.18; // 中央で追加される最大幅
+        float w = baseW + extraW * center;
+
         float core = smoothstep(w, 0.0, c);
 
-        // 長さ方向でフェード（先端が強調されるように）
+        // 長さ方向で先端をやや強調
         float lenFade = 1.0 - smoothstep(0.0, 1.0, abs(vUv.x - 0.8));
 
-        // 微かなノイズで縁を揺らす
-        float flicker = 0.8 + 0.2 * sin(uTime * 10.0 + vUv.x * 30.0);
+        // 微かな揺らぎ
+        float flicker = 0.85 + 0.25 * sin(uTime * 12.0 + vUv.x * 28.0);
 
-        vec3 col = uColor * (0.6 * core + 0.4 * core * lenFade) * flicker;
-        float alpha = (core * (0.9 * lenFade + 0.1)) * uAlpha;
+        // 中央の明るさを高める
+        float centerBoost = 1.0 + center * 0.9;
+
+        vec3 col = uColor * (0.6 * core + 0.4 * core * lenFade) * flicker * centerBoost;
+        float alpha = (core * (0.85 * lenFade + 0.15)) * uAlpha * (0.6 + 0.4 * center);
 
         if (alpha < 0.01) discard;
         gl_FragColor = vec4(col, alpha);

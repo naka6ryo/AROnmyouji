@@ -14,14 +14,18 @@ export class Hitodama {
         // スプライト用テクスチャを先に読み込む
         const spriteMap = new THREE.TextureLoader().load('https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/sprites/spark1.png');
 
-        // コアはライトの影響を受けず常に明るく見せたいので
-        // Additive の MeshBasicMaterial を使って「発行」風に描画する
-        const material = new THREE.MeshBasicMaterial({
+        // コアは揺らぎの形状を見せつつ発光させたいので
+        // 1) 形状表示用に MeshStandardMaterial を使い揺らぎ（頂点変形）を適用
+        // 2) 同一ジオメトリを共有した Additive の MeshBasicMaterial を重ねて
+        //    表面自体が発光しているように見せる（glowShell）
+        const material = new THREE.MeshStandardMaterial({
             color: 0xff3300,
-            blending: THREE.AdditiveBlending,
+            emissive: 0x220000,
+            emissiveIntensity: 1.2,
             transparent: true,
             opacity: 0.95,
-            depthWrite: false
+            roughness: 0.2,
+            metalness: 0.0
         });
 
         this.mesh = new THREE.Mesh(geometry, material);
@@ -49,6 +53,23 @@ export class Hitodama {
         this.coreGlow.scale.set(0.6, 0.6, 1.0);
         this.coreGlow.position.copy(this.pos);
         this.scene.add(this.coreGlow);
+
+        // --- グロー殻: 同一ジオメトリを共有する加算合成メッシュ ---
+        const glowMat = new THREE.MeshBasicMaterial({
+            color: 0xffaa33,
+            blending: THREE.AdditiveBlending,
+            transparent: true,
+            opacity: 0.7,
+            depthWrite: false
+        });
+        this.glowShell = new THREE.Mesh(geometry, glowMat);
+        // 描画順を確実にメッシュ本体の後にする
+        this.glowShell.renderOrder = 1;
+        this.mesh.renderOrder = 0;
+        // 少し拡大してオーラ感を出す（ジオメトリは同じなので頂点変形も反映される）
+        this.glowShell.scale.set(this.currentScale * 1.05, this.currentScale * 1.05, this.currentScale * 1.05);
+        this.glowShell.position.copy(this.pos);
+        this.scene.add(this.glowShell);
 
         // 内側の小さなハイライト（中心光源）: より明るいコアを表現
         const innerGeom = new THREE.SphereGeometry(0.05, 32, 32);
@@ -205,6 +226,11 @@ export class Hitodama {
                 sprite.material.opacity = 0.3 * ratio;
             }
         }
+        // glowShell はメッシュ本体と同じスケール・変形を反映するため、スケールのみ同期
+        if (this.glowShell) {
+            this.glowShell.scale.set(this.currentScale * 1.05, this.currentScale * 1.05, this.currentScale * 1.05);
+            this.glowShell.position.copy(this.pos);
+        }
     }
 
     dispose() {
@@ -229,5 +255,10 @@ export class Hitodama {
                 if (this.innerMesh.geometry) this.innerMesh.geometry.dispose();
                 if (this.innerMesh.material) this.innerMesh.material.dispose();
             }
+        if (this.glowShell) {
+            this.scene.remove(this.glowShell);
+            if (this.glowShell.material) this.glowShell.material.dispose();
+            // geometry is shared with this.mesh; avoid double-dispose here
+        }
     }
 }

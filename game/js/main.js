@@ -93,7 +93,8 @@ class AROnmyoujiGame {
             recalibrateButton: document.getElementById('recalibrateButton'),
             
             // Debug
-            toggleDebugButton: document.getElementById('toggleDebugButton')
+            toggleDebugButton: document.getElementById('toggleDebugButton'),
+            toggleDebugButtonResult: document.getElementById('toggleDebugButtonResult')
         };
 
         // 敵インジケータ要素管理
@@ -123,6 +124,9 @@ class AROnmyoujiGame {
         
         // Debug toggle
         this.ui.toggleDebugButton.addEventListener('click', () => {
+            this.debugOverlay.toggle();
+        });
+        this.ui.toggleDebugButtonResult.addEventListener('click', () => {
             this.debugOverlay.toggle();
         });
         

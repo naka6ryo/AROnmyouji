@@ -180,8 +180,8 @@ export class DebugOverlay {
             return;
         }
         
-        // 最新10件のみ表示
-        const recentLogs = this.logs.slice(-10);
+        // すべてのログを表示（最新10件から全件に変更）
+        const recentLogs = this.logs;
         
         this.logContentElement.innerHTML = recentLogs
             .map(log => {

@@ -62,7 +62,10 @@
                 <p>Yaw: <span id="calibYaw">--</span>°</p>
                 <p>Roll: <span id="calibRoll">--</span>°</p>
             </div>
-            <button id="confirmCalibrationButton" class="btn-primary">確定</button>
+            <div class="calib-actions">
+                <button id="resetCalibrationButton" class="btn-secondary">リセット</button>
+                <button id="startCalibrationButton" class="btn-primary">ゲーム開始</button>
+            </div>
         </div>
 
         <!-- ゲームプレイ画面 (S4) -->
@@ -83,6 +86,13 @@
                         強化モード: <span id="powerModeTime">10</span>秒
                     </div>
                     <div id="bleConnectionIndicator">🔗</div>
+                </div>
+                <!-- ゲーム画面用スタートボタン（ゲーム内から開始するため） -->
+                <button id="sceneStartButton" class="btn-primary">ゲーム開始</button>
+
+                <!-- カウントダウンオーバーレイ -->
+                <div id="countdownOverlay" class="hidden">
+                    <div id="countdownValue"></div>
                 </div>
             </div>
 

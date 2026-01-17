@@ -62,9 +62,11 @@ class AROnmyoujiGame {
         // UIイベント
         this.uiManager.bindEvents({
             onStartGame: () => this.onStartGame(),
+            onStartInScene: () => this.onStartInScene(),
             onRequestPermission: () => this.requestPermissions(),
             onConnectBLE: () => this.connectBLE(),
             onConfirmCalibration: () => this.confirmCalibration(),
+            onResetCalibration: () => this.onRecalibrate(),
             onRetry: () => this.onRetry(),
             onReconnect: () => this.onReconnect(),
             onRecalibrate: () => this.onRecalibrate(),
@@ -97,6 +99,34 @@ class AROnmyoujiGame {
 
         // DeviceOrientation
         this.deviceOrientationHandler = (e) => this.renderer.updateDeviceOrientation(e);
+    }
+
+    /**
+     * ゲーム画面内のスタートボタンから呼ばれる処理。
+     * カウントダウンをUIに表示してから `startGameplay()` を呼ぶ。
+     */
+    onStartInScene() {
+        this.debugOverlay.logInfo('シーン内スタートボタン押下');
+        try {
+            this.soundManager.initAudioContext();
+            // kick off load if not already loaded
+            const needLoad = ((this.soundManager.buffers && this.soundManager.buffers.size === 0) &&
+                (this.soundManager.sounds && this.soundManager.sounds.size === 0));
+            if (needLoad) {
+                this.soundManager.load({
+                    polygon_burst: 'assets/sfx/polygon_burst.mp3',
+                    explosion: 'assets/sfx/explosion.mp3',
+                    attack_swipe: 'assets/sfx/attack_swipe.mp3'
+                }).then(() => this.debugOverlay.logInfo('SFXロード完了')).catch(e => console.warn('sound load failed', e));
+            }
+        } catch (e) {
+            console.warn('sound init/load failed', e);
+        }
+
+        // UIに3-2-1を表示してから開始
+        this.uiManager.showCountdown(3, () => {
+            this.startGameplay();
+        });
     }
 
     /**
@@ -413,7 +443,12 @@ class AROnmyoujiGame {
     }
 
     onRecalibrate() {
+        // 再キャリブレーション：既存の校正フラグをクリアしてキャリブレーション画面へ
+        try {
+            if (this.motionInterpreter) this.motionInterpreter.isCalibrated = false;
+        } catch (e) {}
         this.appState.recalibrate();
+        this.debugOverlay.logInfo('再キャリブレーションモードへ移行');
     }
 
     gameLoop() {

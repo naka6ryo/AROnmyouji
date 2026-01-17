@@ -33,7 +33,8 @@ export class UIManager {
             calibPitch: document.getElementById('calibPitch'),
             calibYaw: document.getElementById('calibYaw'),
             calibRoll: document.getElementById('calibRoll'),
-            confirmCalibrationButton: document.getElementById('confirmCalibrationButton'),
+            resetCalibrationButton: document.getElementById('resetCalibrationButton'),
+            startCalibrationButton: document.getElementById('startCalibrationButton'),
 
             // Gameplay HUD
             playerHP: document.getElementById('playerHP'),
@@ -42,6 +43,10 @@ export class UIManager {
             hudPowerMode: document.getElementById('hudPowerMode'),
             powerModeTime: document.getElementById('powerModeTime'),
             enemyIndicators: document.getElementById('enemyIndicators'),
+            // Scene start and countdown
+            sceneStartButton: document.getElementById('sceneStartButton'),
+            countdownOverlay: document.getElementById('countdownOverlay'),
+            countdownValue: document.getElementById('countdownValue'),
 
             // Effects
             flashOverlay: document.getElementById('flash-overlay'),
@@ -77,8 +82,12 @@ export class UIManager {
         // BLE Connect
         this.bindClick(this.elements.connectBleButton, handlers.onConnectBLE);
 
-        // Calibrate
-        this.bindClick(this.elements.confirmCalibrationButton, handlers.onConfirmCalibration);
+        // Calibrate: リセット（再キャリブ）と確定（ゲーム開始）を分離
+        this.bindClick(this.elements.resetCalibrationButton, handlers.onResetCalibration);
+        this.bindClick(this.elements.startCalibrationButton, handlers.onConfirmCalibration);
+
+        // Gameplay screen start (in-scene)
+        this.bindClick(this.elements.sceneStartButton, handlers.onStartInScene);
 
         // Result
         this.bindClick(this.elements.retryButton, handlers.onRetry);
@@ -275,6 +284,45 @@ export class UIManager {
             }
             this.enemyIndicatorMap.delete(staleId);
         }
+    }
+
+    /**
+     * カウントダウン表示を開始する。
+     * countFrom: number (例: 3)
+     * onComplete: 呼び出し後に実行されるコールバック
+     */
+    showCountdown(countFrom, onComplete) {
+        const overlay = this.elements.countdownOverlay;
+        const valueEl = this.elements.countdownValue;
+        if (!overlay || !valueEl) {
+            if (onComplete) onComplete();
+            return;
+        }
+
+        overlay.classList.remove('hidden');
+        let current = countFrom;
+        valueEl.textContent = String(current);
+
+        const tick = () => {
+            current -= 1;
+            if (current <= 0) {
+                overlay.classList.add('hidden');
+                valueEl.textContent = '';
+                if (onComplete) onComplete();
+                return;
+            }
+            valueEl.textContent = String(current);
+            setTimeout(tick, 1000);
+        };
+
+        setTimeout(tick, 1000);
+    }
+
+    hideCountdown() {
+        const overlay = this.elements.countdownOverlay;
+        const valueEl = this.elements.countdownValue;
+        if (overlay) overlay.classList.add('hidden');
+        if (valueEl) valueEl.textContent = '';
     }
 
     createEnemyIndicator(container) {

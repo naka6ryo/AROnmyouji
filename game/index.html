@@ -6,6 +6,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AR陰陽師 - MVP</title>
     <link rel="stylesheet" href="css/style.css">
+    <!-- Fonts and extras to match attached HUD -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&family=Orbitron:wght@400;700;900&family=Shippori+Mincho:wght@400;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+
+    <!-- SVG Filter for distortion (used by overlay) -->
+    <svg style="position: absolute; width: 0; height: 0; overflow: hidden;" aria-hidden="true">
+        <defs>
+            <filter id="turbulence">
+                <feTurbulence type="fractalNoise" baseFrequency="0.01 0.05" numOctaves="2" seed="2">
+                    <animate attributeName="baseFrequency" values="0.01 0.05;0.05 0.1;0.01 0.05" dur="10s" repeatCount="indefinite" />
+                </feTurbulence>
+                <feDisplacementMap in="SourceGraphic" scale="30" />
+            </filter>
+        </defs>
+    </svg>
 </head>
 
 <body>
@@ -14,6 +31,16 @@
 
     <!-- 3Dキャンバス -->
     <canvas id="gameCanvas"></canvas>
+
+    <!-- TV Effects Overlay Layer (matches attached HUD) -->
+    <div class="tv-effects-overlay">
+        <div class="scanlines"></div>
+        <div class="grid-overlay"></div>
+        <div class="static-noise"></div>
+        <div class="random-glitch-lines"></div>
+        <div class="horror-flash"></div>
+        <div class="vignette-overlay"></div>
+    </div>
 
     <!-- UI コンテナ -->
     <div id="uiContainer">

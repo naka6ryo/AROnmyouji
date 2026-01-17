@@ -11,7 +11,8 @@ html, body {
 }
 
 body {
-    font-family: 'Hiragino Kaku Gothic Pro', 'Meiryo', sans-serif;
+    --primary: #FF0000;
+    font-family: 'Noto Sans JP', 'Orbitron', 'Hiragino Kaku Gothic Pro', 'Meiryo', sans-serif;
     overflow: hidden;
     width: 100vw;
     height: 100vh;
@@ -516,6 +517,21 @@ body {
         font-size: 0.8rem;
     }
 }
+
+/* TV Effects Overlay Layer (from attached HUD) */
+.tv-effects-overlay { position: fixed; inset: 0; pointer-events: none; z-index: 2; }
+.tv-effects-overlay .scanlines { position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.25) 50%, rgba(0,0,0,0.25)); background-size: 100% 4px; opacity: 0.5; mix-blend-mode: overlay; }
+.tv-effects-overlay .grid-overlay { position: absolute; inset: 0; background-size: 40px 40px; background-image: linear-gradient(to right, rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.03) 1px, transparent 1px); }
+.tv-effects-overlay .static-noise { position: absolute; inset: 0; opacity: 0.08; background-image: url('data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noiseFilter%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.85%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noiseFilter)%22/%3E%3C/svg%3E'); mix-blend-mode: overlay; }
+.tv-effects-overlay .random-glitch-lines { position: absolute; inset: 0; background-image: repeating-linear-gradient(90deg, transparent 0, transparent 2px, rgba(255,255,255,0.15) 2px, rgba(255,255,255,0.15) 4px), repeating-linear-gradient(0deg, transparent 0, transparent 2px, rgba(255,255,255,0.15) 2px, rgba(255,255,255,0.15) 4px); opacity: 0; mix-blend-mode: overlay; animation: glitch-grid-anim 4s infinite linear alternate-reverse; }
+.tv-effects-overlay .horror-flash { position: absolute; inset: 0; background: rgba(255,0,0,0.1); mix-blend-mode: overlay; opacity: 0; pointer-events: none; animation: horror-flash-anim 7s infinite; }
+.tv-effects-overlay .vignette-overlay { position:absolute; inset:0; background: radial-gradient(circle, transparent 40%, rgba(0,0,0,0.45) 80%, rgba(0,0,0,0.85) 100%); pointer-events:none; }
+
+@keyframes glitch-grid-anim { 0% { opacity: 0; clip-path: inset(0 0 100% 0); transform: translateX(0);} 5% { opacity: 0.3; clip-path: inset(10% 0 85% 0); transform: translateX(-5px);} 10% { opacity: 0; clip-path: inset(100% 0 0 0);} 35% { opacity: 0.2; clip-path: inset(40% 0 45% 0); transform: translateX(5px);} 36% { opacity: 0;} 60% { opacity: 0.4; clip-path: inset(70% 0 20% 0); transform: translateX(-2px);} 61% { opacity: 0;} 85% { opacity: 0.2; clip-path: inset(20% 0 75% 0); transform: translateX(3px);} 86% { opacity: 0;} 100% { opacity: 0; clip-path: inset(0 0 100% 0);} }
+@keyframes horror-flash-anim { 0%,89% { opacity: 0; } 90% { opacity: 0.5; background: red; } 91% { opacity: 0; } 92% { opacity: 0.3; background: #00ffff; } 93% { opacity: 0; } }
+
+/* ensure UI above overlays */
+#uiContainer { z-index: 3; }
 
 /* -------- ダメージ演出スタイル（flash/vignette/shake） -------- */
 #flash-overlay {

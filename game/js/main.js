@@ -148,8 +148,8 @@ class AROnmyoujiGame {
         // CombatSystem コールバック
         this.combatSystem.onHapticEvent = (event) => this.onHapticEvent(event);
         
-        // DeviceOrientation（端末姿勢）
-        window.addEventListener('deviceorientation', (e) => this.renderer.updateDeviceOrientation(e));
+        // DeviceOrientation（端末姿勢）は権限取得後に登録する
+        this.deviceOrientationHandler = (e) => this.renderer.updateDeviceOrientation(e);
     }
     
     /**
@@ -181,6 +181,9 @@ class AROnmyoujiGame {
                 if (permission === 'granted') {
                     this.ui.motionStatus.textContent = '📱 モーション: 許可';
                     this.debugOverlay.logInfo('モーション権限: 許可');
+                    
+                    // 権限取得後にDeviceOrientationイベントリスナーを登録
+                    window.addEventListener('deviceorientation', this.deviceOrientationHandler);
                 } else {
                     throw new Error('モーション権限が拒否されました');
                 }
@@ -188,6 +191,9 @@ class AROnmyoujiGame {
                 // 非iOS環境ではデフォルトで許可とみなす
                 this.ui.motionStatus.textContent = '📱 モーション: 許可';
                 this.debugOverlay.logInfo('モーション権限: 自動許可（非iOS）');
+                
+                // 非iOS環境でも登録
+                window.addEventListener('deviceorientation', this.deviceOrientationHandler);
             }
             
             // 次の状態へ

@@ -1,6 +1,6 @@
 // Hitodama.js
 // Three.jsベースの人魂（敵キャラ）クラス
-import * as THREE from 'three';
+import * as THREE from './three.module.js';
 
 export class HitodamaEnemy {
     constructor(scene) {

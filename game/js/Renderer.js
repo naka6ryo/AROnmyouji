@@ -1,3 +1,4 @@
+import * as THREE from './three.module.js';
 import { HitodamaEnemy } from './Hitodama.js';
 /**
  * Renderer.js

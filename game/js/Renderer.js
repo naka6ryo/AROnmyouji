@@ -54,6 +54,18 @@ export class Renderer {
         this.bloomPass.strength = 2.0;
         this.bloomPass.radius = 0.8;
 
+        // 【背景透過パッチ】
+        if (this.bloomPass.compositeMaterial) {
+            const oldShader = this.bloomPass.compositeMaterial.fragmentShader;
+            const newShader = oldShader.replace(
+                'gl_FragColor = vec4( color.rgb + bloom, 1.0 );',
+                'gl_FragColor = vec4( color.rgb + bloom, min(1.0, color.a + length(bloom)) );'
+            );
+            this.bloomPass.compositeMaterial.fragmentShader = newShader;
+            this.bloomPass.compositeMaterial.transparent = true;
+            this.bloomPass.compositeMaterial.needsUpdate = true;
+        }
+
         // 透明度を維持するためのRender Target設定
         const renderTarget = new THREE.WebGLRenderTarget(
             window.innerWidth * Math.min(window.devicePixelRatio, 2),

@@ -165,30 +165,54 @@ class AROnmyoujiGame {
      */
     async requestPermissions() {
         this.debugOverlay.logInfo('権限要求開始');
+        console.log('[requestPermissions] 呼び出し中... ジェスチャー内実行確認');
         
         try {
             // カメラ権限
+            console.log('[requestPermissions] カメラ権限要求中...');
             this.cameraStream = await navigator.mediaDevices.getUserMedia({
                 video: { facingMode: 'environment' }
             });
             this.videoElement.srcObject = this.cameraStream;
             this.ui.cameraStatus.textContent = '📷 カメラ: 許可';
             this.debugOverlay.logInfo('カメラ権限: 許可');
+            console.log('[requestPermissions] カメラ権限取得成功');
             
             // モーション権限（iOS対応）
             if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
-                const permission = await DeviceOrientationEvent.requestPermission();
-                if (permission === 'granted') {
-                    this.ui.motionStatus.textContent = '📱 モーション: 許可';
-                    this.debugOverlay.logInfo('モーション権限: 許可');
+                console.log('[requestPermissions] iOS環境検出。requestPermissionメソッド実行中...');
+                this.debugOverlay.logInfo('iOS環境: モーション権限を要求中...');
+                
+                try {
+                    const permission = await DeviceOrientationEvent.requestPermission();
+                    console.log('[requestPermissions] requestPermission結果:', permission);
+                    this.debugOverlay.logInfo(`requestPermission結果: ${permission}`);
                     
-                    // 権限取得後にDeviceOrientationイベントリスナーを登録
-                    window.addEventListener('deviceorientation', this.deviceOrientationHandler);
-                } else {
-                    throw new Error('モーション権限が拒否されました');
+                    if (permission === 'granted') {
+                        this.ui.motionStatus.textContent = '📱 モーション: 許可';
+                        this.debugOverlay.logInfo('モーション権限: 許可 ✓');
+                        console.log('[requestPermissions] モーション権限: 許可');
+                        
+                        // 権限取得後にDeviceOrientationイベントリスナーを登録
+                        window.addEventListener('deviceorientation', this.deviceOrientationHandler);
+                        console.log('[requestPermissions] deviceorientationリスナー登録完了');
+                    } else if (permission === 'denied') {
+                        this.ui.motionStatus.textContent = '📱 モーション: 拒否';
+                        this.debugOverlay.logError('モーション権限: ユーザーが拒否');
+                        throw new Error('モーション権限が拒否されました');
+                    } else if (permission === 'prompt') {
+                        this.ui.motionStatus.textContent = '📱 モーション: 未定';
+                        this.debugOverlay.logWarn('モーション権限: プロンプト状態（未選択）');
+                        console.log('[requestPermissions] 権限プロンプト未応答');
+                    }
+                } catch (permissionError) {
+                    console.error('[requestPermissions] requestPermissionエラー:', permissionError);
+                    this.debugOverlay.logError(`requestPermissionエラー: ${permissionError.message}`);
+                    throw permissionError;
                 }
             } else {
                 // 非iOS環境ではデフォルトで許可とみなす
+                console.log('[requestPermissions] 非iOS環境。自動許可。');
                 this.ui.motionStatus.textContent = '📱 モーション: 許可';
                 this.debugOverlay.logInfo('モーション権限: 自動許可（非iOS）');
                 
@@ -200,6 +224,7 @@ class AROnmyoujiGame {
             this.appState.permissionGranted();
             
         } catch (error) {
+            console.error('[requestPermissions] エラー:', error);
             this.ui.permissionError.textContent = `エラー: ${error.message}`;
             this.debugOverlay.logError(`権限エラー: ${error.message}`);
         }

@@ -114,60 +114,6 @@ const tubeVertexShader = `
     }
 `;
 
-// --- 円弧 (Slash Arc) シェーダ ---
-const arcVertexShader = `
-    varying vec2 vUv;
-    varying vec3 vPosition;
-    void main() {
-        vUv = uv;
-        vPosition = position;
-        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-    }
-`;
-
-const arcFragmentShader = `
-    uniform float uTime;
-    uniform float uAlpha;
-    uniform vec3 uColor;
-    varying vec2 vUv;
-
-    // ガウス関数
-    float gauss(float x, float sigma) {
-        return exp(-0.5 * (x * x) / (sigma * sigma));
-    }
-
-    void main() {
-        // vUv.y: 0..1 around tube cross-section, center ~0.5
-        float c = abs(vUv.y - 0.5);
-
-        // 長さ方向の中央付近で太く、端へ行くほど細くするプロファイル
-        // vUv.x == 0..1 が長さ方向
-        float center = gauss((vUv.x - 0.5), 0.18); // 中央が最大になるガウス
-
-        // 基本幅 (小さめにして中央で膨らませる)
-        float baseW = 0.04;
-        float extraW = 0.18; // 中央で追加される最大幅
-        float w = baseW + extraW * center;
-
-        float core = smoothstep(w, 0.0, c);
-
-        // 長さ方向で先端をやや強調
-        float lenFade = 1.0 - smoothstep(0.0, 1.0, abs(vUv.x - 0.8));
-
-        // 微かな揺らぎ
-        float flicker = 0.85 + 0.25 * sin(uTime * 12.0 + vUv.x * 28.0);
-
-        // 中央の明るさを高める
-        float centerBoost = 1.0 + center * 0.9;
-
-        vec3 col = uColor * (0.6 * core + 0.4 * core * lenFade) * flicker * centerBoost;
-        float alpha = (core * (0.85 * lenFade + 0.15)) * uAlpha * (0.6 + 0.4 * center);
-
-        if (alpha < 0.01) discard;
-        gl_FragColor = vec4(col, alpha);
-    }
-`;
-
 export class Renderer {
     constructor(canvasId, debugOverlay = null) {
         this.canvas = document.getElementById(canvasId);
@@ -509,17 +455,6 @@ export class Renderer {
         arcMesh.position.copy(cameraPos);
         this.scene.add(arcMesh);
 
-        // 初期 uniforms 設定
-        try {
-            if (arcMesh.material && arcMesh.material.uniforms) {
-                arcMesh.material.uniforms.uTime.value = (performance.now()) * 0.001;
-                arcMesh.material.uniforms.uAlpha.value = 0.9 + intensity * 0.3;
-                // 色は intensity によって少し変える
-                const base = new THREE.Color(0x88eeff).multiplyScalar(0.6 + intensity * 0.8);
-                arcMesh.material.uniforms.uColor.value = base;
-            }
-        } catch (e) {}
-
         // 飛翔体として記録
         const projectile = {
             mesh: arcMesh,
@@ -561,30 +496,21 @@ export class Renderer {
         const curve = new THREE.CatmullRomCurve3(points);
         const tubeGeometry = new THREE.TubeGeometry(
             curve,
-            64,
+            20,
             0.02,
-            12,
+            8,
             false
         );
 
-        const mat = new THREE.ShaderMaterial({
-            vertexShader: arcVertexShader,
-            fragmentShader: arcFragmentShader,
-            uniforms: {
-                uTime: { value: (performance.now()) * 0.001 },
-                uAlpha: { value: 1.0 },
-                uColor: { value: new THREE.Color(0x88eeff) }
-            },
+        const material = new THREE.MeshBasicMaterial({
+            color: 0x00ffff,
             transparent: true,
-            blending: THREE.AdditiveBlending,
-            depthTest: false,
-            depthWrite: false,
-            side: THREE.DoubleSide
+            opacity: 0.7 + intensity * 0.3,
+            side: THREE.DoubleSide,
+            blending: THREE.AdditiveBlending
         });
 
-        const mesh = new THREE.Mesh(tubeGeometry, mat);
-        mesh.frustumCulled = false;
-        return mesh;
+        return new THREE.Mesh(tubeGeometry, material);
     }
 
     /**
@@ -660,15 +586,8 @@ export class Renderer {
                 // 前方へ移動
                 newMesh.position.add(proj.direction.clone().multiplyScalar(proj.speed * deltaTimeSec));
 
-                // uniforms 更新 (時間・フェード)
-                try {
-                    if (newMesh.material && newMesh.material.uniforms) {
-                        newMesh.material.uniforms.uTime.value = now * 0.001;
-                        newMesh.material.uniforms.uAlpha.value = (0.7 + proj.intensity * 0.3) * (1 - lifeFraction);
-                    } else if (newMesh.material && 'opacity' in newMesh.material) {
-                        newMesh.material.opacity = (0.7 + proj.intensity * 0.3) * (1 - lifeFraction);
-                    }
-                } catch (e) {}
+                // 透明度をフェードアウト
+                newMesh.material.opacity = (0.7 + proj.intensity * 0.3) * (1 - lifeFraction);
 
                 // シーンから古いメッシュを削除
                 this.scene.remove(proj.mesh);
@@ -683,14 +602,7 @@ export class Renderer {
                 proj.mesh.position.add(proj.direction.clone().multiplyScalar(proj.speed * deltaTimeSec));
 
                 // 透明度をフェードアウト
-                try {
-                    if (proj.mesh.material && proj.mesh.material.uniforms) {
-                        proj.mesh.material.uniforms.uAlpha.value = (0.7 + proj.intensity * 0.3) * (1 - lifeFraction);
-                        proj.mesh.material.uniforms.uTime.value = now * 0.001;
-                    } else if (proj.mesh.material && 'opacity' in proj.mesh.material) {
-                        proj.mesh.material.opacity = (0.7 + proj.intensity * 0.3) * (1 - lifeFraction);
-                    }
-                } catch (e) {}
+                proj.mesh.material.opacity = (0.7 + proj.intensity * 0.3) * (1 - lifeFraction);
             }
 
             return true;

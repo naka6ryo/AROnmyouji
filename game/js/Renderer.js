@@ -22,6 +22,9 @@ export class Renderer {
         this.scene.add(this.cameraPivot);
         this.cameraPivot.add(this.camera);
         this.camera.position.set(0, -0.05, 0.35);
+
+        // 端末を縦向きで持つことを基準に、X軸へ-90度オフセット
+        this.orientationOffset = new THREE.Euler(-Math.PI / 2, 0, 0, 'YXZ');
         
         this.renderer = new THREE.WebGLRenderer({
             canvas: this.canvas,
@@ -91,6 +94,9 @@ export class Renderer {
             -gamma * Math.PI / 180,
             'YXZ'
         );
+        euler.x += this.orientationOffset.x;
+        euler.y += this.orientationOffset.y;
+        euler.z += this.orientationOffset.z;
         this.cameraPivot.rotation.copy(euler);
         // 実際のワールド前方を再取得（カメラ位置オフセット後）
         const forward = this.getCameraForward();

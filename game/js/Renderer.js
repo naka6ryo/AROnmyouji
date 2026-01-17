@@ -92,6 +92,28 @@ const tracerFragmentShader = `
     }
 `;
 
+// チューブ用の簡易頂点シェーダ
+const tubeVertexShader = `
+    uniform float uTime;
+    varying vec2 vUv;
+
+    // 乱数
+    float random(vec2 st) {
+        return fract(sin(dot(st.xy, vec2(12.9898,78.233))) * 43758.5453123);
+    }
+
+    void main() {
+        vUv = uv;
+        vec3 pos = position;
+
+        // 軽い表面ノイズでチューブに筆の揺らぎを追加
+        float n = (random(uv * 10.0 + uTime) - 0.5) * 0.02;
+        pos += normal * n;
+
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
+    }
+`;
+
 export class Renderer {
     constructor(canvasId, debugOverlay = null) {
         this.canvas = document.getElementById(canvasId);
@@ -346,108 +368,30 @@ export class Renderer {
             this.swingTracerMesh = null;
         }
 
-        // 軌跡から3D点群を生成（カメラ基準の半径を乗じる）
-        const points = [];
+        // 軌跡から 3D 点列を作成
+        const pts = [];
         for (const pt of trajectory) {
             const pitchRad = pt.pitch * Math.PI / 180;
             const yawRad = pt.yaw * Math.PI / 180;
             const x = this.TRACER_RADIUS * Math.cos(pitchRad) * Math.sin(yawRad);
             const y = this.TRACER_RADIUS * Math.sin(pitchRad);
             const z = -this.TRACER_RADIUS * Math.cos(pitchRad) * Math.cos(yawRad);
-            points.push({ pos: new THREE.Vector3(x, y, z), t: pt.timestamp });
+            pts.push(new THREE.Vector3(x, y, z));
         }
 
-        const n = points.length;
-        if (n < 2) return;
+        if (pts.length < 2) return;
 
-        // 速度（角速度）を簡易算出して幅に反映する
-        const speeds = new Array(n).fill(0);
-        for (let i = 1; i < n; i++) {
-            const dp = points[i].pos.distanceTo(points[i-1].pos);
-            const dt = Math.max(1, points[i].t - points[i-1].t);
-            speeds[i] = dp / dt;
-        }
-        // スムージング
-        const smooth = new Array(n).fill(0);
-        for (let i = 0; i < n; i++) {
-            let s = speeds[i];
-            if (i > 0) s = (speeds[i-1] + speeds[i]) * 0.5;
-            smooth[i] = s;
-        }
+        // Catmull-Rom 曲線で補間
+        const curve = new THREE.CatmullRomCurve3(pts);
+        const tubularSegments = Math.max(20, pts.length * 3);
+        const radius = Math.max(0.001, this.TRACER_BASE_WIDTH); // チューブ半径
+        const radialSegments = 10;
 
-        // バッファ準備（各点2頂点でリボンを作る）
-        const positions = new Float32Array(n * 2 * 3);
-        const uvs = new Float32Array(n * 2 * 2);
-        const widths = new Float32Array(n * 2);
-        const indices = [];
+        const tubeGeometry = new THREE.TubeGeometry(curve, tubularSegments, radius, radialSegments, false);
 
-        // camera forward を取得して、幅方向の法線を決める
-        const camForward = this.getCameraForward();
-
-        for (let i = 0; i < n; i++) {
-            const p = points[i].pos;
-
-            // 方向ベクトルの近似
-            let dir = new THREE.Vector3();
-            if (i === 0) {
-                dir.subVectors(points[1].pos, p).normalize();
-            } else if (i === n - 1) {
-                dir.subVectors(p, points[i-1].pos).normalize();
-            } else {
-                const d1 = new THREE.Vector3().subVectors(p, points[i-1].pos).normalize();
-                const d2 = new THREE.Vector3().subVectors(points[i+1].pos, p).normalize();
-                dir.addVectors(d1, d2).normalize();
-            }
-
-            // 幅方向の法線: dir x camForward
-            const normal = new THREE.Vector3().crossVectors(dir, camForward).normalize();
-            if (normal.lengthSq() < 1e-6) {
-                // 特異点回避: 代替の法線
-                normal.set(1, 0, 0);
-            }
-
-            // u = 0..1 (末尾->先端)
-            const u = i / (n - 1);
-            // 幅: 速い -> 細く, 遅い -> 太く
-            const speed = smooth[i] || 0;
-            const speedFactor = Math.max(0.25, Math.min(3.0, 1.0 / (speed * 100.0 + 0.05)));
-            const taper = Math.pow(u, 0.45);
-            const w = this.TRACER_BASE_WIDTH * speedFactor * taper;
-
-            const idx = i * 2;
-            // 左右の頂点
-            positions[idx * 3] = p.x + normal.x * w * 3.0;
-            positions[idx * 3 + 1] = p.y + normal.y * w * 3.0;
-            positions[idx * 3 + 2] = p.z + normal.z * w * 3.0;
-
-            positions[(idx + 1) * 3] = p.x - normal.x * w * 3.0;
-            positions[(idx + 1) * 3 + 1] = p.y - normal.y * w * 3.0;
-            positions[(idx + 1) * 3 + 2] = p.z - normal.z * w * 3.0;
-
-            widths[idx] = w;
-            widths[idx + 1] = w;
-
-            uvs[idx * 2] = u;
-            uvs[idx * 2 + 1] = 0.0;
-            uvs[(idx + 1) * 2] = u;
-            uvs[(idx + 1) * 2 + 1] = 1.0;
-        }
-
-        for (let i = 0; i < n - 1; i++) {
-            const base = i * 2;
-            indices.push(base, base + 1, base + 2);
-            indices.push(base + 2, base + 1, base + 3);
-        }
-
-        const geometry = new THREE.BufferGeometry();
-        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-        geometry.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
-        geometry.setAttribute('aWidth', new THREE.BufferAttribute(widths, 1));
-        geometry.setIndex(indices);
-        geometry.setDrawRange(0, (n - 1) * 6);
-
+        // シェーダーで表現（fragment は既存の筆致フラグメントを利用）
         const material = new THREE.ShaderMaterial({
-            vertexShader: tracerVertexShader,
+            vertexShader: tubeVertexShader,
             fragmentShader: tracerFragmentShader,
             uniforms: {
                 uTime: { value: (performance.now() - this._tracerStartTime) * 0.001 },
@@ -460,7 +404,7 @@ export class Renderer {
             side: THREE.DoubleSide
         });
 
-        this.swingTracerMesh = new THREE.Mesh(geometry, material);
+        this.swingTracerMesh = new THREE.Mesh(tubeGeometry, material);
         this.swingTracerMesh.frustumCulled = false;
         this.scene.add(this.swingTracerMesh);
     }

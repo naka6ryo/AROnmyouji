@@ -108,7 +108,8 @@ class AROnmyoujiGame {
         try {
             this.soundManager.load({
                 polygon_burst: 'assets/sfx/polygon_burst.mp3',
-                explosion: 'assets/sfx/explosion.mp3'
+                explosion: 'assets/sfx/explosion.mp3',
+                attack_swipe: 'assets/sfx/attack_swipe.mp3'
             });
         } catch (e) {
             console.warn('sound load failed', e);
@@ -276,6 +277,11 @@ class AROnmyoujiGame {
     onSwing(swing) {
         this.debugOverlay.logInfo(`斬撃: intensity=${swing.intensity.toFixed(2)}`);
         this.renderer.endSwingTracer();
+        // 攻撃（スイング）音を再生
+        try {
+            const rate = Math.min(1.6, 0.9 + swing.intensity * 0.25);
+            this.soundManager.play('attack_swipe', { volume: 0.7, playbackRate: rate });
+        } catch (e) {}
         if (swing.trajectory && swing.trajectory.length >= 2) {
             const startPyr = swing.trajectory[0];
             const endPyr = swing.trajectory[swing.trajectory.length - 1];

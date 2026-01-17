@@ -8,7 +8,7 @@ export class Hitodama {
 
         // 1. コア（球体）
         // 炎のようなゆらぎを作るために頂点数の多い球体を使用
-        const geometry = new THREE.SphereGeometry(0.6, 64, 64);
+        const geometry = new THREE.SphereGeometry(0.3, 64, 64);
 
         // 赤い発光マテリアル
         const material = new THREE.MeshStandardMaterial({
@@ -56,7 +56,7 @@ export class Hitodama {
             });
             const sprite = new THREE.Sprite(spriteMaterial);
             // パーティクルの初期サイズ
-            sprite.scale.set(1.5, 1.5, 1.5);
+            sprite.scale.set(0.75, 0.75, 0.75);
             this.scene.add(sprite);
             this.tailSprites.push(sprite);
         }
@@ -74,7 +74,7 @@ export class Hitodama {
         const positions = this.mesh.geometry.attributes.position;
         const originals = this.originalPositions;
         const count = positions.count;
-        const r = 0.6; // 球の半径
+        const r = 0.3; // 球の半径
 
         for (let i = 0; i < count; i++) {
             const px = originals.getX(i);
@@ -134,7 +134,7 @@ export class Hitodama {
 
                 // 古い尾ほど小さく、薄く
                 const ratio = 1 - (i / this.tailCount);
-                const scale = 2.0 * ratio; // ユーザーコードでは2.0
+                const scale = 1.0 * ratio; // ユーザーコードでは1.0
                 sprite.scale.set(scale, scale, scale);
                 sprite.material.opacity = 0.3 * ratio;
             }

@@ -42,9 +42,11 @@ export class Renderer {
         // クリアカラーを透明に設定 (Bloom用)
         this.renderer.setClearColor(0x000000, 0);
         this.renderer.toneMapping = THREE.ReinhardToneMapping;
+        this.renderer.autoClear = false;
 
         // --- ポストプロセス（ブルーム発光効果） ---
         this.renderScene = new RenderPass(this.scene, this.camera);
+        this.renderScene.clear = true;
 
         // ブルーム設定 (強さ, 半径, しきい値)
         // 解像度は updateRendererSize で設定するためここでは仮

@@ -48,14 +48,24 @@ export class Renderer {
         this.renderScene = new RenderPass(this.scene, this.camera);
         this.renderScene.clear = true;
 
-        // ブルーム設定 (強さ, 半径, しきい値)
-        // 解像度は updateRendererSize で設定するためここでは仮
+        // ブルーム設定
         this.bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
         this.bloomPass.threshold = 0.1;
-        this.bloomPass.strength = 2.0; // 発光の強さ
-        this.bloomPass.radius = 0.8;   // 発光の広がり
+        this.bloomPass.strength = 2.0;
+        this.bloomPass.radius = 0.8;
 
-        this.composer = new EffectComposer(this.renderer);
+        // 透明度を維持するためのRender Target設定
+        const renderTarget = new THREE.WebGLRenderTarget(
+            window.innerWidth * Math.min(window.devicePixelRatio, 2),
+            window.innerHeight * Math.min(window.devicePixelRatio, 2),
+            {
+                type: THREE.HalfFloatType,
+                format: THREE.RGBAFormat,
+                encoding: THREE.sRGBEncoding
+            }
+        );
+
+        this.composer = new EffectComposer(this.renderer, renderTarget);
         this.composer.addPass(this.renderScene);
         this.composer.addPass(this.bloomPass);
 

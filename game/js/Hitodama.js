@@ -7,8 +7,9 @@ export class Hitodama {
         this.time = 0;
 
         // 1. コア（球体）
-        // 炎のようなゆらぎを作るために頂点数の多い球体を使用
-        const geometry = new THREE.SphereGeometry(0.3, 64, 64);
+        // 目標最大サイズ: 半径0.1 (以前の0.3の1/3)
+        // 出現サイズ: 半径0.03 (以前の0.3の1/10 = 最大の0.3倍)
+        const geometry = new THREE.SphereGeometry(0.1, 64, 64);
 
         // 赤い発光マテリアル
         const material = new THREE.MeshStandardMaterial({
@@ -23,6 +24,12 @@ export class Hitodama {
 
         this.mesh = new THREE.Mesh(geometry, material);
         this.mesh.position.copy(this.pos); // 初期位置を設定
+
+        // 初期スケール設定 (0.3倍からスタート)
+        this.currentScale = 0.3;
+        this.targetScale = 1.0;
+        this.mesh.scale.set(this.currentScale, this.currentScale, this.currentScale);
+
         this.scene.add(this.mesh);
 
         // 元の頂点位置を保存（アニメーション用）
@@ -42,9 +49,11 @@ export class Hitodama {
         }
 
         // 尾のジオメトリとマテリアル
-        // シンプルなスプライトを使用
         const spriteMap = new THREE.TextureLoader().load('https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/sprites/spark1.png');
         this.tailSprites = [];
+
+        // ベースのスプライトスケール (以前の0.75の1/3 = 0.25)
+        this.baseSpriteScale = 0.25;
 
         for (let i = 0; i < this.tailCount; i++) {
             const spriteMaterial = new THREE.SpriteMaterial({
@@ -55,8 +64,9 @@ export class Hitodama {
                 blending: THREE.AdditiveBlending
             });
             const sprite = new THREE.Sprite(spriteMaterial);
-            // パーティクルの初期サイズ
-            sprite.scale.set(0.75, 0.75, 0.75);
+            // 初期スケール適用
+            const initialS = this.baseSpriteScale * this.currentScale;
+            sprite.scale.set(initialS, initialS, initialS);
             this.scene.add(sprite);
             this.tailSprites.push(sprite);
         }
@@ -64,6 +74,14 @@ export class Hitodama {
 
     update(dt) {
         this.time += dt;
+
+        // --- スケール更新（徐々に大きくなる） ---
+        if (this.currentScale < this.targetScale) {
+            this.currentScale += dt * 0.5; // 2秒程度で最大化
+            if (this.currentScale > this.targetScale) this.currentScale = this.targetScale;
+
+            this.mesh.scale.set(this.currentScale, this.currentScale, this.currentScale);
+        }
 
         // メッシュとライトの位置更新
         this.mesh.position.copy(this.pos);
@@ -74,7 +92,7 @@ export class Hitodama {
         const positions = this.mesh.geometry.attributes.position;
         const originals = this.originalPositions;
         const count = positions.count;
-        const r = 0.3; // 球の半径
+        const r = 0.1; // 球の半径 (Base)
 
         for (let i = 0; i < count; i++) {
             const px = originals.getX(i);
@@ -134,8 +152,11 @@ export class Hitodama {
 
                 // 古い尾ほど小さく、薄く
                 const ratio = 1 - (i / this.tailCount);
-                const scale = 1.0 * ratio; // ユーザーコードでは1.0
-                sprite.scale.set(scale, scale, scale);
+
+                // max scale determined by currentScale and diminishing ratio
+                const s = this.baseSpriteScale * this.currentScale * ratio * 4.0; // x4.0 to correct visibility
+
+                sprite.scale.set(s, s, s);
                 sprite.material.opacity = 0.3 * ratio;
             }
         }

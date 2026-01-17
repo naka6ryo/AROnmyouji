@@ -2,207 +2,716 @@
 <html lang="ja">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AR陰陽師 - MVP</title>
-    <link rel="stylesheet" href="css/style.css">
-    <!-- Fonts and extras to match attached HUD -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&family=Orbitron:wght@400;700;900&family=Shippori+Mincho:wght@400;700;800&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>Zanbarai Mobile AR HUD</title>
 
-    <!-- SVG Filter for distortion (used by overlay) -->
+    <!-- Existing Styles -->
+    <link rel="stylesheet" href="css/style.css">
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com" rel="preconnect" />
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&amp;family=Orbitron:wght@400;700;900&amp;family=Shippori+Mincho:wght@400;700;800&amp;display=swap"
+        rel="stylesheet" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+        rel="stylesheet" />
+
+    <!-- Tailwind -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: "#FF0000", // The vibrant red
+                        "ink-black": "#0d0d0d",
+                        "tech-gray": "#525252",
+                        "light-gray": "#e5e5e5",
+                        "meter-bg": "#f3f4f6",
+                    },
+                    fontFamily: {
+                        display: ["'Orbitron'", "sans-serif"],
+                        japanese: ["'Shippori Mincho'", "serif"],
+                        sans: ["'Noto Sans JP'", "sans-serif"],
+                        mono: ["'ui-monospace'", "'SFMono-Regular'", "'Menlo'", "'Monaco'", "'Consolas'", "monospace"],
+                    },
+                    borderRadius: {
+                        DEFAULT: "2px",
+                    },
+                    animation: {
+                        'spin-slow': 'spin 12s linear infinite',
+                        'spin-slower': 'spin 20s linear infinite',
+                        'spin-reverse-slow': 'spin 15s linear infinite reverse',
+                        'pulse-fast': 'pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'glitch': 'glitch 2s infinite',
+                        'scanline': 'scanline 8s linear infinite',
+                    },
+                    keyframes: {
+                        glitch: {
+                            '0%': { transform: 'translate(0)' },
+                            '20%': { transform: 'translate(-2px, 2px)' },
+                            '40%': { transform: 'translate(-2px, -2px)' },
+                            '60%': { transform: 'translate(2px, 2px)' },
+                            '80%': { transform: 'translate(2px, -2px)' },
+                            '100%': { transform: 'translate(0)' },
+                        },
+                        scanline: {
+                            '0%': { transform: 'translateY(-100%)' },
+                            '100%': { transform: 'translateY(100%)' }
+                        }
+                    }
+                },
+            },
+        };
+    </script>
+    <style>
+        .glitch-text {
+            position: relative;
+        }
+
+        .glitch-text::before,
+        .glitch-text::after {
+            content: attr(data-text);
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        .glitch-text::before {
+            left: 2px;
+            text-shadow: -1px 0 #ff0000;
+            clip: rect(44px, 450px, 56px, 0);
+            animation: glitch-anim 5s infinite linear alternate-reverse;
+        }
+
+        .glitch-text::after {
+            left: -2px;
+            text-shadow: -1px 0 #525252;
+            clip: rect(44px, 450px, 56px, 0);
+            animation: glitch-anim2 5s infinite linear alternate-reverse;
+        }
+
+        @keyframes glitch-anim {
+            0% {
+                clip: rect(32px, 9999px, 12px, 0);
+            }
+
+            20% {
+                clip: rect(12px, 9999px, 5px, 0);
+            }
+
+            40% {
+                clip: rect(11px, 9999px, 86px, 0);
+            }
+
+            60% {
+                clip: rect(2px, 9999px, 14px, 0);
+            }
+
+            80% {
+                clip: rect(43px, 9999px, 78px, 0);
+            }
+
+            100% {
+                clip: rect(56px, 9999px, 98px, 0);
+            }
+        }
+
+        @keyframes glitch-anim2 {
+            0% {
+                clip: rect(65px, 9999px, 43px, 0);
+            }
+
+            100% {
+                clip: rect(12px, 9999px, 5px, 0);
+            }
+        }
+
+        .parallelogram {
+            clip-path: polygon(15% 0, 100% 0, 85% 100%, 0% 100%);
+        }
+
+        .crosshair-line {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.8);
+        }
+
+        .brush-edge {
+            clip-path: polygon(0 0, 100% 5%, 0 10%, 100% 15%, 0 20%, 100% 25%, 0 30%, 100% 35%, 0 40%, 100% 45%, 0 50%, 100% 55%, 0 60%, 100% 65%, 0 70%, 100% 75%, 0 80%, 100% 85%, 0 90%, 100% 95%, 0 100%);
+        }
+
+        /* TV Effects */
+        .scanlines {
+            background: linear-gradient(to bottom,
+                    rgba(255, 255, 255, 0),
+                    rgba(255, 255, 255, 0) 50%,
+                    rgba(0, 0, 0, 0.3) 50%,
+                    rgba(0, 0, 0, 0.3));
+            background-size: 100% 4px;
+            animation: scroll-scanlines 10s linear infinite;
+        }
+
+        .grid-overlay {
+            background-size: 40px 40px;
+            background-image:
+                linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+        }
+
+        /* New Random Grid Noise */
+        .random-glitch-lines {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image:
+                repeating-linear-gradient(90deg, transparent 0, transparent 2px, rgba(255, 255, 255, 0.15) 2px, rgba(255, 255, 255, 0.15) 4px),
+                repeating-linear-gradient(0deg, transparent 0, transparent 2px, rgba(255, 255, 255, 0.15) 2px, rgba(255, 255, 255, 0.15) 4px);
+            background-size: 100% 100%;
+            mix-blend-mode: overlay;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 60;
+            animation: glitch-grid-anim 4s infinite linear alternate-reverse;
+        }
+
+        /* HORROR FX: Breathing & Distortion */
+        .horror-breathing {
+            animation: breathe-uneasy 8s ease-in-out infinite;
+            transform-origin: center;
+        }
+
+        .distortion-glitch {
+            /* The video element itself gets distorted */
+            animation: distort-shock 6s infinite cubic-bezier(0.1, 0.7, 1.0, 0.1);
+        }
+
+        .horror-flash {
+            position: absolute;
+            inset: 0;
+            background: rgba(255, 0, 0, 0.1);
+            mix-blend-mode: overlay;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 55;
+            animation: horror-flash-anim 7s infinite;
+        }
+
+        @keyframes scroll-scanlines {
+            0% {
+                background-position: 0 0;
+            }
+
+            100% {
+                background-position: 0 100px;
+            }
+        }
+
+        @keyframes glitch-grid-anim {
+            0% {
+                opacity: 0;
+                clip-path: inset(0 0 100% 0);
+                transform: translateX(0);
+            }
+
+            5% {
+                opacity: 0.3;
+                clip-path: inset(10% 0 85% 0);
+                transform: translateX(-5px);
+            }
+
+            10% {
+                opacity: 0;
+                clip-path: inset(100% 0 0 0);
+            }
+
+            35% {
+                opacity: 0.2;
+                clip-path: inset(40% 0 45% 0);
+                transform: translateX(5px);
+            }
+
+            36% {
+                opacity: 0;
+            }
+
+            60% {
+                opacity: 0.4;
+                clip-path: inset(70% 0 20% 0);
+                transform: translateX(-2px);
+            }
+
+            61% {
+                opacity: 0;
+            }
+
+            85% {
+                opacity: 0.2;
+                clip-path: inset(20% 0 75% 0);
+                transform: translateX(3px);
+            }
+
+            86% {
+                opacity: 0;
+            }
+
+            100% {
+                opacity: 0;
+                clip-path: inset(0 0 100% 0);
+            }
+        }
+
+        @keyframes breathe-uneasy {
+
+            0%,
+            100% {
+                transform: scale(1);
+                filter: brightness(1) contrast(1);
+            }
+
+            50% {
+                transform: scale(1.04);
+                filter: brightness(0.9) contrast(1.1);
+            }
+        }
+
+        @keyframes distort-shock {
+
+            0%,
+            90% {
+                transform: scale(1) skew(0deg);
+                filter: none;
+                opacity: 0.8;
+            }
+
+            91% {
+                transform: scale(1.02) skew(2deg);
+                filter: url('#turbulence');
+                opacity: 0.9;
+            }
+
+            92% {
+                transform: scale(1) skew(0deg);
+                filter: none;
+                opacity: 0.8;
+            }
+
+            93% {
+                transform: scale(1.05) skew(-5deg);
+                filter: url('#turbulence');
+                opacity: 1;
+            }
+
+            94% {
+                transform: scale(1) skew(0deg);
+                filter: none;
+                opacity: 0.8;
+            }
+
+            98% {
+                transform: scale(1.01) skew(1deg);
+                filter: hue-rotate(90deg);
+                opacity: 0.85;
+            }
+
+            100% {
+                transform: scale(1) skew(0deg);
+                opacity: 0.8;
+            }
+        }
+
+        @keyframes horror-flash-anim {
+
+            0%,
+            89% {
+                opacity: 0;
+            }
+
+            90% {
+                opacity: 0.5;
+                background: red;
+            }
+
+            91% {
+                opacity: 0;
+            }
+
+            92% {
+                opacity: 0.3;
+                background: #00ffff;
+            }
+
+            93% {
+                opacity: 0;
+            }
+        }
+    </style>
+</head>
+
+<body class="bg-gray-900 h-screen w-full overflow-hidden relative font-sans selection:bg-primary selection:text-white">
+    <!-- SVG Filter for Distortion -->
     <svg style="position: absolute; width: 0; height: 0; overflow: hidden;" aria-hidden="true">
         <defs>
             <filter id="turbulence">
                 <feTurbulence type="fractalNoise" baseFrequency="0.01 0.05" numOctaves="2" seed="2">
-                    <animate attributeName="baseFrequency" values="0.01 0.05;0.05 0.1;0.01 0.05" dur="10s" repeatCount="indefinite" />
+                    <animate attributeName="baseFrequency" values="0.01 0.05;0.05 0.1;0.01 0.05" dur="10s"
+                        repeatCount="indefinite" />
                 </feTurbulence>
                 <feDisplacementMap in="SourceGraphic" scale="30" />
             </filter>
         </defs>
     </svg>
-</head>
 
-<body>
-    <!-- ビデオ背景（カメラ映像） -->
-    <video id="cameraVideo" class="distortion-glitch horror-breathing" autoplay playsinline muted></video>
-
-    <!-- 3Dキャンバス -->
-    <canvas id="gameCanvas"></canvas>
-
-    <!-- TV Effects Overlay Layer (matches attached HUD) -->
-    <div class="tv-effects-overlay">
-        <div class="scanlines"></div>
-        <div class="grid-overlay"></div>
-        <div class="static-noise"></div>
-        <div class="random-glitch-lines"></div>
-        <div class="horror-flash"></div>
-        <div class="vignette-overlay"></div>
-    </div>
-
-    <!-- UI コンテナ -->
-    <div id="uiContainer">
-        <!-- ダメージ演出オーバーレイ -->
-        <div id="flash-overlay"></div>
-        <div id="damage-vignette"></div>
-        <!-- Splash画面 (S0) -->
-        <div id="splashScreen" class="screen active">
-            <h1>AR陰陽師</h1>
-            <p>疑似AR グローブコントローラ対応</p>
-            <button id="startButton" class="btn-primary">開始</button>
+    <!-- Global Background: Video & Horror Effects -->
+    <div class="absolute inset-0 z-0 bg-black">
+        <!-- Real Camera Feed Container with Horror Effects -->
+        <div class="w-full h-full relative overflow-hidden horror-breathing">
+            <!-- Video Element -->
+            <div class="w-full h-full distortion-glitch">
+                <!-- Using ID 'cameraVideo' for compatibility with Renderer.js -->
+                <video id="cameraVideo" class="w-full h-full object-cover transform scale-x-[-1] md:scale-x-100"
+                    autoplay playsinline muted></video>
+                <!-- Fallback Image -->
+                <img id="fallback-img" alt="AR Camera Feed Fallback" class="hidden w-full h-full object-cover"
+                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuCulhqCuUdbt1k3MSx7HfEX4huoqK6KbaAIhRZDtDeOscpYZZUsi30xJtYgiaikiNbrs8Ue6DtUDqrCADDMQ9hwVF1AN_wx2GzGPBDiJGFeA5hYjGCgjifLidY55s10vs9aFKOoq4BPwQyvj8PyFzVVA2if2xr3uyF224uGAcmnHV1N21R4Dwq0CvgAkDPxvUVH07E3FztAJj-VaR5s2lqS1Xiv27bKSPYTrFg-vBVZ2Hoy9U4y1Fjj1Z-mB2jqvDJalCOHExWMACE" />
+            </div>
         </div>
 
-        <!-- Permission画面 (S1) -->
-        <div id="permissionScreen" class="screen">
-            <h2>権限の確認</h2>
-            <div id="permissionStatus">
+        <div class="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/60 pointer-events-none">
+        </div>
+        <div
+            class="absolute inset-0 pointer-events-none opacity-10 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0IiBoZWlnaHQ9IjQiPgo8cmVjdCB3aWR0aD0iNCIgaGVpZ2h0PSI0IiBmaWxsPSIjZmZmIi8+CjxyZWN0IHdpZHRoPSI0IiBoZWlnaHQ9IjIiIGZpbGw9IiMwMDAiLz4KPC9zdmc+')]">
+        </div>
+    </div>
+
+    <!-- 3D Canvas (Overlay on video, under UI) -->
+    <canvas id="gameCanvas" class="absolute inset-0 z-0 pointer-events-none"></canvas>
+
+    <!-- UI Container used by UIManager -->
+    <div id="uiContainer">
+
+        <!-- Splash Screen (Existing) -->
+        <div id="splashScreen"
+            class="screen active absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/90">
+            <h1 class="text-4xl text-white font-display mb-4">AR陰陽師</h1>
+            <p class="text-gray-300 mb-8">疑似AR グローブコントローラ対応</p>
+            <button id="startButton" class="btn-primary px-8 py-3 bg-primary text-white font-bold rounded">開始</button>
+        </div>
+
+        <!-- Permission Screen (Existing) -->
+        <div id="permissionScreen"
+            class="screen absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/90 hidden">
+            <h2 class="text-2xl text-white mb-4">権限の確認</h2>
+            <div id="permissionStatus" class="mb-4 text-gray-300">
                 <p id="cameraStatus">📷 カメラ: 未確認</p>
                 <p id="motionStatus">📱 モーション: 未確認</p>
             </div>
-            <button id="requestPermissionButton" class="btn-primary">権限を許可</button>
-            <p id="permissionError" class="error-message"></p>
-
-            <!-- デバッグ情報表示 -->
+            <button id="requestPermissionButton"
+                class="btn-primary px-6 py-2 bg-primary text-white rounded mb-2">権限を許可</button>
+            <p id="permissionError" class="text-red-500 text-sm"></p>
             <div id="permissionDebugInfo"
-                style="margin-top: 2rem; padding: 1rem; background: rgba(0,0,0,0.5); border: 1px solid #666; border-radius: 8px; max-height: 300px; overflow-y: auto; font-size: 0.9rem; color: #aaa; width: 90%;">
+                class="mt-4 p-4 bg-gray-800 rounded border border-gray-600 w-3/4 max-h-48 overflow-auto text-xs text-gray-400">
                 <p id="permissionDebugLog"></p>
             </div>
         </div>
 
-        <!-- BLE接続画面 (S2) -->
-        <div id="bleConnectScreen" class="screen">
-            <h2>コントローラ接続</h2>
-            <p>グローブ型コントローラをBLEで接続します</p>
-            <button id="connectBleButton" class="btn-primary">BLE接続</button>
-            <p id="bleStatus">未接続</p>
-            <p id="bleError" class="error-message"></p>
+        <!-- BLE Connect Screen (Existing) -->
+        <div id="bleConnectScreen"
+            class="screen absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/90 hidden">
+            <h2 class="text-2xl text-white mb-4">コントローラ接続</h2>
+            <p class="text-gray-300 mb-4">グローブ型コントローラをBLEで接続します</p>
+            <button id="connectBleButton" class="btn-primary px-6 py-2 bg-primary text-white rounded">BLE接続</button>
+            <p id="bleStatus" class="mt-4 text-gray-400">未接続</p>
+            <p id="bleError" class="text-red-500 text-sm mt-2"></p>
         </div>
 
-        <!-- キャリブレーション画面 (S3) -->
-        <div id="calibrateScreen" class="screen">
-            <h2>キャリブレーション</h2>
-            <p>端末を正面に向け、グローブも正面へ構えてください</p>
-            <div id="calibrationData">
+        <!-- Calibrate Screen (Existing) -->
+        <div id="calibrateScreen"
+            class="screen absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/90 hidden">
+            <h2 class="text-2xl text-white mb-4">キャリブレーション</h2>
+            <p class="text-gray-300 mb-4 text-center">端末を正面に向け、<br>グローブも正面へ構えてください</p>
+            <div id="calibrationData" class="mb-6 text-gray-400 font-mono">
                 <p>Pitch: <span id="calibPitch">--</span>°</p>
                 <p>Yaw: <span id="calibYaw">--</span>°</p>
                 <p>Roll: <span id="calibRoll">--</span>°</p>
             </div>
-            <div class="calib-actions">
-                <button id="resetCalibrationButton" class="btn-secondary">リセット</button>
-                <button id="startCalibrationButton" class="btn-primary">ゲーム開始</button>
+            <div class="flex gap-4">
+                <button id="resetCalibrationButton"
+                    class="px-6 py-2 border border-gray-500 text-white rounded hover:bg-gray-800">リセット</button>
+                <button id="startCalibrationButton"
+                    class="px-6 py-2 bg-primary text-white rounded hover:bg-red-700">ゲーム開始</button>
             </div>
         </div>
 
-        <!-- ゲームプレイ画面 (S4) -->
-        <div id="gameplayScreen" class="screen">
-            <!-- HUD -->
-            <div id="hud">
-                <div id="enemyIndicators"></div>
-                <!-- Header / Top HUD (scan status and connectivity) -->
-                <div id="topHeader" class="top-header">
-                    <div class="scan-status">SCANNING</div>
-                    <div class="connectivity">L: -- ms</div>
+        <!-- Gameplay Screen (Updated with User's HUD) -->
+        <div id="gameplayScreen" class="screen hidden w-full h-full absolute inset-0 z-40">
+            <!-- Game Effects Overlay (z-50 in user's doc, but inside gameplayScreen) -->
+            <div class="screen-effects absolute inset-0 pointer-events-none z-0">
+                <div class="scanlines absolute inset-0 opacity-50"></div>
+                <div class="grid-overlay absolute inset-0"></div>
+                <div class="absolute inset-0 opacity-[0.08]"
+                    style="background-image: url('data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noiseFilter%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.85%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noiseFilter)%22/%3E%3C/svg%3E');">
                 </div>
+                <div class="random-glitch-lines"></div>
+                <div class="horror-flash"></div>
+                <!-- Damage Vignette (Mapped to ID) -->
+                <div id="damage-vignette"
+                    class="absolute inset-0 bg-radial-gradient from-transparent to-red-900/60 opacity-0 pointer-events-none transition-opacity duration-100">
+                </div>
+                <div id="flash-overlay"
+                    class="absolute inset-0 bg-red-600 mix-blend-overlay opacity-0 pointer-events-none"></div>
+            </div>
 
-                <!-- Top Center: Elapsed Time / Defeated -->
-                <div id="topCenterHud" class="top-center-hud">
-                    <div class="time-box">
-                        <div class="label">Elapsed Time</div>
-                        <div id="elapsedTimeDisplay" class="value">00:00</div>
+            <!-- Main HUD UI -->
+            <div class="relative z-10 w-full h-full flex flex-col justify-between pointer-events-none">
+                <!-- Header / Top HUD -->
+                <header class="w-full relative z-30 pointer-events-auto">
+                    <div
+                        class="absolute top-0 left-0 w-full h-16 bg-gradient-to-b from-black/80 to-transparent pointer-events-none">
                     </div>
-                    <div class="divider"></div>
-                    <div class="kills-box">
-                        <div class="label">Defeated</div>
-                        <div id="defeatedDisplay" class="value">0</div>
-                    </div>
-                </div>
-                    <div id="hudTop">
-                        <div id="hudHP">
-                            <div class="hp-label">HP</div>
-                            <div id="hpBarContainer"><div id="hpBarFill"></div></div>
-                            <div id="playerHP">5</div>
+                    <div class="flex justify-between items-start pt-6 px-6 w-full">
+                        <!-- Top Left: Scan Status -->
+                        <div class="flex flex-col gap-1 items-start">
+                            <div
+                                class="flex items-center gap-2 bg-black/40 backdrop-blur-sm px-2 py-0.5 border-l border-primary/80">
+                                <span
+                                    class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse shadow-[0_0_5px_#ff0000]"></span>
+                                <span
+                                    class="font-display font-bold text-[10px] tracking-widest text-white/90">SCANNING</span>
+                            </div>
+                            <div class="text-[8px] text-white/50 font-mono tracking-wider ml-1">34.69°N, 139.69°E</div>
                         </div>
-                        <div id="hudKills">撃破数: <span id="killCount">0</span></div>
-                        <div id="hudTimer">残り時間: <span id="timeLeft">120</span>秒</div>
-                    </div>
-                <div id="hudCenter">
-                    <div id="reticleWrapper">
-                        <div class="outer-ring"></div>
-                        <div class="inner-ring"></div>
-                        <div class="center-dot"></div>
-                    </div>
-                </div>
-                <div id="hudBottom">
-                    <div id="hudPowerMode" class="hidden">
-                        強化モード: <span id="powerModeTime">10</span>秒
-                    </div>
-                    <div id="bleConnectionIndicator">🔗</div>
-                </div>
-                <!-- スタートオーバーレイ（中央表示） -->
-                <div id="startOverlay" class="start-overlay">
-                    <h1>ゲーム開始</h1>
-                    <div class="start-stats">
-                        <div class="start-hp">
-                            <div class="hp-label">HP</div>
-                            <div id="hpBarContainerStart"><div id="hpBarFillStart"></div></div>
-                            <div id="playerHPStart">5</div>
+
+                        <!-- Top Center: Score/Timer -->
+                        <div
+                            class="absolute top-24 left-1/2 transform -translate-x-1/2 flex items-center justify-center">
+                            <div
+                                class="flex items-center bg-black/60 backdrop-blur-md border-t border-b border-primary/30 px-6 py-1 gap-8 relative overflow-hidden clip-path-notch">
+                                <!-- Decorative borders -->
+                                <div
+                                    class="absolute left-0 top-0 bottom-0 w-[1px] bg-gradient-to-b from-transparent via-primary to-transparent opacity-50">
+                                </div>
+                                <div
+                                    class="absolute right-0 top-0 bottom-0 w-[1px] bg-gradient-to-b from-transparent via-primary to-transparent opacity-50">
+                                </div>
+
+                                <div class="flex flex-col items-center">
+                                    <span
+                                        class="font-display text-[9px] text-primary tracking-[0.2em] font-bold uppercase mb-0.5 shadow-black drop-shadow-sm">Elapsed
+                                        Time</span>
+                                    <span id="elapsedTimeDisplay"
+                                        class="font-mono text-2xl text-white font-medium leading-none tracking-widest drop-shadow-[0_0_5px_rgba(255,255,255,0.5)]">00:00</span>
+                                </div>
+
+                                <div class="h-6 w-px bg-white/10 relative">
+                                    <div
+                                        class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3 h-px bg-primary/50">
+                                    </div>
+                                </div>
+
+                                <div class="flex flex-col items-center">
+                                    <span
+                                        class="font-display text-[9px] text-primary tracking-[0.2em] font-bold uppercase mb-0.5 shadow-black drop-shadow-sm">Defeated</span>
+                                    <span id="defeatedDisplay"
+                                        class="font-mono text-2xl text-white font-medium leading-none tracking-widest drop-shadow-[0_0_5px_rgba(255,255,255,0.5)]">0</span>
+                                </div>
+                            </div>
+                            <div
+                                class="absolute -bottom-1 w-32 h-[1px] bg-gradient-to-r from-transparent via-primary/60 to-transparent">
+                            </div>
                         </div>
-                        <div class="start-kills">撃破数: <span id="killCountStart">0</span></div>
-                        <div class="start-timer">残り時間: <span id="timeLeftStart">120</span>秒</div>
-                    </div>
-                    <button id="sceneStartButton" class="btn-primary">開始</button>
-                </div>
 
-                <!-- Right: Vertical HP bar (gameplay style) -->
-                <div id="verticalHp" class="vertical-hp">
-                    <div class="hp-label-vertical">HP</div>
-                    <div class="hp-track relative" aria-hidden="true">
-                        <div class="grid-bg"></div>
-                        <div id="verticalHpFill" class="hp-fill">
-                            <div class="top-highlight"></div>
+                        <!-- Top Right: Connectivity -->
+                        <div class="flex flex-col items-end gap-1">
+                            <div class="flex items-center gap-1.5 opacity-80">
+                                <span
+                                    class="material-symbols-outlined text-white text-sm animate-pulse-fast">wifi</span>
+                                <span class="font-mono text-[10px] text-white font-bold tracking-wider">L:42ms</span>
+                            </div>
+                            <div class="flex gap-0.5">
+                                <div class="w-1 h-2 bg-primary"></div>
+                                <div class="w-1 h-2 bg-primary"></div>
+                                <div class="w-1 h-2 bg-primary"></div>
+                                <div class="w-1 h-2 bg-white/30"></div>
+                            </div>
                         </div>
-                        <div class="side-line"></div>
-                        <div class="scanline-overlay"></div>
                     </div>
-                    <div class="hp-numbers"><div id="verticalHpNum">5</div><div class="sep">/</div><div id="verticalHpMax">5</div></div>
+                </header>
+
+                <!-- Enemy Indicators Container (Full Screen) -->
+                <div id="enemyIndicators" class="absolute inset-0 w-full h-full pointer-events-none z-0"></div>
+
+                <!-- Center: Reticle / Crosshair -->
+                <div
+                    class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none opacity-90 z-10">
+                    <!-- Enemy Indicators Container REMOVED from here -->
+
+                    <!-- Rotating outer ring -->
+                    <div
+                        class="w-64 h-64 border border-white/20 rounded-full flex items-center justify-center relative animate-spin-slower">
+                        <div class="absolute top-0 w-1 h-2 bg-white"></div>
+                        <div class="absolute bottom-0 w-1 h-2 bg-white"></div>
+                        <div class="absolute left-0 w-2 h-1 bg-white"></div>
+                        <div class="absolute right-0 w-2 h-1 bg-white"></div>
+                    </div>
+
+                    <!-- Inner fixed ring brackets -->
+                    <div
+                        class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-32 h-32 border-l border-r border-primary/60 rounded-full flex items-center justify-center">
+                    </div>
+
+                    <!-- Center Dot -->
+                    <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+                        <div class="w-12 h-12 relative">
+                            <div class="absolute top-0 left-1/2 transform -translate-x-1/2 w-0.5 h-full bg-white/80">
+                            </div>
+                            <div class="absolute top-1/2 left-0 transform -translate-y-1/2 w-full h-0.5 bg-white/80">
+                            </div>
+                            <div
+                                class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-1.5 h-1.5 bg-primary rounded-full shadow-[0_0_10px_#FF0000]">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Corner Brackets -->
+                    <div class="absolute top-0 left-0 w-full h-full">
+                        <div class="absolute top-[-20px] left-[-20px] w-8 h-8 border-t-2 border-l-2 border-white/50">
+                        </div>
+                        <div class="absolute top-[-20px] right-[-20px] w-8 h-8 border-t-2 border-r-2 border-white/50">
+                        </div>
+                        <div class="absolute bottom-[-20px] left-[-20px] w-8 h-8 border-b-2 border-l-2 border-white/50">
+                        </div>
+                        <div
+                            class="absolute bottom-[-20px] right-[-20px] w-8 h-8 border-b-2 border-r-2 border-white/50">
+                        </div>
+                    </div>
                 </div>
 
-                <!-- Bottom Left Action Button -->
-                <div id="bottomLeftAction" class="bottom-left-action">
-                    <button id="cancelButton" class="btn-secondary">Cancel</button>
-                </div>
+                <!-- Bottom Controls & Status -->
+                <div class="w-full p-6 pb-8 flex flex-col justify-end pointer-events-auto mt-auto relative h-full">
 
-                <!-- カウントダウンオーバーレイ -->
-                <div id="countdownOverlay" class="hidden">
-                    <div id="countdownValue"></div>
+                    <!-- Start Overlay (Hidden by default, shown by JS) -->
+                    <div id="startOverlay"
+                        class="absolute inset-0 z-50 flex items-center justify-center bg-black/60 hidden backdrop-blur-sm pointer-events-auto">
+                        <div class="text-center">
+                            <h1 class="font-display text-4xl text-white mb-6 tracking-widest">GAME START</h1>
+                            <!-- Syncing stats for start overlay (Optional, keeping hidden inputs or just ignoring if not needed by design) -->
+                            <div class="hidden">
+                                <span id="playerHPStart"></span>
+                                <span id="killCountStart"></span>
+                                <span id="timeLeftStart"></span>
+                            </div>
+                            <button id="sceneStartButton"
+                                class="parallelogram bg-primary text-white px-8 py-3 font-display font-bold tracking-widest hover:bg-red-600 transition-colors">
+                                START WAVE
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Countdown Overlay -->
+                    <div id="countdownOverlay"
+                        class="absolute inset-0 z-60 flex items-center justify-center pointer-events-none hidden">
+                        <div id="countdownValue"
+                            class="font-display text-9xl text-white drop-shadow-[0_0_20px_rgba(255,0,0,0.8)] animate-pulse">
+                        </div>
+                    </div>
+
+                    <!-- Right: Vertical HP Bar -->
+                    <div class="absolute bottom-12 right-6 flex flex-col items-end gap-1 pointer-events-none z-20">
+                        <div class="flex items-center gap-2 mb-1">
+                            <span class="w-1.5 h-1.5 bg-primary animate-pulse"></span>
+                            <span
+                                class="font-display font-black text-xl text-primary tracking-[0.2em] drop-shadow-[0_0_5px_rgba(255,0,0,0.8)]">HP</span>
+                        </div>
+
+                        <div
+                            class="relative w-8 h-64 border border-white/20 bg-black/60 backdrop-blur-md overflow-hidden group">
+                            <!-- Grid background effect -->
+                            <div class="absolute inset-0 opacity-20"
+                                style="background-image: linear-gradient(to bottom, transparent 4px, #525252 5px); background-size: 100% 5px;">
+                            </div>
+
+                            <!-- Health Fill -->
+                            <div id="verticalHpFill"
+                                class="absolute bottom-0 w-full bg-primary transition-all duration-500 ease-out shadow-[0_0_20px_rgba(255,0,0,0.4)]"
+                                style="height: 100%;">
+                                <div class="w-full h-0.5 bg-white shadow-[0_0_8px_#fff]"></div>
+                            </div>
+
+                            <!-- Decorative side line -->
+                            <div class="absolute top-0 right-0 w-1 h-full bg-black/30 border-l border-white/10"></div>
+
+                            <!-- Scanline effect overlay -->
+                            <div
+                                class="absolute inset-0 bg-gradient-to-b from-transparent via-primary/5 to-transparent h-1/4 w-full animate-scanline opacity-30">
+                            </div>
+                        </div>
+
+                        <div class="flex flex-col items-end gap-0.5 mt-1">
+                            <span id="verticalHpNum"
+                                class="font-display font-black text-2xl text-white tracking-tighter drop-shadow-md">--</span>
+                            <span class="font-display text-[10px] text-white/60 tracking-widest font-bold">/ <span
+                                    id="verticalHpMax">--</span></span>
+                        </div>
+                    </div>
+
+                    <!-- Bottom Left: Action Button -->
+                    <div class="flex w-full justify-start items-end gap-4 mt-auto pr-32 pb-4">
+                        <button id="cancelButton"
+                            class="parallelogram bg-black/60 border border-white/40 text-white h-12 w-32 flex items-center justify-center backdrop-blur-md active:bg-white active:text-black transition-colors hover:border-primary/80 hover:text-primary">
+                            <span
+                                class="font-display font-bold tracking-widest text-sm skew-x-[15deg] uppercase">Cancel</span>
+                        </button>
+                    </div>
+
+                    <!-- Footer Line -->
+                    <div class="absolute bottom-4 left-6 right-6 h-px bg-white/20 flex justify-between items-center">
+                        <div class="w-16 h-1 bg-white/60"></div>
+                        <div class="flex gap-1">
+                            <div class="w-1 h-1 bg-primary"></div>
+                            <div class="w-1 h-1 bg-white/40"></div>
+                            <div class="w-1 h-1 bg-white/40"></div>
+                        </div>
+                        <div class="text-[8px] font-mono text-white/40">ZANBARAI_AR_V2.1</div>
+                    </div>
                 </div>
             </div>
 
-            <!-- デバッグHUD切替ボタン -->
-            <button id="toggleDebugButton" class="btn-debug">DEBUG</button>
+            <!-- Debug Toggle (Keeping it) -->
+            <button id="toggleDebugButton"
+                class="absolute top-4 right-4 z-50 text-xs text-white/20 border border-white/10 px-2 py-1 opacity-50 hover:opacity-100">DEBUG</button>
         </div>
 
-        <!-- Result画面 (S5) -->
-        <div id="resultScreen" class="screen">
-            <h2 id="resultTitle">結果</h2>
-            <div id="resultStats">
-                <p>撃破数: <span id="resultKills">0</span></p>
-                <p>経過時間: <span id="resultTime">0</span>秒</p>
+        <!-- Result Screen (Existing) -->
+        <div id="resultScreen"
+            class="screen absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/90 hidden">
+            <h2 id="resultTitle" class="text-3xl text-white mb-6">結果</h2>
+            <div id="resultStats" class="mb-8 text-center text-white">
+                <p class="text-xl mb-2">撃破数: <span id="resultKills" class="font-bold text-primary">0</span></p>
+                <p class="text-xl">経過時間: <span id="resultTime" class="font-bold">0</span>秒</p>
             </div>
-            <button id="retryButton" class="btn-primary">リトライ</button>
-            <button id="reconnectButton" class="btn-secondary">再接続</button>
-            <button id="recalibrateButton" class="btn-secondary">再キャリブレーション</button>
-
-            <!-- デバッグHUD切替ボタン -->
-            <button id="toggleDebugButtonResult" class="btn-debug">DEBUG</button>
+            <div class="flex flex-col gap-4">
+                <button id="retryButton" class="btn-primary w-48 py-2 bg-primary text-white rounded">リトライ</button>
+                <button id="reconnectButton"
+                    class="w-48 py-2 border border-gray-500 text-gray-300 rounded hover:bg-gray-800">再接続</button>
+                <button id="recalibrateButton"
+                    class="w-48 py-2 border border-gray-500 text-gray-300 rounded hover:bg-gray-800">再キャリブレーション</button>
+            </div>
+            <button id="toggleDebugButtonResult" class="mt-8 text-xs text-gray-600">DEBUG</button>
         </div>
+
     </div>
 
-    <!-- デバッグオーバーレイ -->
-    <div id="debugOverlay" class="hidden">
-        <h3>デバッグ情報</h3>
+    <!-- Debug Overlay -->
+    <div id="debugOverlay"
+        class="hidden fixed top-0 left-0 w-64 h-full bg-black/80 text-green-400 font-mono text-xs p-2 z-[100] overflow-auto">
+        <h3 class="border-b border-green-800 mb-2">デバッグ情報</h3>
         <div id="debugContent">
             <p>BLE状態: <span id="debugBleState">--</span></p>
             <p>受信Hz: <span id="debugHz">--</span></p>
@@ -216,7 +725,7 @@
             <p>触覚送信: <span id="debugHaptics">--</span></p>
             <p>エラー: <span id="debugError">--</span></p>
         </div>
-        <div id="debugLog">
+        <div id="debugLog" class="mt-4 border-t border-green-800 pt-2">
             <h4>ログ</h4>
             <div id="logContent"></div>
         </div>
@@ -231,8 +740,6 @@
             }
         }
     </script>
-
-    <!-- ゲームモジュール -->
     <script type="module" src="js/main.js"></script>
 </body>
 

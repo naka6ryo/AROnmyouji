@@ -217,6 +217,18 @@ class AROnmyoujiGame {
             this.videoElement.srcObject = this.cameraStream;
             this.videoElement.muted = true;
 
+            // Check if we are using environment camera and remove mirror effect
+            try {
+                const track = this.cameraStream.getVideoTracks()[0];
+                const settings = track.getSettings();
+                if (settings.facingMode === 'environment') {
+                    this.videoElement.classList.remove('scale-x-[-1]');
+                    this.debugOverlay.logInfo('背面カメラ検出: ミラーリング解除');
+                }
+            } catch (e) {
+                console.warn('Camera settings check failed', e);
+            }
+
             const tryPlay = async () => {
                 try {
                     await this.videoElement.play();
@@ -490,7 +502,7 @@ class AROnmyoujiGame {
         };
 
         // Ensure interpreter is not fully calibrated yet
-        try { if (this.motionInterpreter) this.motionInterpreter.isCalibrated = false; } catch (e) {}
+        try { if (this.motionInterpreter) this.motionInterpreter.isCalibrated = false; } catch (e) { }
 
         // Ensure we are in calibrate screen
         this.appState.recalibrate();

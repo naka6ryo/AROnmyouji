@@ -646,8 +646,9 @@ class AROnmyoujiGame {
             // プロジェクションで画面内判定（矢印は画面外のときのみ出す）
             const worldPos = this.getEnemyWorldPosition(enemy);
             const ndc = this.renderer.projectToNdc(worldPos);
-            const margin = 0.05; // 少し余裕を持たせる
-            const onScreen = ndc.z >= -1 && ndc.z <= 1 && ndc.x >= -1 + margin && ndc.x <= 1 - margin && ndc.y >= -1 + margin && ndc.y <= 1 - margin;
+            const margin = 0.1; // 端の敵も矢印が出やすいよう拡大
+            // z>0はカメラ後方なので常に画面外扱い
+            const onScreen = ndc.z < 0 && ndc.z >= -1 && ndc.x >= -1 + margin && ndc.x <= 1 - margin && ndc.y >= -1 + margin && ndc.y <= 1 - margin;
             const existing = this.enemyIndicatorMap.get(enemy.id);
             if (onScreen) {
                 if (existing) {

@@ -15,9 +15,9 @@ export class Hitodama {
         const material = new THREE.MeshStandardMaterial({
             color: 0xff3300, // 朱色っぽい赤
             emissive: 0xff0000, // 真っ赤に発光
-            emissiveIntensity: 5.0, // メラメラ感を強調するため発光強度をアップ
+            emissiveIntensity: 10.0, // コアを強く発光させる（ブルーム向け）
             transparent: true,
-            opacity: 0.9,
+            opacity: 1.0,
             roughness: 0.1,
             metalness: 0.1
         });

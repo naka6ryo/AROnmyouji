@@ -23,8 +23,9 @@ export class Renderer {
                 this.videoTexture = new THREE.VideoTexture(this.videoElement);
                 this.videoTexture.minFilter = THREE.LinearFilter;
                 this.videoTexture.magFilter = THREE.LinearFilter;
-                // フォーマットやエンコーディングは環境依存なので Three.js に任せる
-                this.scene.background = this.videoTexture;
+                // NOTE: カメラ映像は HTML の <video> 要素を下層に表示し、
+                // CSS の `filter: grayscale(1)` で白黒化するため、
+                // Scene.background には設定しない（キャンバスの透明度を利用）。
             } catch (e) {
                 console.warn('[Renderer] VideoTexture の作成に失敗:', e);
             }

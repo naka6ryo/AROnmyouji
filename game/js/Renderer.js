@@ -177,6 +177,13 @@ export class Renderer {
     getViewDirection() {
         return this.viewDirection;
     }
+
+    /**
+     * カメラFOVの半角（度）を取得
+     */
+    getHalfFovDegrees() {
+        return this.camera.fov / 2;
+    }
     
     /**
      * クリーンアップ

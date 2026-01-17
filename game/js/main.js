@@ -82,6 +82,9 @@ class AROnmyoujiGame {
             timeLeft: document.getElementById('timeLeft'),
             hudPowerMode: document.getElementById('hudPowerMode'),
             powerModeTime: document.getElementById('powerModeTime'),
+            enemyIndicator: document.getElementById('enemyIndicator'),
+            enemyIndicatorArrow: document.querySelector('#enemyIndicator .arrow'),
+            enemyIndicatorLabel: document.querySelector('#enemyIndicator .label'),
             
             // Result
             resultTitle: document.getElementById('resultTitle'),
@@ -444,6 +447,9 @@ class AROnmyoujiGame {
         this.ui.resultTitle.textContent = title;
         this.ui.resultKills.textContent = kills;
         this.ui.resultTime.textContent = time.toFixed(1);
+        if (this.ui.enemyIndicator) {
+            this.ui.enemyIndicator.classList.add('hidden');
+        }
         this.appState.endGame();
     }
     
@@ -492,6 +498,9 @@ class AROnmyoujiGame {
             // 戦闘システム更新
             const viewDir = this.renderer.getViewDirection();
             this.combatSystem.update(this.FIXED_DELTA_TIME, viewDir);
+
+            // 画面外の敵インジケータ更新
+            this.updateEnemyIndicator(viewDir);
             
             // レンダラー更新
             this.renderer.updateEnemies(this.gameWorld.getEnemies());
@@ -505,6 +514,65 @@ class AROnmyoujiGame {
         
         // 次のフレーム
         requestAnimationFrame(() => this.gameLoop());
+    }
+
+    /**
+     * 画面外の敵方向を矢印で示す
+     */
+    updateEnemyIndicator(viewDir) {
+        const indicator = this.ui.enemyIndicator;
+        const arrow = this.ui.enemyIndicatorArrow;
+        if (!indicator || !arrow) return;
+        
+        const enemies = this.gameWorld.getEnemies();
+        if (!enemies.length) {
+            indicator.classList.add('hidden');
+            return;
+        }
+        
+        const halfFov = this.renderer.getHalfFovDegrees();
+        let target = null;
+        let smallestAngle = Infinity;
+        
+        for (const enemy of enemies) {
+            const enemyDir = this.gameWorld.getEnemyDirection(enemy);
+            const angle = this.combatSystem.calculateAngleBetween(viewDir, enemyDir);
+            
+            // FOV外のみ対象
+            if (angle > halfFov) {
+                if (angle < smallestAngle) {
+                    smallestAngle = angle;
+                    target = { enemy, dir: enemyDir };
+                }
+            }
+        }
+        
+        if (!target) {
+            indicator.classList.add('hidden');
+            return;
+        }
+        
+        // 視線基準で水平角差を算出し、矢印を回転
+        const yawDiff = this.calculateYawDifference(viewDir, target.dir);
+        arrow.style.transform = `rotate(${yawDiff}deg)`;
+        
+        if (this.ui.enemyIndicatorLabel) {
+            this.ui.enemyIndicatorLabel.textContent = `ENEMY ${target.enemy.distance.toFixed(1)}m`;
+        }
+        
+        indicator.classList.remove('hidden');
+    }
+    
+    /**
+     * 視線と対象方向の水平角差（度）
+     */
+    calculateYawDifference(viewDir, targetDir) {
+        const viewYaw = Math.atan2(viewDir.x, viewDir.z);
+        const targetYaw = Math.atan2(targetDir.x, targetDir.z);
+        let diffDeg = (targetYaw - viewYaw) * 180 / Math.PI;
+        while (diffDeg > 180) diffDeg -= 360;
+        while (diffDeg < -180) diffDeg += 360;
+        return diffDeg;
     }
     
     /**

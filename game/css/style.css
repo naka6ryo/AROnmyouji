@@ -191,6 +191,36 @@ body {
     pointer-events: none;
 }
 
+#enemyIndicator {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    pointer-events: none;
+}
+
+#enemyIndicator .arrow {
+    width: 0;
+    height: 0;
+    border-left: 12px solid transparent;
+    border-right: 12px solid transparent;
+    border-bottom: 24px solid #ffd166;
+    filter: drop-shadow(0 0 8px rgba(255, 209, 102, 0.85));
+    transition: transform 0.08s linear;
+}
+
+#enemyIndicator .label {
+    color: #ffd166;
+    font-weight: bold;
+    font-size: 0.9rem;
+    text-shadow: 0 0 6px rgba(0, 0, 0, 0.8);
+    letter-spacing: 1px;
+}
+
 #hudBottom {
     display: flex;
     justify-content: space-between;

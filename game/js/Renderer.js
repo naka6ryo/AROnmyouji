@@ -36,7 +36,8 @@ export class Renderer {
         this.renderer = new THREE.WebGLRenderer({
             canvas: this.canvas,
             alpha: true, // 背景透過
-            antialias: true
+            antialias: true,
+            premultipliedAlpha: false
         });
         this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         // クリアカラーを透明に設定 (Bloom用)

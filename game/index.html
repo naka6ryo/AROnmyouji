@@ -73,6 +73,24 @@
             <!-- HUD -->
             <div id="hud">
                 <div id="enemyIndicators"></div>
+                <!-- Header / Top HUD (scan status and connectivity) -->
+                <div id="topHeader" class="top-header">
+                    <div class="scan-status">SCANNING</div>
+                    <div class="connectivity">L: -- ms</div>
+                </div>
+
+                <!-- Top Center: Elapsed Time / Defeated -->
+                <div id="topCenterHud" class="top-center-hud">
+                    <div class="time-box">
+                        <div class="label">Elapsed Time</div>
+                        <div id="elapsedTimeDisplay" class="value">00:00</div>
+                    </div>
+                    <div class="divider"></div>
+                    <div class="kills-box">
+                        <div class="label">Defeated</div>
+                        <div id="defeatedDisplay" class="value">0</div>
+                    </div>
+                </div>
                     <div id="hudTop">
                         <div id="hudHP">
                             <div class="hp-label">HP</div>
@@ -83,7 +101,11 @@
                         <div id="hudTimer">残り時間: <span id="timeLeft">120</span>秒</div>
                     </div>
                 <div id="hudCenter">
-                    <div id="reticle">+</div>
+                    <div id="reticleWrapper">
+                        <div class="outer-ring"></div>
+                        <div class="inner-ring"></div>
+                        <div class="center-dot"></div>
+                    </div>
                 </div>
                 <div id="hudBottom">
                     <div id="hudPowerMode" class="hidden">
@@ -92,7 +114,7 @@
                     <div id="bleConnectionIndicator">🔗</div>
                 </div>
                 <!-- スタートオーバーレイ（中央表示） -->
-                <div id="startOverlay" class="start-overlay hidden">
+                <div id="startOverlay" class="start-overlay">
                     <h1>ゲーム開始</h1>
                     <div class="start-stats">
                         <div class="start-hp">
@@ -104,6 +126,18 @@
                         <div class="start-timer">残り時間: <span id="timeLeftStart">120</span>秒</div>
                     </div>
                     <button id="sceneStartButton" class="btn-primary">開始</button>
+                </div>
+
+                <!-- Right vertical HP bar (gameplay style) -->
+                <div id="verticalHp" class="vertical-hp">
+                    <div class="hp-label-vertical">HP</div>
+                    <div class="hp-track"><div id="verticalHpFill" class="hp-fill"></div></div>
+                    <div class="hp-numbers"><div id="verticalHpNum">5</div><div class="sep">/</div><div id="verticalHpMax">5</div></div>
+                </div>
+
+                <!-- Bottom Left Action Button -->
+                <div id="bottomLeftAction" class="bottom-left-action">
+                    <button id="cancelButton" class="btn-secondary">Cancel</button>
                 </div>
 
                 <!-- カウントダウンオーバーレイ -->

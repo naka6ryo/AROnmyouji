@@ -54,6 +54,13 @@ export class UIManager {
             countdownOverlay: document.getElementById('countdownOverlay'),
             countdownValue: document.getElementById('countdownValue'),
             startOverlay: document.getElementById('startOverlay'),
+            // Top center HUD
+            elapsedTimeDisplay: document.getElementById('elapsedTimeDisplay'),
+            defeatedDisplay: document.getElementById('defeatedDisplay'),
+            // Vertical HP
+            verticalHpFill: document.getElementById('verticalHpFill'),
+            verticalHpNum: document.getElementById('verticalHpNum'),
+            verticalHpMax: document.getElementById('verticalHpMax'),
 
             // Effects
             flashOverlay: document.getElementById('flash-overlay'),
@@ -194,6 +201,25 @@ export class UIManager {
             const pct2 = Math.max(0, Math.min(1, playerState.hp / playerState.maxHP));
             this.elements.hpBarFillStart.style.width = `${pct2 * 100}%`;
         }
+
+        // Top center HUD (Elapsed / Defeated)
+        if (this.elements.elapsedTimeDisplay) {
+            const elapsedSec = (stats.gameTime || 0) / 1000;
+            const mm = String(Math.floor(elapsedSec / 60)).padStart(2, '0');
+            const ss = String(Math.floor(elapsedSec % 60)).padStart(2, '0');
+            this.elements.elapsedTimeDisplay.textContent = `${mm}:${ss}`;
+        }
+        if (this.elements.defeatedDisplay) {
+            this.elements.defeatedDisplay.textContent = `${stats.killCount}`;
+        }
+
+        // Vertical HP update
+        if (this.elements.verticalHpFill) {
+            const pct = Math.max(0, Math.min(1, playerState.hp / playerState.maxHP));
+            this.elements.verticalHpFill.style.height = `${pct * 100}%`;
+        }
+        if (this.elements.verticalHpNum) this.elements.verticalHpNum.textContent = `${playerState.hp}`;
+        if (this.elements.verticalHpMax) this.elements.verticalHpMax.textContent = `${playerState.maxHP}`;
     }
 
     updatePowerMode(active, remainingTime) {

@@ -429,6 +429,72 @@ body {
     font-size: 1rem;
 }
 
+/* Top header */
+.top-header {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    right: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    pointer-events: none;
+    z-index: 70;
+}
+.top-header .scan-status {
+    background: rgba(0,0,0,0.6);
+    color: #fff;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    font-size: 12px;
+}
+.top-header .connectivity {
+    color: #fff;
+    background: rgba(0,0,0,0.4);
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-family: monospace;
+    font-size: 12px;
+}
+
+/* Top center HUD */
+.top-center-hud {
+    position: absolute;
+    top: 72px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    background: rgba(0,0,0,0.55);
+    padding: 8px 16px;
+    border-radius: 10px;
+    z-index: 70;
+    pointer-events: none;
+}
+.top-center-hud .label { font-size: 10px; color: #ffddcc; text-transform: uppercase; letter-spacing: 0.12em; }
+.top-center-hud .value { font-family: 'Courier New', monospace; font-size: 20px; color: #fff; }
+.top-center-hud .divider { width: 1px; height: 36px; background: rgba(255,255,255,0.06); }
+
+/* Reticle */
+#reticleWrapper { width: 220px; height: 220px; position: relative; pointer-events: none; }
+.outer-ring { position:absolute; inset:0; border-radius:50%; border:2px solid rgba(255,255,255,0.12); box-shadow: 0 0 20px rgba(255,255,255,0.03); }
+.inner-ring { position:absolute; inset:30% ; border-radius:50%; border-left:2px solid rgba(255,255,255,0.16); border-right:2px solid rgba(255,255,255,0.16); }
+.center-dot { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:14px; height:14px; background: #ff6b6b; border-radius:50%; box-shadow:0 0 10px rgba(255,107,107,0.9); }
+
+/* Vertical HP bar */
+.vertical-hp { position: absolute; right: 24px; bottom: 84px; width: 56px; display:flex; flex-direction:column; align-items:center; gap:8px; pointer-events:none; z-index:70; }
+.vertical-hp .hp-label-vertical { color:#ff6b6b; font-weight:900; letter-spacing:0.08em; }
+.vertical-hp .hp-track { width: 28px; height: 220px; background: rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06); border-radius:6px; overflow:hidden; position:relative; }
+.vertical-hp .hp-fill { position:absolute; left:0; right:0; bottom:0; height:100%; background: linear-gradient(180deg,#ff6b6b,#ff8a5b); transition: height 0.3s ease; }
+.vertical-hp .hp-numbers { display:flex; gap:4px; align-items:center; color:#fff; font-weight:800; }
+
+/* Bottom-left action */
+.bottom-left-action { position: absolute; left: 24px; bottom: 36px; z-index:70; pointer-events:auto; }
+.bottom-left-action .btn-secondary { padding: 12px 20px; font-size: 1rem; }
+
 /* レスポンシブ対応 */
 @media (max-width: 768px) {
     .screen h1 {

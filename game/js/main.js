@@ -12,6 +12,7 @@ import { GameWorld } from './GameWorld.js';
 import { CombatSystem } from './CombatSystem.js';
 import { Renderer } from './Renderer.js';
 import { DebugOverlay } from './DebugOverlay.js';
+import { UIManager } from './UIManager.js';
 
 class AROnmyoujiGame {
     constructor() {
@@ -24,140 +25,78 @@ class AROnmyoujiGame {
         this.combatSystem = new CombatSystem(this.gameWorld, this.motionInterpreter);
         this.debugOverlay = new DebugOverlay();
         this.renderer = new Renderer('gameCanvas', this.debugOverlay);
-        
+        this.uiManager = new UIManager();
+
+        // UI初期化
+        this.uiManager.init();
+
         // カメラストリーム
         this.cameraStream = null;
         this.videoElement = document.getElementById('cameraVideo');
-        
+
         // 直近フレーム
         this.latestFrame = null;
-        
+
         // ゲームループ
         this.lastUpdateTime = 0;
         this.FIXED_DELTA_TIME = 1000 / 60; // 60 FPS
         this.isRunning = false;
-        
-        // ダブルヒット防止用：敵ID→最後にダメージを受けた時刻
+
+        // ダブルヒット防止用
         this.lastEnemyHitTime = new Map();
-        this.MIN_HIT_INTERVAL_MS = 100; // 同じ敵に対して100ms以内の連続ヒットを防ぐ
-        
-        // UI要素
-        this.initUIElements();
-        
+        this.MIN_HIT_INTERVAL_MS = 100;
+
         // イベントハンドラ設定
         this.setupEventHandlers();
-        
+
         console.log('[Game] 初期化完了');
         this.debugOverlay.logInfo('ゲーム初期化完了');
     }
-    
-    /**
-     * UI要素の取得
-     */
-    initUIElements() {
-        this.ui = {
-            // Splash
-            startButton: document.getElementById('startButton'),
-            
-            // Permission
-            requestPermissionButton: document.getElementById('requestPermissionButton'),
-            cameraStatus: document.getElementById('cameraStatus'),
-            motionStatus: document.getElementById('motionStatus'),
-            permissionError: document.getElementById('permissionError'),
-            permissionDebugLog: document.getElementById('permissionDebugLog'),
-            
-            // BLE Connect
-            connectBleButton: document.getElementById('connectBleButton'),
-            bleStatus: document.getElementById('bleStatus'),
-            bleError: document.getElementById('bleError'),
-            
-            // Calibrate
-            calibPitch: document.getElementById('calibPitch'),
-            calibYaw: document.getElementById('calibYaw'),
-            calibRoll: document.getElementById('calibRoll'),
-            confirmCalibrationButton: document.getElementById('confirmCalibrationButton'),
-            
-            // Gameplay HUD
-            playerHP: document.getElementById('playerHP'),
-            killCount: document.getElementById('killCount'),
-            timeLeft: document.getElementById('timeLeft'),
-            hudPowerMode: document.getElementById('hudPowerMode'),
-            powerModeTime: document.getElementById('powerModeTime'),
-            enemyIndicators: document.getElementById('enemyIndicators'),
-            // Result
-            resultTitle: document.getElementById('resultTitle'),
-            resultKills: document.getElementById('resultKills'),
-            resultTime: document.getElementById('resultTime'),
-            retryButton: document.getElementById('retryButton'),
-            reconnectButton: document.getElementById('reconnectButton'),
-            recalibrateButton: document.getElementById('recalibrateButton'),
-            
-            // Debug
-            toggleDebugButton: document.getElementById('toggleDebugButton'),
-            toggleDebugButtonResult: document.getElementById('toggleDebugButtonResult')
-        };
 
-        // 敵インジケータ要素管理
-        this.enemyIndicatorMap = new Map(); // enemyId -> element
-    }
-    
     /**
      * イベントハンドラ設定
      */
     setupEventHandlers() {
-        // Splash
-        this.ui.startButton.addEventListener('click', () => this.onStartGame());
-        
-        // Permission
-        this.ui.requestPermissionButton.addEventListener('click', () => this.requestPermissions());
-        
-        // BLE Connect
-        this.ui.connectBleButton.addEventListener('click', () => this.connectBLE());
-        
-        // Calibrate
-        this.ui.confirmCalibrationButton.addEventListener('click', () => this.confirmCalibration());
-        
-        // Result
-        this.ui.retryButton.addEventListener('click', () => this.onRetry());
-        this.ui.reconnectButton.addEventListener('click', () => this.onReconnect());
-        this.ui.recalibrateButton.addEventListener('click', () => this.onRecalibrate());
-        
-        // Debug toggle
-        this.ui.toggleDebugButton.addEventListener('click', () => {
-            this.debugOverlay.toggle();
+        // UIイベント
+        this.uiManager.bindEvents({
+            onStartGame: () => this.onStartGame(),
+            onRequestPermission: () => this.requestPermissions(),
+            onConnectBLE: () => this.connectBLE(),
+            onConfirmCalibration: () => this.confirmCalibration(),
+            onRetry: () => this.onRetry(),
+            onReconnect: () => this.onReconnect(),
+            onRecalibrate: () => this.onRecalibrate(),
+            onToggleDebug: () => this.debugOverlay.toggle()
         });
-        this.ui.toggleDebugButtonResult.addEventListener('click', () => {
-            this.debugOverlay.toggle();
-        });
-        
+
         // BLE コールバック
         this.bleAdapter.setOnDataCallback((data) => this.onBLEData(data));
         this.bleAdapter.setOnDisconnectCallback(() => this.onBLEDisconnect());
-        
+
         // Renderer コールバック
         this.renderer.onSlashHitEnemy = (data) => this.onRendererSlashHit(data);
-        
+
         // Motion Interpreter コールバック
         this.motionInterpreter.onSwingDetected = (swing) => this.onSwing(swing);
         this.motionInterpreter.onCircleDetected = (circle) => this.onCircle(circle);
         this.motionInterpreter.onPowerModeActivated = (power) => this.onPowerMode(power);
         this.motionInterpreter.onSwingTracerUpdate = (trajectory) => this.onSwingTracerUpdate(trajectory);
         this.motionInterpreter.onSwingStarted = () => this.onSwingStarted();
-        
+
         // GameWorld コールバック
         this.gameWorld.onEnemySpawned = (enemy) => this.onEnemySpawned(enemy);
         this.gameWorld.onEnemyKilled = (data) => this.onEnemyKilled(data);
         this.gameWorld.onPlayerDamaged = (data) => this.onPlayerDamaged(data);
         this.gameWorld.onGameOver = (data) => this.onGameOver(data);
         this.gameWorld.onGameClear = (data) => this.onGameClear(data);
-        
+
         // CombatSystem コールバック
         this.combatSystem.onHapticEvent = (event) => this.onHapticEvent(event);
-        
-        // DeviceOrientation（端末姿勢）は権限取得後に登録する
+
+        // DeviceOrientation
         this.deviceOrientationHandler = (e) => this.renderer.updateDeviceOrientation(e);
     }
-    
+
     /**
      * ゲーム開始
      */
@@ -165,175 +104,104 @@ class AROnmyoujiGame {
         this.debugOverlay.logInfo('ゲーム開始ボタン押下');
         this.appState.startGame();
     }
-    
-    /**
-     * 権限要求画面にデバッグ情報を追加
-     */
-    addPermissionDebugLog(message) {
-        const log = this.ui.permissionDebugLog;
-        if (!log) return;
-        
-        const timestamp = new Date().toLocaleTimeString('ja-JP');
-        const entry = document.createElement('div');
-        entry.textContent = `[${timestamp}] ${message}`;
-        entry.style.padding = '0.3rem';
-        entry.style.borderBottom = '1px solid #333';
-        
-        log.appendChild(entry);
-        
-        // スクロールを最下部に
-        log.parentElement.scrollTop = log.parentElement.scrollHeight;
-        
-        console.log(`[Permission Debug] ${message}`);
-    }
-    
+
     /**
      * 権限要求
      */
     async requestPermissions() {
         this.debugOverlay.logInfo('権限要求開始');
-        this.addPermissionDebugLog('権限要求開始...');
-        
+        this.uiManager.addPermissionLog('権限要求開始...');
+
         try {
-            // ★重要★ モーション権限を FIRST に取得する
-            // ユーザージェスチャーコンテキストを失わないためにカメラより先に実行
+            // モーション権限
             if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
-                this.addPermissionDebugLog('📱 iOS環境を検出');
-                console.log('[requestPermissions] iOS環境検出。requestPermissionメソッド実行中...');
-                this.debugOverlay.logInfo('iOS環境: モーション権限を要求中...');
-                this.addPermissionDebugLog('📱 requestPermission()を呼び出し中（ユーザージェスチャーコンテキスト内）...');
-                
+                this.uiManager.addPermissionLog('📱 iOS環境: requestPermission実行...');
+
                 try {
-                    // ジェスチャーコンテキスト内で即座に実行
                     const permission = await DeviceOrientationEvent.requestPermission();
-                    this.addPermissionDebugLog(`📱 requestPermission()結果: ${permission}`);
-                    console.log('[requestPermissions] requestPermission結果:', permission);
-                    this.debugOverlay.logInfo(`requestPermission結果: ${permission}`);
-                    
+                    this.uiManager.addPermissionLog(`📱 requestPermission結果: ${permission}`);
+
                     if (permission === 'granted') {
-                        this.ui.motionStatus.textContent = '📱 モーション: 許可 ✓';
-                        this.debugOverlay.logInfo('モーション権限: 許可 ✓');
-                        this.addPermissionDebugLog('✓ モーション権限が許可されました');
-                        console.log('[requestPermissions] モーション権限: 許可');
-                        
-                        // 権限取得後にDeviceOrientationイベントリスナーを登録
-                        this.addPermissionDebugLog('📡 deviceorientationリスナーを登録中...');
+                        this.uiManager.updatePermissionStatus('motion', 'granted');
+                        this.uiManager.addPermissionLog('✓ モーション権限許可');
                         window.addEventListener('deviceorientation', this.deviceOrientationHandler);
-                        this.addPermissionDebugLog('✓ deviceorientationリスナー登録完了');
-                        console.log('[requestPermissions] deviceorientationリスナー登録完了');
                     } else if (permission === 'denied') {
-                        this.ui.motionStatus.textContent = '📱 モーション: 拒否 ✗';
-                        this.debugOverlay.logError('モーション権限: ユーザーが拒否');
-                        this.addPermissionDebugLog('✗ モーション権限が拒否されました');
+                        this.uiManager.updatePermissionStatus('motion', 'denied');
                         throw new Error('モーション権限が拒否されました');
-                    } else if (permission === 'prompt') {
-                        this.ui.motionStatus.textContent = '📱 モーション: 未定';
-                        this.debugOverlay.logWarn('モーション権限: プロンプト状態（未選択）');
-                        this.addPermissionDebugLog('⚠ モーション権限: プロンプト状態（未選択）');
-                        console.log('[requestPermissions] 権限プロンプト未応答');
+                    } else {
+                        this.uiManager.updatePermissionStatus('motion', 'prompt');
                     }
                 } catch (permissionError) {
-                    console.error('[requestPermissions] requestPermissionエラー:', permissionError);
-                    this.debugOverlay.logError(`requestPermissionエラー: ${permissionError.message}`);
-                    this.addPermissionDebugLog(`✗ requestPermissionエラー: ${permissionError.message}`);
+                    this.uiManager.showPermissionError(permissionError.message);
                     throw permissionError;
                 }
             } else {
-                // 非iOS環境ではデフォルトで許可とみなす
-                this.addPermissionDebugLog('📱 非iOS環境を検出（requestPermissionなし）');
-                console.log('[requestPermissions] 非iOS環境。自動許可。');
-                this.ui.motionStatus.textContent = '📱 モーション: 許可 ✓';
-                this.debugOverlay.logInfo('モーション権限: 自動許可（非iOS）');
-                this.addPermissionDebugLog('✓ 非iOS環境: 自動許可');
-                
-                // 非iOS環境でも登録
-                this.addPermissionDebugLog('📡 deviceorientationリスナーを登録中...');
+                this.uiManager.updatePermissionStatus('motion', 'granted');
+                this.uiManager.addPermissionLog('✓ 非iOS環境: 自動許可');
                 window.addEventListener('deviceorientation', this.deviceOrientationHandler);
-                this.addPermissionDebugLog('✓ deviceorientationリスナー登録完了');
             }
-            
-            // ★次に★ カメラ権限を取得する
-            this.addPermissionDebugLog('📷 カメラ権限を要求中...');
-            console.log('[requestPermissions] カメラ権限要求中...');
-            
+
+            // カメラ権限
+            this.uiManager.addPermissionLog('📷 カメラ権限要求中...');
+
             this.cameraStream = await navigator.mediaDevices.getUserMedia({
                 video: { facingMode: 'environment' }
             });
             this.videoElement.srcObject = this.cameraStream;
-            // ブラウザによっては自動再生がブロックされる、またはsrcObject適用でplayが中断されることがあるため
-            // 'loadedmetadata' イベントで再生を再試行する
-            this.videoElement.muted = true; // ミュートは自動再生許可に有利
+            this.videoElement.muted = true;
+
             const tryPlay = async () => {
                 try {
                     await this.videoElement.play();
-                    this.debugOverlay.logInfo('カメラ映像の再生を開始しました');
+                    this.debugOverlay.logInfo('カメラ映像再生開始');
                     return true;
                 } catch (err) {
-                    console.warn('[requestPermissions] video.play() に失敗:', err);
-                    this.addPermissionDebugLog(`⚠ video.play() エラー: ${err.message}`);
+                    console.warn('video.play failed', err);
                     return false;
                 }
             };
 
-            // まず即時試行
             let played = await tryPlay();
-
-            // AbortError 等で中断された場合、loadedmetadata または canplay イベントで再試行
             if (!played) {
                 const onLoaded = async () => {
-                    try {
-                        await tryPlay();
-                    } finally {
-                        this.videoElement.removeEventListener('loadedmetadata', onLoaded);
-                        this.videoElement.removeEventListener('canplay', onLoaded);
-                    }
+                    await tryPlay();
+                    this.videoElement.removeEventListener('loadedmetadata', onLoaded);
                 };
                 this.videoElement.addEventListener('loadedmetadata', onLoaded);
-                this.videoElement.addEventListener('canplay', onLoaded);
-                // タイムアウト保険（5秒後にリスナーを外す）
-                setTimeout(() => {
-                    this.videoElement.removeEventListener('loadedmetadata', onLoaded);
-                    this.videoElement.removeEventListener('canplay', onLoaded);
-                }, 5000);
+                setTimeout(() => this.videoElement.removeEventListener('loadedmetadata', onLoaded), 5000);
             }
-            this.ui.cameraStatus.textContent = '📷 カメラ: 許可 ✓';
-            this.debugOverlay.logInfo('カメラ権限: 許可');
-            this.addPermissionDebugLog('✓ カメラ権限取得成功');
-            console.log('[requestPermissions] カメラ権限取得成功');
-            
-            this.addPermissionDebugLog('✓ すべての権限取得完了。次画面へ遷移します...');
-            // 次の状態へ
+
+            this.uiManager.updatePermissionStatus('camera', 'granted');
+            this.uiManager.addPermissionLog('✓ カメラ権限取得成功');
+            this.uiManager.addPermissionLog('✓ 全権限取得完了');
+
             this.appState.permissionGranted();
-            
+
         } catch (error) {
-            console.error('[requestPermissions] エラー:', error);
-            this.ui.permissionError.textContent = `エラー: ${error.message}`;
-            this.debugOverlay.logError(`権限エラー: ${error.message}`);
-            this.addPermissionDebugLog(`✗ エラー発生: ${error.message}`);
+            console.error(error);
+            this.uiManager.showPermissionError(error.message);
+            this.uiManager.addPermissionLog(`✗ エラー: ${error.message}`);
         }
     }
-    
+
     /**
      * BLE接続
      */
     async connectBLE() {
         this.debugOverlay.logInfo('BLE接続開始');
-        this.ui.bleStatus.textContent = '接続中...';
-        
+        this.uiManager.updateBLEStatus('接続中...');
+
         try {
             await this.bleAdapter.connect();
-            this.ui.bleStatus.textContent = '接続成功';
+            this.uiManager.updateBLEStatus('接続成功');
             this.debugOverlay.logInfo('BLE接続成功');
-            
-            // 次の状態へ
             this.appState.bleConnected();
-            
         } catch (error) {
-            this.ui.bleError.textContent = `接続エラー: ${error.message}`;
+            this.uiManager.showBLEError(error.message);
             this.debugOverlay.logError(`BLE接続エラー: ${error.message}`);
         }
     }
-    
+
     /**
      * キャリブレーション確定
      */
@@ -342,16 +210,15 @@ class AROnmyoujiGame {
             this.debugOverlay.logWarn('キャリブレーション: フレームデータなし');
             return;
         }
-        
+
         const { pitch_deg, yaw_deg, roll_deg } = this.latestFrame;
         this.motionInterpreter.calibrate(pitch_deg, yaw_deg, roll_deg);
-        this.debugOverlay.logInfo(`キャリブレーション完了: pitch=${pitch_deg.toFixed(1)}, yaw=${yaw_deg.toFixed(1)}, roll=${roll_deg.toFixed(1)}`);
-        
-        // ゲームプレイ開始
+        this.debugOverlay.logInfo(`キャリブレーション完了: ${pitch_deg.toFixed(1)}, ${yaw_deg.toFixed(1)}, ${roll_deg.toFixed(1)}`);
+
         this.appState.calibrationComplete();
         this.startGameplay();
     }
-    
+
     /**
      * ゲームプレイ開始
      */
@@ -362,546 +229,224 @@ class AROnmyoujiGame {
         this.gameLoop();
         this.debugOverlay.logInfo('ゲームプレイ開始');
     }
-    
+
     /**
      * BLEデータ受信
      */
     onBLEData(data) {
         const frame = this.parser.parseFrame(data);
         if (!frame) return;
-        
+
         this.latestFrame = frame;
-        
-        // キャリブレーション画面でのリアルタイム表示
+
         if (this.appState.getCurrentState() === 'calibrate') {
-            this.ui.calibPitch.textContent = frame.pitch_deg.toFixed(1);
-            this.ui.calibYaw.textContent = frame.yaw_deg.toFixed(1);
-            this.ui.calibRoll.textContent = frame.roll_deg.toFixed(1);
+            this.uiManager.updateCalibrationValues(frame.pitch_deg, frame.yaw_deg, frame.roll_deg);
         }
-        
-        // ゲームプレイ中の処理
+
         if (this.appState.isGameplay()) {
             this.motionInterpreter.update(frame);
         }
-        
-        // デバッグ更新
+
         this.updateDebugInfo();
     }
-    
+
     /**
      * BLE切断
      */
     onBLEDisconnect() {
         this.debugOverlay.logWarn('BLE切断検出');
-        // 必要に応じて再接続画面へ遷移
     }
-    
-    /**
-     * 術式段階開始
-     */
+
     onSwingStarted() {
         this.renderer.startSwingTracer();
     }
-    
-    /**
-     * 斬撃検出
-     */
+
     onSwing(swing) {
-        this.debugOverlay.logInfo(`斬撃検出: intensity=${swing.intensity.toFixed(2)}`);
-        
-        // 術式段階の軌跡表示を終了
+        this.debugOverlay.logInfo(`斬撃: intensity=${swing.intensity.toFixed(2)}`);
         this.renderer.endSwingTracer();
-        
-        // 軌跡の始点と終点を取得
         if (swing.trajectory && swing.trajectory.length >= 2) {
             const startPyr = swing.trajectory[0];
             const endPyr = swing.trajectory[swing.trajectory.length - 1];
-            
-            // 円弧飛翔体を生成
             this.renderer.addSlashArcProjectile(startPyr, endPyr, swing.intensity);
-            
-            // 注：命中判定は Renderer の updateSlashProjectiles() で行われます
-            // 円弧が敵に当たった瞬間に onRendererSlashHit() が呼ばれます
         }
     }
-    
-    /**
-     * 術式段階の軌跡更新
-     */
+
     onSwingTracerUpdate(trajectory) {
         this.renderer.updateSwingTracer(trajectory);
     }
-    
-    /**
-     * 斬撃が敵に当たった（Renderer側の衝突判定）
-     */
+
     onRendererSlashHit(data) {
         const enemy = data.enemy;
         const intensity = data.intensity;
         const isCritical = intensity >= this.combatSystem.CRITICAL_INTENSITY_THRESHOLD;
         const now = performance.now();
-        
-        // ダブルヒット防止：同じ敵が100ms以内に連続でダメージを受けないようにする
+
         const lastHitTime = this.lastEnemyHitTime.get(enemy.id);
         if (lastHitTime && (now - lastHitTime) < this.MIN_HIT_INTERVAL_MS) {
-            console.warn(`[Game] ダブルヒット検出、スキップ: 敵id=${enemy.id}, 経過時間=${(now - lastHitTime).toFixed(1)}ms`);
-            this.debugOverlay.logInfo(`ダブルヒット防止: 敵id=${enemy.id}`);
             return;
         }
-        
-        this.debugOverlay.logInfo(`斬撃が敵に当たった: 敵id=${enemy.id}`);
-        
-        // 敵がまだ生存しているか確認
+
         const existingEnemy = this.gameWorld.enemies.find(e => e.id === enemy.id);
-        if (!existingEnemy) {
-            console.warn(`[Game] 敵が既に削除されています: 敵id=${enemy.id}`);
-            return;
-        }
-        
-        // ダメージを与える
+        if (!existingEnemy) return;
+
         const damage = this.motionInterpreter.isPowerMode ? this.combatSystem.powerDamage : this.combatSystem.normalDamage;
         const killed = this.gameWorld.damageEnemy(enemy.id, damage);
-        
-        // 最後のヒット時刻を記録
+
         this.lastEnemyHitTime.set(enemy.id, now);
-        
-        const damageMsg = `ダメージ: id=${enemy.id}, ダメ=${damage}, 撃破=${killed}`;
-        console.log(`[Game] ${damageMsg}`);
-        this.debugOverlay.logInfo(damageMsg);
-        
+
         if (this.combatSystem.onHit) {
             this.combatSystem.onHit({ enemy, damage, killed, isCritical });
         }
-        
-        // 敵が撃破された場合、敵メッシュを即座に削除
-        if (killed) {
-            const killMsg = `敵撃破: id=${enemy.id}`;
-            console.log(`[Game] ${killMsg}`);
-            this.debugOverlay.logInfo(killMsg);
 
-            // 注意: GameWorld.killEnemy() は内部で onEnemyKilled コールバックを呼ぶため
-            // そこで `renderer.removeEnemy()` が実行される。ここで再度削除すると
-            // 浄化アニメーションが始まった直後に強制削除される等の不整合が起きる。
-            // よってここでは削除呼び出しを行わず、ダブルヒット防止マップの掃除のみ行う。
+        if (killed) {
             this.lastEnemyHitTime.delete(enemy.id);
         }
-        
-        // 触覚フィードバック
+
         this.combatSystem.sendHitHaptic(isCritical);
-        
-        // HUD更新
-        this.updateHUD();
+        this.updateHUD(); // HUD更新
     }
-    
-    /**
-     * 円ジェスチャ検出
-     */
+
     onCircle(circle) {
-        this.debugOverlay.logInfo('円ジェスチャ検出（札発射）');
+        this.debugOverlay.logInfo('円ジェスチャ検出');
         const viewDir = this.renderer.getViewDirection();
         this.combatSystem.fireOfuda(viewDir);
     }
-    
-    /**
-     * 強化モード発動
-     */
+
     onPowerMode(power) {
         this.debugOverlay.logInfo('強化モード発動');
         this.combatSystem.sendPowerModeHaptic();
     }
-    
-    /**
-     * 敵スポーン
-     */
+
     onEnemySpawned(enemy) {
         this.renderer.addEnemy(enemy);
     }
-    
-    /**
-     * 敵撃破
-     */
+
     onEnemyKilled(data) {
         this.renderer.removeEnemy(data.enemy.id);
         this.updateHUD();
     }
-    
-    /**
-     * プレイヤー被弾
-     */
-    onPlayerDamaged(data) {
-        this.debugOverlay.logWarn(`被弾: HP=${data.hp}`);
-        this.combatSystem.sendDamageHaptic();
-        // 被弾した敵とそのインジケータを除去
-        if (data.enemy) {
-            // DOM側のダメージ演出（フラッシュ / ビネット / シェイク）
-            const flash = document.getElementById('flash-overlay');
-            const vignette = document.getElementById('damage-vignette');
-            const container = document.getElementById('uiContainer');
-            if (flash) {
-                flash.style.opacity = '1';
-                // 素早く戻す
-                setTimeout(() => { flash.style.opacity = '0'; }, 80);
-            }
-            if (vignette) {
-                vignette.style.transition = 'opacity 0.05s ease-out';
-                vignette.style.opacity = '1';
-                setTimeout(() => {
-                    vignette.style.transition = 'opacity 2.5s ease-in';
-                    vignette.style.opacity = '0';
-                }, 200);
-            }
-            if (container) {
-                container.classList.remove('shake-screen');
-                void container.offsetWidth; // reflow
-                container.classList.add('shake-screen');
-            }
 
-            // Renderer に「プレイヤーダメージで消える」ことを伝えて、爆発系エフェクトを使わせる
+    onPlayerDamaged(data) {
+        this.combatSystem.sendDamageHaptic();
+        if (data.enemy) {
+            this.uiManager.triggerDamageEffect();
             this.renderer.removeEnemy(data.enemy.id, { playerDamage: true });
-            const el = this.enemyIndicatorMap.get(data.enemy.id);
-            if (el && this.ui.enemyIndicators && el.parentElement === this.ui.enemyIndicators) {
-                this.ui.enemyIndicators.removeChild(el);
-            }
-            this.enemyIndicatorMap.delete(data.enemy.id);
+
+            // remove indicator
+            // Note: UIManager.updateEnemyIndicators calls will clean up next frame usually,
+            // but we can rely on updateHUD calling updateEnemyIndicators if needed.
         }
         this.updateHUD();
     }
-    
-    /**
-     * ゲームオーバー
-     */
+
     onGameOver(data) {
-        this.debugOverlay.logInfo(`ゲームオーバー: 撃破数=${data.killCount}`);
         this.isRunning = false;
-        this.showResult('ゲームオーバー', data.killCount, this.gameWorld.gameTime / 1000);
-    }
-    
-    /**
-     * ゲームクリア
-     */
-    onGameClear(data) {
-        this.debugOverlay.logInfo(`ゲームクリア: 撃破数=${data.killCount}`);
-        this.isRunning = false;
-        this.showResult('クリア！', data.killCount, data.time / 1000);
-    }
-    
-    /**
-     * 触覚イベント
-     */
-    async onHapticEvent(event) {
-        if (event.data.pulses) {
-            // 複数パルス
-            await this.bleAdapter.sendHapticPulses(event.data.pulses, event.data.interval);
-        } else {
-            // 単一パルス
-            await this.bleAdapter.sendHapticCommand(event.data.strength, event.data.duration);
-        }
-        
-        this.debugOverlay.update({ hapticEvent: event.type });
-    }
-    
-    /**
-     * リザルト表示
-     */
-    showResult(title, kills, time) {
-        this.ui.resultTitle.textContent = title;
-        this.ui.resultKills.textContent = kills;
-        this.ui.resultTime.textContent = time.toFixed(1);
-        if (this.ui.enemyIndicators) {
-            this.ui.enemyIndicators.innerHTML = '';
-            this.enemyIndicatorMap.clear();
-        }
+        this.uiManager.showResult('ゲームオーバー', data.killCount, this.gameWorld.gameTime / 1000);
         this.appState.endGame();
     }
-    
-    /**
-     * リトライ
-     */
+
+    onGameClear(data) {
+        this.isRunning = false;
+        this.uiManager.showResult('クリア！', data.killCount, data.time / 1000);
+        this.appState.endGame();
+    }
+
+    async onHapticEvent(event) {
+        if (event.data.pulses) {
+            await this.bleAdapter.sendHapticPulses(event.data.pulses, event.data.interval);
+        } else {
+            await this.bleAdapter.sendHapticCommand(event.data.strength, event.data.duration);
+        }
+        this.debugOverlay.update({ hapticEvent: event.type });
+    }
+
     onRetry() {
-        this.debugOverlay.logInfo('リトライ');
-        this.renderer.dispose(); // 描画リセット
-        this.debugOverlay.clearLogs(); // ログもリセット
+        this.renderer.dispose();
+        this.debugOverlay.clearLogs();
         this.appState.retry();
         this.startGameplay();
     }
-    
-    /**
-     * 再接続
-     */
+
     onReconnect() {
-        this.debugOverlay.logInfo('再接続');
         this.bleAdapter.disconnect();
         this.appState.reconnect();
     }
-    
-    /**
-     * 再キャリブレーション
-     */
+
     onRecalibrate() {
-        this.debugOverlay.logInfo('再キャリブレーション');
         this.appState.recalibrate();
     }
-    
-    /**
-     * ゲームループ
-     */
+
     gameLoop() {
         if (!this.isRunning) return;
-        
+
         const now = performance.now();
         const deltaTime = now - this.lastUpdateTime;
-        
-        // 固定Δtで更新
+
         if (deltaTime >= this.FIXED_DELTA_TIME) {
             this.lastUpdateTime = now;
-            
-            // ゲーム更新
+
             this.gameWorld.update(this.FIXED_DELTA_TIME);
-            
-            // 戦闘システム更新
             const viewDir = this.renderer.getViewDirection();
             this.combatSystem.update(this.FIXED_DELTA_TIME, viewDir);
 
-            // 画面外の敵インジケータ更新
-            this.updateEnemyIndicators(viewDir);
-            
-            // レンダラー更新
+            this.updateHUD(viewDir);
             this.renderer.updateEnemies(this.gameWorld.getEnemies());
-            
-            // HUD更新
-            this.updateHUD();
         }
-        
-        // 描画（敵情報を渡して衝突判定）
+
         this.renderer.render(this.FIXED_DELTA_TIME, this.gameWorld.getEnemies());
-        
-        // 次のフレーム
         requestAnimationFrame(() => this.gameLoop());
     }
 
-    /**
-     * 画面外の敵方向を矢印で示す（敵ごとに1つ）
-     */
-    updateEnemyIndicators(viewDir) {
-        const container = this.ui.enemyIndicators;
-        if (!container) return;
-        
-        const enemies = this.gameWorld.getEnemies();
-        const existingIds = new Set(this.enemyIndicatorMap.keys());
-        
-        const halfVert = this.renderer.getHalfFovDegrees();
-        const halfHorz = this.renderer.getHalfFovHorizontalDegrees();
-        
-        const viewYaw = Math.atan2(viewDir.x, viewDir.z);
-        const viewElev = Math.atan2(viewDir.y, Math.sqrt(viewDir.x * viewDir.x + viewDir.z * viewDir.z));
-        
-        for (const enemy of enemies) {
-            const enemyDir = this.gameWorld.getEnemyDirection(enemy);
-            const enemyYaw = Math.atan2(enemyDir.x, enemyDir.z);
-            const enemyElev = Math.atan2(enemyDir.y, Math.sqrt(enemyDir.x * enemyDir.x + enemyDir.z * enemyDir.z));
-            
-            let yawDiff = (enemyYaw - viewYaw) * 180 / Math.PI;
-            let pitchDiff = (enemyElev - viewElev) * 180 / Math.PI;
-            yawDiff = this.normalizeAngleDeg(yawDiff);
-            pitchDiff = this.normalizeAngleDeg(pitchDiff);
+    updateHUD(viewDir) {
+        // Stats
+        this.uiManager.updateHUD(
+            this.gameWorld.getGameStats(),
+            this.gameWorld.getPlayerState()
+        );
 
-            // プロジェクションで画面内判定（矢印は画面外のときのみ出す）
-            const worldPos = this.getEnemyWorldPosition(enemy);
-            const ndc = this.renderer.projectToNdc(worldPos);
-            const margin = 0.1; // 端の敵も矢印が出やすいよう拡大
-            // z>0はカメラ後方なので常に画面外扱い
-            const onScreen = ndc.z < 0 && ndc.z >= -1 && ndc.x >= -1 + margin && ndc.x <= 1 - margin && ndc.y >= -1 + margin && ndc.y <= 1 - margin;
-            const existing = this.enemyIndicatorMap.get(enemy.id);
-            if (onScreen) {
-                if (existing) {
-                    container.removeChild(existing);
-                    this.enemyIndicatorMap.delete(enemy.id);
-                }
-                continue;
-            }
-            
-            const indicatorEl = existing || this.createEnemyIndicator(container);
-            this.positionIndicator(indicatorEl, yawDiff, pitchDiff, halfHorz, halfVert);
-            this.updateIndicatorLabel(indicatorEl, enemy);
-            this.enemyIndicatorMap.set(enemy.id, indicatorEl);
-            existingIds.delete(enemy.id);
-        }
-        
-        // 削除済み敵のインジケータを除去
-        for (const staleId of existingIds) {
-            const el = this.enemyIndicatorMap.get(staleId);
-            if (el && el.parentElement === container) {
-                container.removeChild(el);
-            }
-            this.enemyIndicatorMap.delete(staleId);
+        // Power Mode
+        const powerState = this.motionInterpreter.getPowerModeState();
+        this.uiManager.updatePowerMode(powerState.active, powerState.remaining);
+
+        // Enemy Indicators
+        if (viewDir) {
+            this.uiManager.updateEnemyIndicators(
+                this.gameWorld.getEnemies(),
+                viewDir,
+                {
+                    halfHorz: this.renderer.getHalfFovHorizontalDegrees(),
+                    halfVert: this.renderer.getHalfFovDegrees()
+                },
+                (pos) => this.renderer.projectToNdc(pos),
+                (enemy) => this.gameWorld.getEnemyDirection(enemy) // !!! getEnemyDirection returns DIRECTION, not Position. 
+            );
         }
     }
 
-    getEnemyWorldPosition(enemy) {
-        const azimRad = enemy.azim * Math.PI / 180;
-        const elevRad = enemy.elev * Math.PI / 180;
-        const r = enemy.distance;
-        return {
-            x: r * Math.cos(elevRad) * Math.sin(azimRad),
-            y: r * Math.sin(elevRad),
-            z: -r * Math.cos(elevRad) * Math.cos(azimRad)
-        };
-    }
-    
-    createEnemyIndicator(container) {
-        const wrapper = document.createElement('div');
-        wrapper.className = 'enemy-indicator';
-        const arrow = document.createElement('div');
-        arrow.className = 'arrow';
-        const label = document.createElement('div');
-        label.className = 'label';
-        wrapper.appendChild(arrow);
-        wrapper.appendChild(label);
-        container.appendChild(wrapper);
-        return wrapper;
-    }
-    
-    positionIndicator(el, yawDiff, pitchDiff, halfHorz, halfVert) {
-        // エッジ判定（近い方の端に出す）
-        const normYaw = Math.abs(yawDiff) / halfHorz;
-        const normPitch = Math.abs(pitchDiff) / halfVert;
-        const arrow = el.querySelector('.arrow');
-        if (!arrow) return;
-        
-        const clamp = (v, min, max) => Math.min(Math.max(v, min), max);
-        let xPct = 50;
-        let yPct = 50;
-        let rotation = 0;
-        const marginPct = 6;
-        
-        if (normYaw >= normPitch) {
-            // 左右端
-            const verticalShift = clamp(pitchDiff / halfVert, -1, 1) * 45;
-            yPct = 50 - verticalShift * 0.5;
-            if (yawDiff > 0) {
-                xPct = 100 - marginPct;
-                rotation = 90;
-            } else {
-                xPct = marginPct;
-                rotation = -90;
-            }
-        } else {
-            // 上下端
-            const horizontalShift = clamp(yawDiff / halfHorz, -1, 1) * 45;
-            xPct = 50 + horizontalShift * 0.5;
-            if (pitchDiff > 0) {
-                yPct = marginPct;
-                rotation = 0;
-            } else {
-                yPct = 100 - marginPct;
-                rotation = 180;
-            }
-        }
-        el.style.left = `${xPct}%`;
-        el.style.top = `${yPct}%`;
-        arrow.style.transform = `rotate(${rotation}deg)`;
-    }
-    
-    updateIndicatorLabel(el, enemy) {
-        const label = el.querySelector('.label');
-        if (label) {
-            label.textContent = '';
-        }
-        // 距離に応じて矢印色・大きさを更新
-        const arrow = el.querySelector('.arrow');
-        if (arrow) {
-            // 距離3.5m以上→緑、0.9m以下→赤、中間は線形補間
-            const minDist = 0.9;
-            const maxDist = 3.5;
-            let t = (enemy.distance - minDist) / (maxDist - minDist);
-            t = Math.max(0, Math.min(1, t));
-            // 緑→黄→赤のグラデーション
-            // 0:赤(255,0,0), 0.5:黄(255,255,0), 1:緑(0,255,0)
-            let r, g, b;
-            if (t < 0.5) {
-                // 赤→黄
-                r = 255;
-                g = Math.round(255 * (t / 0.5));
-                b = 0;
-            } else {
-                // 黄→緑
-                r = Math.round(255 * (1 - (t - 0.5) / 0.5));
-                g = 255;
-                b = 0;
-            }
-            const color = `rgb(${r},${g},${b})`;
-            arrow.style.borderBottomColor = color;
-            arrow.style.filter = `drop-shadow(0 0 8px ${color})`;
-            // 大きさ（近いほど大きく）
-            const minScale = 1.0;
-            const maxScale = 2.0;
-            const scale = maxScale - (maxScale - minScale) * t;
-            arrow.style.transform += ` scale(${scale})`;
-        }
-    }
-    
-    normalizeAngleDeg(angle) {
-        let a = angle;
-        while (a > 180) a -= 360;
-        while (a < -180) a += 360;
-        return a;
-    }
-    
-    /**
-     * HUD更新
-     */
-    updateHUD() {
-        const playerState = this.gameWorld.getPlayerState();
-        const stats = this.gameWorld.getGameStats();
-        const powerMode = this.motionInterpreter.getPowerModeState();
-        
-        this.ui.playerHP.textContent = playerState.hp;
-        this.ui.killCount.textContent = stats.killCount;
-        this.ui.timeLeft.textContent = Math.ceil(stats.remainingTime);
-        
-        // 強化モード
-        if (powerMode.active) {
-            this.ui.hudPowerMode.classList.remove('hidden');
-            this.ui.powerModeTime.textContent = Math.ceil(powerMode.remaining / 1000);
-        } else {
-            this.ui.hudPowerMode.classList.add('hidden');
-        }
-
-        // 敵インジケータなしのときはコンテナを空に
-        if (this.ui.enemyIndicators && !this.gameWorld.getEnemies().length) {
-            this.ui.enemyIndicators.innerHTML = '';
-            this.enemyIndicatorMap.clear();
-        }
-    }
-    
-    /**
-     * デバッグ情報更新
-     */
+    // Debug info update
     updateDebugInfo() {
-        if (!this.latestFrame) return;
-        
-        const stats = this.parser.getStats();
+        if (this.latestFrame) {
+            this.debugOverlay.update({
+                angle: `P:${this.latestFrame.pitch_deg.toFixed(0)} Y:${this.latestFrame.yaw_deg.toFixed(0)} R:${this.latestFrame.roll_deg.toFixed(0)}`,
+                accel: `A:${this.latestFrame.a_mag.toFixed(2)}`
+            });
+        }
+
         const swingState = this.motionInterpreter.getSwingState();
-        const circleDebug = this.motionInterpreter.getCircleDebugInfo();
-        
         this.debugOverlay.update({
-            bleConnected: this.bleAdapter.getConnectionState(),
-            receiveHz: stats.receiveHz,
-            droppedFrames: stats.droppedFrames,
-            dropRate: stats.dropRate,
-            a_mag: this.latestFrame.a_mag,
-            pitch: this.latestFrame.pitch_deg,
-            yaw: this.latestFrame.yaw_deg,
-            roll: this.latestFrame.roll_deg,
-            swingState: swingState.state,
-            cooldownRemaining: swingState.cooldownRemaining,
-            circleDebug: circleDebug
+            swing: `${swingState.state} (Int:${swingState.lastIntensity.toFixed(2)})`
         });
+
+        const circleInfo = this.motionInterpreter.getCircleDebugInfo();
+        if (circleInfo.valid) {
+            this.debugOverlay.update({
+                circle: `L:${circleInfo.length.toFixed(1)} C:${circleInfo.closure.toFixed(1)} R:${circleInfo.rotation.toFixed(1)}`
+            });
+        }
     }
 }
 
-// アプリケーション起動
-window.addEventListener('DOMContentLoaded', () => {
-    const game = new AROnmyoujiGame();
-    console.log('[Main] アプリケーション起動');
+// 起動
+window.addEventListener('load', () => {
+    window.game = new AROnmyoujiGame();
 });

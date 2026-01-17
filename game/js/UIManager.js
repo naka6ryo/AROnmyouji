@@ -357,30 +357,48 @@ export class UIManager {
             return;
         }
 
-        overlay.classList.remove('hidden');
+        // Ensure visible using inline styles to avoid Tailwind/class conflicts
+        overlay.style.display = 'flex';
+        overlay.style.pointerEvents = 'auto';
+
         let current = countFrom;
         valueEl.textContent = String(current);
+
+        // clear any existing countdown timer
+        if (this._countdownTimer) {
+            clearTimeout(this._countdownTimer);
+            this._countdownTimer = null;
+        }
 
         const tick = () => {
             current -= 1;
             if (current <= 0) {
-                overlay.classList.add('hidden');
+                overlay.style.display = 'none';
+                overlay.style.pointerEvents = 'none';
                 valueEl.textContent = '';
+                this._countdownTimer = null;
                 if (onComplete) onComplete();
                 return;
             }
             valueEl.textContent = String(current);
-            setTimeout(tick, 1000);
+            this._countdownTimer = setTimeout(tick, 1000);
         };
 
-        setTimeout(tick, 1000);
+        this._countdownTimer = setTimeout(tick, 1000);
     }
 
     hideCountdown() {
         const overlay = this.elements.countdownOverlay;
         const valueEl = this.elements.countdownValue;
-        if (overlay) overlay.classList.add('hidden');
+        if (overlay) {
+            overlay.style.display = 'none';
+            overlay.style.pointerEvents = 'none';
+        }
         if (valueEl) valueEl.textContent = '';
+        if (this._countdownTimer) {
+            clearTimeout(this._countdownTimer);
+            this._countdownTimer = null;
+        }
     }
 
     createEnemyIndicator(container) {

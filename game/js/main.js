@@ -168,7 +168,102 @@ class AROnmyoujiGame {
         this.appState.startGame();
     }
 
-    // ...
+    /**
+     * 権限要求
+     */
+    async requestPermissions() {
+        this.debugOverlay.logInfo('権限要求開始');
+        this.uiManager.addPermissionLog('権限要求開始...');
+
+        try {
+            // モーション権限
+            if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+                this.uiManager.addPermissionLog('📱 iOS環境: requestPermission実行...');
+
+                try {
+                    const permission = await DeviceOrientationEvent.requestPermission();
+                    this.uiManager.addPermissionLog(`📱 requestPermission結果: ${permission}`);
+
+                    if (permission === 'granted') {
+                        this.uiManager.updatePermissionStatus('motion', 'granted');
+                        this.uiManager.addPermissionLog('✓ モーション権限許可');
+                        window.addEventListener('deviceorientation', this.deviceOrientationHandler);
+                    } else if (permission === 'denied') {
+                        this.uiManager.updatePermissionStatus('motion', 'denied');
+                        throw new Error('モーション権限が拒否されました');
+                    } else {
+                        this.uiManager.updatePermissionStatus('motion', 'prompt');
+                    }
+                } catch (permissionError) {
+                    this.uiManager.showPermissionError(permissionError.message);
+                    throw permissionError;
+                }
+            } else {
+                this.uiManager.updatePermissionStatus('motion', 'granted');
+                this.uiManager.addPermissionLog('✓ 非iOS環境: 自動許可');
+                window.addEventListener('deviceorientation', this.deviceOrientationHandler);
+            }
+
+            // カメラ権限
+            this.uiManager.addPermissionLog('📷 カメラ権限要求中...');
+
+            this.cameraStream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: 'environment' }
+            });
+            this.videoElement.srcObject = this.cameraStream;
+            this.videoElement.muted = true;
+
+            const tryPlay = async () => {
+                try {
+                    await this.videoElement.play();
+                    this.debugOverlay.logInfo('カメラ映像再生開始');
+                    return true;
+                } catch (err) {
+                    console.warn('video.play failed', err);
+                    return false;
+                }
+            };
+
+            let played = await tryPlay();
+            if (!played) {
+                const onLoaded = async () => {
+                    await tryPlay();
+                    this.videoElement.removeEventListener('loadedmetadata', onLoaded);
+                };
+                this.videoElement.addEventListener('loadedmetadata', onLoaded);
+                setTimeout(() => this.videoElement.removeEventListener('loadedmetadata', onLoaded), 5000);
+            }
+
+            this.uiManager.updatePermissionStatus('camera', 'granted');
+            this.uiManager.addPermissionLog('✓ カメラ権限取得成功');
+            this.uiManager.addPermissionLog('✓ 全権限取得完了');
+
+            this.appState.permissionGranted();
+
+        } catch (error) {
+            console.error(error);
+            this.uiManager.showPermissionError(error.message);
+            this.uiManager.addPermissionLog(`✗ エラー: ${error.message}`);
+        }
+    }
+
+    /**
+     * BLE接続
+     */
+    async connectBLE() {
+        this.debugOverlay.logInfo('BLE接続開始');
+        this.uiManager.updateBLEStatus('接続中...');
+
+        try {
+            await this.bleAdapter.connect();
+            this.uiManager.updateBLEStatus('接続成功');
+            this.debugOverlay.logInfo('BLE接続成功');
+            this.appState.bleConnected();
+        } catch (error) {
+            this.uiManager.showBLEError(error.message);
+            this.debugOverlay.logError(`BLE接続エラー: ${error.message}`);
+        }
+    }
 
     /**
      * ゲームプレイ開始

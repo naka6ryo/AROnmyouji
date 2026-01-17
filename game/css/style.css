@@ -193,8 +193,8 @@ body {
     border-left: 12px solid transparent;
     border-right: 12px solid transparent;
     border-bottom: 24px solid #ffd166;
-    filter: drop-shadow(0 0 8px rgba(255, 209, 102, 0.85));
-    transition: transform 0.08s linear;
+    filter: drop-shadow(0 0 8px #ffd166);
+    transition: transform 0.08s linear, border-bottom-color 0.2s, filter 0.2s;
 }
 
 .enemy-indicator .label {
@@ -204,6 +204,7 @@ body {
     text-shadow: 0 0 6px rgba(0, 0, 0, 0.8);
     letter-spacing: 1px;
     white-space: nowrap;
+    display: none;
 }
 
 #hudTop {

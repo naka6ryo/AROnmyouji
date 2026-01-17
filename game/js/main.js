@@ -742,7 +742,38 @@ class AROnmyoujiGame {
     updateIndicatorLabel(el, enemy) {
         const label = el.querySelector('.label');
         if (label) {
-            label.textContent = `ENEMY ${enemy.distance.toFixed(1)}m`;
+            label.textContent = '';
+        }
+        // 距離に応じて矢印色・大きさを更新
+        const arrow = el.querySelector('.arrow');
+        if (arrow) {
+            // 距離3.5m以上→緑、0.9m以下→赤、中間は線形補間
+            const minDist = 0.9;
+            const maxDist = 3.5;
+            let t = (enemy.distance - minDist) / (maxDist - minDist);
+            t = Math.max(0, Math.min(1, t));
+            // 緑→黄→赤のグラデーション
+            // 0:赤(255,0,0), 0.5:黄(255,255,0), 1:緑(0,255,0)
+            let r, g, b;
+            if (t < 0.5) {
+                // 赤→黄
+                r = 255;
+                g = Math.round(255 * (t / 0.5));
+                b = 0;
+            } else {
+                // 黄→緑
+                r = Math.round(255 * (1 - (t - 0.5) / 0.5));
+                g = 255;
+                b = 0;
+            }
+            const color = `rgb(${r},${g},${b})`;
+            arrow.style.borderBottomColor = color;
+            arrow.style.filter = `drop-shadow(0 0 8px ${color})`;
+            // 大きさ（近いほど大きく）
+            const minScale = 1.0;
+            const maxScale = 2.0;
+            const scale = maxScale - (maxScale - minScale) * t;
+            arrow.style.transform += ` scale(${scale})`;
         }
     }
     

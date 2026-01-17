@@ -16,8 +16,8 @@ export class GameWorld {
         this.ENEMY_HIT_DISTANCE = 0.9;     // r
         
         // スポーン制御
-        this.spawnInterval = 2200;         // ms（初期）
-        this.minSpawnInterval = 900;       // ms（最小）
+        this.spawnInterval = 2700;         // ms（初期, 少し広げる）
+        this.minSpawnInterval = 1200;      // ms（最小, 少し広げる）
         this.spawnIntervalDecrement = 100; // ms（撃破ごとに短縮）
         this.nextSpawnTime = 0;
         

@@ -3,11 +3,17 @@
  * Three.jsを使用したカメラ背景、3D描画、UI同期を行うクラス
  */
 
+import * as THREE from 'three';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { Hitodama } from './Hitodama.js';
+
 export class Renderer {
     constructor(canvasId, debugOverlay = null) {
         this.canvas = document.getElementById(canvasId);
         this.debugOverlay = debugOverlay; // デバッグUIへのログ出力
-        
+
         // Three.js セットアップ
         this.scene = new THREE.Scene();
         this.camera = new THREE.PerspectiveCamera(
@@ -26,51 +32,65 @@ export class Renderer {
 
         // 端末を縦向きで持つことを基準に、X軸へ-90度オフセット
         this.orientationOffset = new THREE.Euler(-Math.PI / 2, 0, 0, 'YXZ');
-        
+
         this.renderer = new THREE.WebGLRenderer({
             canvas: this.canvas,
-            alpha: true, // 背景透過
-            antialias: true
+            antialias: true // Bloomを使う場合はfalse推奨だが、ユーザーコードがtrueなので維持。パフォーマンス注意
+            // alpha: true はBloomと相性が悪いため外すことが多いが、背景透過が必要なら維持。ここでは背景黒前提なので不要かもだが、元のコードがbody黒でcanvas blockなので、黒のシーン背景で上書きする。
         });
+
+        // --- ポストプロセス（ブルーム発光効果） ---
+        const renderScene = new RenderPass(this.scene, this.camera);
+
+        // ブルーム設定 (強さ, 半径, しきい値)
+        const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
+        bloomPass.threshold = 0.1;
+        bloomPass.strength = 2.0; // 発光の強さ
+        bloomPass.radius = 0.8;   // 発光の広がり
+
+        this.composer = new EffectComposer(this.renderer);
+        this.composer.addPass(renderScene);
+        this.composer.addPass(bloomPass);
         this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         this.updateRendererSize();
-        
+
         // 端末姿勢（視点制御用）
         this.deviceOrientation = { alpha: 0, beta: 0, gamma: 0 };
         this.viewDirection = { x: 0, y: 0, z: 1 };
-        
+
         // 敵のメッシュ管理
-        this.enemyMeshes = new Map(); // enemyId -> mesh
-        
+        // 敵の管理
+        this.hitodamas = new Map(); // enemyId -> Hitodama instance
+
         // 斬撃飛翔体の管理
         this.slashProjectiles = [];
         this.SLASH_SPEED = 8.0; // m/s
         this.SLASH_LIFETIME = 1500; // ms
-        
+
         // コールバック
         this.onSlashHitEnemy = null; // 斬撃が敵に当たった時
-        
+
         // 術式段階の軌跡表示（SwingActive中）
         this.swingTracerMesh = null; // 軌跡メッシュ
         this.TRACER_RADIUS = 0.4; // 球面半径（カメラ回転中心から）
-        
+
         // ライト
         const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
         this.scene.add(ambientLight);
-        
+
         const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
         directionalLight.position.set(1, 1, 1);
         this.scene.add(directionalLight);
-        
+
         // リサイズ対応
         window.addEventListener('resize', () => this.onResize());
         if (window.visualViewport) {
             window.visualViewport.addEventListener('resize', () => this.onResize());
         }
-        
+
         console.log('[Renderer] 初期化完了');
     }
-    
+
     /**
      * 端末姿勢を更新（DeviceOrientationEvent）
      */
@@ -80,14 +100,14 @@ export class Renderer {
             beta: event.beta || 0,    // X軸回転
             gamma: event.gamma || 0   // Y軸回転
         };
-        
+
         // 視線方向ベクトルを計算
         this.viewDirection = this.calculateViewDirection();
-        
+
         // カメラの向きを更新
         this.updateCameraRotation();
     }
-    
+
     /**
      * 視線方向ベクトルを計算
      */
@@ -95,7 +115,7 @@ export class Renderer {
         const forward = this.getCameraForward();
         return { x: forward.x, y: forward.y, z: forward.z };
     }
-    
+
     /**
      * カメラの回転を更新
      */
@@ -115,66 +135,61 @@ export class Renderer {
         const forward = this.getCameraForward();
         this.viewDirection = { x: forward.x, y: forward.y, z: forward.z };
     }
-    
+
     /**
      * 敵を追加
      */
     addEnemy(enemy) {
-        // 簡易的な敵メッシュ（赤い球体）
-        const geometry = new THREE.SphereGeometry(0.3, 16, 16);
-        const material = new THREE.MeshStandardMaterial({ color: 0xff0000 });
-        const mesh = new THREE.Mesh(geometry, material);
-        
-        // 位置を設定（球面座標 -> デカルト座標）
-        this.updateEnemyPosition(mesh, enemy);
-        
-        this.scene.add(mesh);
-        this.enemyMeshes.set(enemy.id, mesh);
-        
-        console.log(`[Renderer] 敵メッシュ追加: id=${enemy.id}`);
+        // Hitodamaインスタンス生成
+        const hitodama = new Hitodama(this.scene);
+
+        // 位置を設定
+        this.updateEnemyPosition(hitodama, enemy);
+
+        this.hitodamas.set(enemy.id, hitodama);
+
+        console.log(`[Renderer] Hitodama追加: id=${enemy.id}`);
     }
-    
+
     /**
      * 敵の位置を更新
      */
-    updateEnemyPosition(mesh, enemy) {
+    updateEnemyPosition(hitodama, enemy) {
         const azimRad = enemy.azim * Math.PI / 180;
         const elevRad = enemy.elev * Math.PI / 180;
         const r = enemy.distance;
-        
-        mesh.position.set(
+
+        hitodama.setPosition(
             r * Math.cos(elevRad) * Math.sin(azimRad),
             r * Math.sin(elevRad),
             -r * Math.cos(elevRad) * Math.cos(azimRad)
         );
     }
-    
+
     /**
      * 敵を削除
      */
     removeEnemy(enemyId) {
-        const mesh = this.enemyMeshes.get(enemyId);
-        if (mesh) {
-            this.scene.remove(mesh);
-            mesh.geometry.dispose();
-            mesh.material.dispose();
-            this.enemyMeshes.delete(enemyId);
-            console.log(`[Renderer] 敵メッシュ削除: id=${enemyId}`);
+        const hitodama = this.hitodamas.get(enemyId);
+        if (hitodama) {
+            hitodama.dispose();
+            this.hitodamas.delete(enemyId);
+            console.log(`[Renderer] Hitodama削除: id=${enemyId}`);
         }
     }
-    
+
     /**
      * 全敵の位置を更新
      */
     updateEnemies(enemies) {
         for (const enemy of enemies) {
-            const mesh = this.enemyMeshes.get(enemy.id);
-            if (mesh) {
-                this.updateEnemyPosition(mesh, enemy);
+            const hitodama = this.hitodamas.get(enemy.id);
+            if (hitodama) {
+                this.updateEnemyPosition(hitodama, enemy);
             }
         }
     }
-    
+
     /**
      * 術式段階の軌跡を表示開始
      */
@@ -186,38 +201,38 @@ export class Renderer {
             this.swingTracerMesh.material.dispose();
         }
     }
-    
+
     /**
      * 術式段階の軌跡を更新
      */
     updateSwingTracer(trajectory) {
         if (!trajectory || trajectory.length === 0) return;
-        
+
         // 既存のメッシュを削除
         if (this.swingTracerMesh) {
             this.scene.remove(this.swingTracerMesh);
             this.swingTracerMesh.geometry.dispose();
             this.swingTracerMesh.material.dispose();
         }
-        
+
         // 軌跡から3D点群を生成
         const points = [];
         for (const point of trajectory) {
             const pitchRad = point.pitch * Math.PI / 180;
             const yawRad = point.yaw * Math.PI / 180;
-            
+
             const x = this.TRACER_RADIUS * Math.cos(pitchRad) * Math.sin(yawRad);
             const y = this.TRACER_RADIUS * Math.sin(pitchRad);
             const z = -this.TRACER_RADIUS * Math.cos(pitchRad) * Math.cos(yawRad);
-            
+
             points.push(new THREE.Vector3(x, y, z));
         }
-        
+
         if (points.length < 2) return;
-        
+
         // CatmullRomCurve3で滑らかな曲線を作成
         const curve = new THREE.CatmullRomCurve3(points);
-        
+
         // TubeGeometryで太い線として描画
         const tubeGeometry = new THREE.TubeGeometry(
             curve,
@@ -226,7 +241,7 @@ export class Renderer {
             8,
             false
         );
-        
+
         const material = new THREE.MeshBasicMaterial({
             color: 0x00ffff,
             transparent: true,
@@ -234,11 +249,11 @@ export class Renderer {
             side: THREE.DoubleSide,
             blending: THREE.AdditiveBlending
         });
-        
+
         this.swingTracerMesh = new THREE.Mesh(tubeGeometry, material);
         this.scene.add(this.swingTracerMesh);
     }
-    
+
     /**
      * 術式段階の軌跡表示を終了
      */
@@ -250,14 +265,14 @@ export class Renderer {
             this.swingTracerMesh = null;
         }
     }
-    
+
     /**
      * 円弧飛翔体を追加（始点・終点の角度から円弧を計算して飛ばす）
      */
     addSlashArcProjectile(startPyr, endPyr, intensity) {
         // 始点と終点の3D位置を計算（半径0.3m）
         const baseRadius = 0.3;
-        
+
         const startPitchRad = startPyr.pitch * Math.PI / 180;
         const startYawRad = startPyr.yaw * Math.PI / 180;
         const startPos = new THREE.Vector3(
@@ -265,7 +280,7 @@ export class Renderer {
             baseRadius * Math.sin(startPitchRad),
             -baseRadius * Math.cos(startPitchRad) * Math.cos(startYawRad)
         );
-        
+
         const endPitchRad = endPyr.pitch * Math.PI / 180;
         const endYawRad = endPyr.yaw * Math.PI / 180;
         const endPos = new THREE.Vector3(
@@ -273,18 +288,18 @@ export class Renderer {
             baseRadius * Math.sin(endPitchRad),
             -baseRadius * Math.cos(endPitchRad) * Math.cos(endYawRad)
         );
-        
+
         // 2点を含む円弧を作成
         const arcMesh = this.createArcMesh(startPos, endPos, intensity);
         if (!arcMesh) return;
-        
+
         // カメラの現在位置を基準に配置
         const cameraPos = new THREE.Vector3();
         this.camera.getWorldPosition(cameraPos);
-        
+
         arcMesh.position.copy(cameraPos);
         this.scene.add(arcMesh);
-        
+
         // 飛翔体として記録
         const projectile = {
             mesh: arcMesh,
@@ -297,12 +312,12 @@ export class Renderer {
             direction: this.camera.getWorldDirection(new THREE.Vector3()).normalize(),
             hitEnemies: new Set() // 既に判定した敵のIDを記録（二重判定防止）
         };
-        
+
         this.slashProjectiles.push(projectile);
-        
+
         console.log(`[Renderer] 円弧飛翔体生成: 始点=${JSON.stringify(startPyr)}, 終点=${JSON.stringify(endPyr)}`);
     }
-    
+
     /**
      * 2点を結ぶ円弧メッシュを作成
      */
@@ -310,7 +325,7 @@ export class Renderer {
         // 始点と終点を含む円弧を作成
         // 簡単な実装：始点と終点を結ぶ曲線（放物線的）
         const points = [startPos];
-        
+
         // 中間点を追加（3つの制御点で Catmull-Rom 曲線）
         for (let i = 1; i < 5; i++) {
             const t = i / 5;
@@ -320,9 +335,9 @@ export class Renderer {
             midPoint.multiplyScalar(1.0 + Math.sin(t * Math.PI) * 0.3);
             points.push(midPoint);
         }
-        
+
         points.push(endPos);
-        
+
         const curve = new THREE.CatmullRomCurve3(points);
         const tubeGeometry = new THREE.TubeGeometry(
             curve,
@@ -331,7 +346,7 @@ export class Renderer {
             8,
             false
         );
-        
+
         const material = new THREE.MeshBasicMaterial({
             color: 0x00ffff,
             transparent: true,
@@ -339,21 +354,21 @@ export class Renderer {
             side: THREE.DoubleSide,
             blending: THREE.AdditiveBlending
         });
-        
+
         return new THREE.Mesh(tubeGeometry, material);
     }
-    
+
     /**
      * 斬撃飛翔体を更新（円弧拡大版・敵衝突判定付き）
      */
     updateSlashProjectiles(deltaTime, enemies) {
         const now = performance.now();
         const deltaTimeSec = deltaTime / 1000;
-        
+
         // 寿命切れをフィルタ
         this.slashProjectiles = this.slashProjectiles.filter(proj => {
             const age = now - proj.spawnTime;
-            
+
             if (age >= this.SLASH_LIFETIME) {
                 // 寿命切れ：削除
                 this.scene.remove(proj.mesh);
@@ -361,11 +376,11 @@ export class Renderer {
                 proj.mesh.material.dispose();
                 return false;
             }
-            
+
             // 時間経過で円弧の半径を拡大
             const lifeFraction = age / this.SLASH_LIFETIME;
             const radiusScale = 1.0 + lifeFraction * 15.67; // 最大5m（初期0.3m → 5m）
-            
+
             // 敵との衝突判定（フレームごと）
             if (enemies && this.onSlashHitEnemy) {
                 for (const enemy of enemies) {
@@ -373,19 +388,19 @@ export class Renderer {
                     if (proj.hitEnemies.has(enemy.id)) {
                         continue;
                     }
-                    
+
                     // 敵との衝突判定
                     const hitEnemy = this.checkSlashEnemyCollision(
-                        proj.startPos, 
-                        proj.endPos, 
-                        radiusScale, 
+                        proj.startPos,
+                        proj.endPos,
+                        radiusScale,
                         enemy
                     );
-                    
+
                     if (hitEnemy) {
                         // 敵をヒット済みリストに追加
                         proj.hitEnemies.add(enemy.id);
-                        
+
                         // 衝突した敵を通知
                         const callbackMsg = `敵衝突コールバック: id=${enemy.id}`;
                         console.log(`[Renderer] ${callbackMsg}`);
@@ -396,49 +411,49 @@ export class Renderer {
                             enemy: enemy,
                             intensity: proj.intensity
                         });
-                        
+
                         break; // 1フレーム1体のみ処理
                     }
                 }
             }
-            
+
             // 新しい円弧メッシュを生成して古いものと置き換える
             const newStartPos = proj.startPos.clone().multiplyScalar(radiusScale);
             const newEndPos = proj.endPos.clone().multiplyScalar(radiusScale);
-            
+
             // 新メッシュを作成
             const newMesh = this.createArcMesh(newStartPos, newEndPos, proj.intensity);
-            
+
             if (newMesh) {
                 // 位置を設定
                 newMesh.position.copy(proj.mesh.position);
-                
+
                 // 前方へ移動
                 newMesh.position.add(proj.direction.clone().multiplyScalar(proj.speed * deltaTimeSec));
-                
+
                 // 透明度をフェードアウト
                 newMesh.material.opacity = (0.7 + proj.intensity * 0.3) * (1 - lifeFraction);
-                
+
                 // シーンから古いメッシュを削除
                 this.scene.remove(proj.mesh);
                 proj.mesh.geometry.dispose();
                 proj.mesh.material.dispose();
-                
+
                 // 新メッシュに置き換え
                 this.scene.add(newMesh);
                 proj.mesh = newMesh;
             } else {
                 // 前方へ移動（メッシュ更新失敗時）
                 proj.mesh.position.add(proj.direction.clone().multiplyScalar(proj.speed * deltaTimeSec));
-                
+
                 // 透明度をフェードアウト
                 proj.mesh.material.opacity = (0.7 + proj.intensity * 0.3) * (1 - lifeFraction);
             }
-            
+
             return true;
         });
     }
-    
+
     /**
      * 斬撃と敵の衝突判定（pivot原点ベースで完全一致）
      */
@@ -476,28 +491,35 @@ export class Renderer {
 
         if (this.debugOverlay) {
             this.debugOverlay.logInfo(
-                `pivot一致判定: id=${enemy.id} 距離=${distToArc.toFixed(2)} 判定=${hit} | arcR=${(radiusScale*0.3).toFixed(2)} enemyR=${enemyRadius} margin=${margin}`
+                `pivot一致判定: id=${enemy.id} 距離=${distToArc.toFixed(2)} 判定=${hit} | arcR=${(radiusScale * 0.3).toFixed(2)} enemyR=${enemyRadius} margin=${margin}`
             );
         }
         return hit;
     }
-    
+
     /**
      * 描画（敵情報を受け取って衝突判定）
      */
     render(deltaTime, enemies) {
+        // Hitodamaの更新
+        const dt = deltaTime / 1000;
+        for (const hitodama of this.hitodamas.values()) {
+            hitodama.update(dt);
+        }
+
         this.updateRendererSize();
         this.updateSlashProjectiles(deltaTime, enemies);
-        this.renderer.render(this.scene, this.camera);
+        // post-processing render
+        this.composer.render();
     }
-    
+
     /**
      * リサイズ処理
      */
     onResize() {
         this.updateRendererSize();
     }
-    
+
     /**
      * 視線方向を取得
      */
@@ -540,6 +562,7 @@ export class Renderer {
         const height = this.canvas.clientHeight || window.innerHeight;
         if (this.renderer.domElement.width !== width || this.renderer.domElement.height !== height) {
             this.renderer.setSize(width, height, false);
+            this.composer.setSize(width, height);
             this.camera.aspect = width / height;
             this.camera.updateProjectionMatrix();
         }
@@ -560,19 +583,17 @@ export class Renderer {
         const halfHorzRad = Math.atan(Math.tan(halfVertRad) * this.camera.aspect);
         return halfHorzRad * 180 / Math.PI;
     }
-    
+
     /**
      * クリーンアップ
      */
     dispose() {
         // 全メッシュを削除
-        for (const [id, mesh] of this.enemyMeshes.entries()) {
-            this.scene.remove(mesh);
-            mesh.geometry.dispose();
-            mesh.material.dispose();
+        for (const [id, hitodama] of this.hitodamas.entries()) {
+            hitodama.dispose();
         }
-        this.enemyMeshes.clear();
-        
+        this.hitodamas.clear();
+
         // 斬撃飛翔体を削除
         for (const proj of this.slashProjectiles) {
             this.scene.remove(proj.mesh);
@@ -580,10 +601,10 @@ export class Renderer {
             proj.mesh.material.dispose();
         }
         this.slashProjectiles = [];
-        
+
         // 術式段階の軌跡を削除
         this.endSwingTracer();
-        
+
         this.renderer.dispose();
     }
 }

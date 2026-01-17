@@ -1,18 +1,20 @@
 <!DOCTYPE html>
 <html lang="ja">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AR陰陽師 - MVP</title>
     <link rel="stylesheet" href="css/style.css">
 </head>
+
 <body>
     <!-- ビデオ背景（カメラ映像） -->
     <video id="cameraVideo" autoplay playsinline></video>
-    
+
     <!-- 3Dキャンバス -->
     <canvas id="gameCanvas"></canvas>
-    
+
     <!-- UI コンテナ -->
     <div id="uiContainer">
         <!-- Splash画面 (S0) -->
@@ -31,9 +33,10 @@
             </div>
             <button id="requestPermissionButton" class="btn-primary">権限を許可</button>
             <p id="permissionError" class="error-message"></p>
-            
+
             <!-- デバッグ情報表示 -->
-            <div id="permissionDebugInfo" style="margin-top: 2rem; padding: 1rem; background: rgba(0,0,0,0.5); border: 1px solid #666; border-radius: 8px; max-height: 300px; overflow-y: auto; font-size: 0.9rem; color: #aaa; width: 90%;">
+            <div id="permissionDebugInfo"
+                style="margin-top: 2rem; padding: 1rem; background: rgba(0,0,0,0.5); border: 1px solid #666; border-radius: 8px; max-height: 300px; overflow-y: auto; font-size: 0.9rem; color: #aaa; width: 90%;">
                 <p id="permissionDebugLog"></p>
             </div>
         </div>
@@ -94,7 +97,7 @@
             <button id="retryButton" class="btn-primary">リトライ</button>
             <button id="reconnectButton" class="btn-secondary">再接続</button>
             <button id="recalibrateButton" class="btn-secondary">再キャリブレーション</button>
-            
+
             <!-- デバッグHUD切替ボタン -->
             <button id="toggleDebugButtonResult" class="btn-debug">DEBUG</button>
         </div>
@@ -108,7 +111,8 @@
             <p>受信Hz: <span id="debugHz">--</span></p>
             <p>欠落数: <span id="debugDrops">--</span> (<span id="debugDropRate">--</span>%)</p>
             <p>a_mag: <span id="debugAmag">--</span> g</p>
-            <p>Pitch: <span id="debugPitch">--</span>° / Yaw: <span id="debugYaw">--</span>° / Roll: <span id="debugRoll">--</span>°</p>
+            <p>Pitch: <span id="debugPitch">--</span>° / Yaw: <span id="debugYaw">--</span>° / Roll: <span
+                    id="debugRoll">--</span>°</p>
             <p>斬撃状態: <span id="debugSwingState">--</span></p>
             <p>クールダウン: <span id="debugCooldown">--</span>ms</p>
             <p>円判定: <span id="debugCircle">--</span></p>
@@ -122,9 +126,18 @@
     </div>
 
     <!-- Three.js -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    
+    <!-- Three.js (Module version with Import Map) -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+
     <!-- ゲームモジュール -->
     <script type="module" src="js/main.js"></script>
 </body>
+
 </html>

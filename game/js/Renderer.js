@@ -179,6 +179,15 @@ export class Renderer {
     }
 
     /**
+     * 任意のワールド座標をNDCに射影
+     */
+    projectToNdc(worldPos) {
+        const v = new THREE.Vector3(worldPos.x, worldPos.y, worldPos.z);
+        v.project(this.camera);
+        return v; // x,y,zが-1〜1に正規化された座標
+    }
+
+    /**
      * カメラのワールド前方ベクトルを取得
      */
     getCameraForward() {

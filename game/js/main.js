@@ -551,8 +551,12 @@ class AROnmyoujiGame {
             let pitchDiff = (enemyElev - viewElev) * 180 / Math.PI;
             yawDiff = this.normalizeAngleDeg(yawDiff);
             pitchDiff = this.normalizeAngleDeg(pitchDiff);
-            
-            const onScreen = Math.abs(yawDiff) <= halfHorz && Math.abs(pitchDiff) <= halfVert;
+
+            // プロジェクションで画面内判定（矢印は画面外のときのみ出す）
+            const worldPos = this.getEnemyWorldPosition(enemy);
+            const ndc = this.renderer.projectToNdc(worldPos);
+            const margin = 0.05; // 少し余裕を持たせる
+            const onScreen = ndc.z >= -1 && ndc.z <= 1 && ndc.x >= -1 + margin && ndc.x <= 1 - margin && ndc.y >= -1 + margin && ndc.y <= 1 - margin;
             const existing = this.enemyIndicatorMap.get(enemy.id);
             if (onScreen) {
                 if (existing) {
@@ -577,6 +581,17 @@ class AROnmyoujiGame {
             }
             this.enemyIndicatorMap.delete(staleId);
         }
+    }
+
+    getEnemyWorldPosition(enemy) {
+        const azimRad = enemy.azim * Math.PI / 180;
+        const elevRad = enemy.elev * Math.PI / 180;
+        const r = enemy.distance;
+        return {
+            x: r * Math.cos(elevRad) * Math.sin(azimRad),
+            y: r * Math.sin(elevRad),
+            z: -r * Math.cos(elevRad) * Math.cos(azimRad)
+        };
     }
     
     createEnemyIndicator(container) {

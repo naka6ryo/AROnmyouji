@@ -448,6 +448,44 @@
                 opacity: 0;
             }
         }
+
+        /* TV Turn On Animation */
+        @keyframes tv-turn-on {
+            0% {
+                transform: scale(1, 0.002);
+                filter: brightness(30);
+                opacity: 0;
+            }
+
+            35% {
+                transform: scale(1, 0.002);
+                opacity: 1;
+            }
+
+            50% {
+                transform: scale(1, 0.4);
+                filter: brightness(10);
+            }
+
+            100% {
+                transform: scale(1, 1);
+                filter: brightness(1);
+                opacity: 1;
+            }
+        }
+
+        .tv-effect-on {
+            animation: tv-turn-on 0.4s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+            transform-origin: center;
+        }
+
+        .image-width-based {
+            width: 100%;
+            height: auto;
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+        }
     </style>
 </head>
 
@@ -626,13 +664,28 @@
 
         <!-- Splash Screen (Existing) -->
         <!-- Splash Screen (Existing) -->
-        <div id="splashScreen" class="screen absolute inset-0 z-50 bg-black">
-            <img src="assets/picture/Title.jpg" class="w-full h-full object-cover" alt="Title Screen">
-            <!-- Hitbox for Play Button (IP/LIAYI logo at bottom left) -->
-            <button id="startButton"
-                class="absolute bottom-[4%] left-[4%] w-[35%] max-w-[250px] h-[10%] max-h-[100px] bg-transparent z-10 cursor-pointer"
-                aria-label="Start Game">
-            </button>
+        <!-- Splash Screen (Existing) -->
+        <div id="splashScreen"
+            class="screen absolute inset-0 z-50 bg-black flex items-center justify-center overflow-hidden">
+            <!-- Container for TV Effect -->
+            <div id="splashContent" class="w-full h-full relative opacity-0">
+                <img src="assets/picture/Title.jpg" class="image-width-based" alt="Title Screen">
+                <!-- Hitbox for Play Button (IP/LIAYI logo at bottom left) -->
+                <button id="startButton"
+                    class="absolute bottom-[4%] left-[4%] w-[35%] max-w-[250px] h-[10%] max-h-[100px] bg-transparent z-10 cursor-pointer"
+                    aria-label="Start Game">
+                </button>
+            </div>
+
+            <!-- Global Overlay Effects (High Z-Index) moved inside splash or global? 
+                 User said "Image... frontmost... video effects on top" -->
+            <!-- We can reuse the .scanline-user style but as a full overlay here -->
+            <div class="absolute inset-0 z-[60] pointer-events-none opacity-30 mix-blend-overlay">
+                <div class="scanline-user"></div>
+            </div>
+            <div
+                class="absolute inset-0 z-[60] pointer-events-none opacity-10 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0IiBoZWlnaHQ9IjQiPgo8cmVjdCB3aWR0aD0iNCIgaGVpZ2h0PSI0IiBmaWxsPSIjZmZmIi8+CjxyZWN0IHdpZHRoPSI0IiBoZWlnaHQ9IjIiIGZpbGw9IiMwMDAiLz4KPC9zdmc+')]">
+            </div>
         </div>
 
         <!-- Permission Screen (Updated) -->
@@ -1430,6 +1483,11 @@
 
                         if (splashScreen) {
                             splashScreen.classList.add('active');
+                            // Trigger TV Effect
+                            const splashContent = document.getElementById('splashContent');
+                            if (splashContent) {
+                                splashContent.classList.add('tv-effect-on');
+                            }
                         }
                     }, 1000); // Wait for opacity transition
                 }

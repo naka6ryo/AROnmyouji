@@ -595,36 +595,39 @@ export class UIManager {
         void crtDisplay.offsetWidth; // Force reflow
         crtDisplay.classList.add('crt-turn-on-active');
 
-        // 2. Show Hologram Text
+        // 2. Hologram Sequence
         if (hologram) {
-            // Remove active class first
-            hologram.classList.remove('hologram-active');
+            // Reset state
+            hologram.className = 'hologram-fuda-text'; // Remove all animation classes
+            void hologram.offsetWidth; // Reflow
 
-            // Delay slightly to match the "bright flash" of the CRT turn on
+            // Phase 1: ENTER (after slight delay to match CRT flash)
             setTimeout(() => {
-                hologram.classList.add('hologram-active');
-            }, 500); // 500ms delay: appears as screen stabilizes
-        }
+                hologram.classList.add('hologram-in');
+            }, 600);
 
-        // 3. Wait for animation to finish (approx 1.2s + buffer)
-        // Animation length is 1.2s. Let's give it 1.5s total before starting countdown.
-        setTimeout(() => {
-            // Hide hologram after a while or keep it? 
-            // The prompt says "After clicking... reproduce action". 
-            // Usually game start would clear these overlays.
-            // Let's fade out hologram before callback?
-            if (hologram) {
-                hologram.style.transition = 'opacity 0.5s ease-out';
-                hologram.style.opacity = '0';
+            // Phase 2: IDLE (Transition after Enter finishes ~0.5s)
+            setTimeout(() => {
+                hologram.classList.remove('hologram-in');
+                hologram.classList.add('hologram-idle');
+            }, 1100);
+
+            // Phase 3: EXIT (After ~1.5s of idle)
+            setTimeout(() => {
+                hologram.classList.remove('hologram-idle');
+                hologram.classList.add('hologram-out');
+
+                // Final Cleanup
                 setTimeout(() => {
-                    hologram.classList.remove('hologram-active');
-                    hologram.style.opacity = ''; // reset inline style
-                }, 500);
-            }
-
-            if (onComplete) {
-                onComplete();
-            }
-        }, 2000); // 2 seconds total for the intro sequence
+                    hologram.classList.remove('hologram-out');
+                    if (onComplete) onComplete();
+                }, 500); // Wait for exit animation
+            }, 3000); // Total display time
+        } else {
+            // Fallback if no hologram
+            setTimeout(() => {
+                if (onComplete) onComplete();
+            }, 2000);
+        }
     }
 }

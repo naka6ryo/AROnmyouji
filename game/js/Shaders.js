@@ -36,15 +36,7 @@ export const tracerFragmentShader = `
     uniform vec3 uColorEdge;
     varying vec2 vUv;
     varying float vWidth;
-    
-    // 軽いブラウン管風の魚眼（バレル）歪み
-    vec2 fisheyeUv(vec2 uv, float strength) {
-        vec2 c = uv - vec2(0.5);
-        float r2 = dot(c, c);
-        // バレル係数。強度は少なめに（0.03〜0.08 程度が目安）
-        float k = 1.0 + strength * r2;
-        return vec2(0.5) + c * k;
-    }
+
     vec3 permute(vec3 x) { return mod(((x*34.0)+1.0)*x, 289.0); }
     float snoise(vec2 v){
         const vec4 C = vec4(0.211324865405187, 0.366025403784439,
@@ -73,15 +65,12 @@ export const tracerFragmentShader = `
     }
 
     void main() {
-        // 軽い歪みを適用（ブラウン管風の魚眼）。strength を小さくして目立ちすぎないようにする。
-        vec2 uv = fisheyeUv(vUv, 0.06);
-
-        vec2 noiseUV = uv * vec2(4.0, 2.0) - vec2(uTime * 1.5, 0.0);
+        vec2 noiseUV = vUv * vec2(4.0, 2.0) - vec2(uTime * 1.5, 0.0);
         float n1 = snoise(noiseUV * 1.5);
         float n2 = snoise(noiseUV * 3.0 + vec2(uTime, uTime));
         float fbm = n1 * 0.6 + n2 * 0.4;
 
-        float centerDist = abs(uv.y - 0.5) * 2.0;
+        float centerDist = abs(vUv.y - 0.5) * 2.0;
         float scratchThreshold = 0.4 + centerDist * 0.4;
         float scratch = smoothstep(scratchThreshold - 0.1, scratchThreshold + 0.1, fbm + 0.5);
 
@@ -90,7 +79,7 @@ export const tracerFragmentShader = `
         color += uColorEdge * (1.0 - core) * 1.5;
 
         float alphaSide = smoothstep(1.0, 0.6, centerDist);
-        float alphaLong = smoothstep(0.0, 0.15, uv.x);
+        float alphaLong = smoothstep(0.0, 0.15, vUv.x);
         float finalAlpha = alphaSide * alphaLong * scratch;
         if(finalAlpha < 0.01) discard;
 

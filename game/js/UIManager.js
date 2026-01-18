@@ -42,6 +42,12 @@ export class UIManager {
             resetCalibrationButton: document.getElementById('resetCalibrationButton'),
             startCalibrationButton: document.getElementById('startCalibrationButton'),
 
+            // Title Screen 2 (New)
+            titleScreen2: document.getElementById('titleScreen2'),
+            titleStartButton: document.getElementById('titleStartButton'),
+            titleReconnectButton: document.getElementById('titleReconnectButton'),
+            titleRecalibrateButton: document.getElementById('titleRecalibrateButton'),
+
             // Gameplay HUD
             playerHP: document.getElementById('playerHP'),
             hpBarFill: document.getElementById('hpBarFill'),
@@ -75,12 +81,13 @@ export class UIManager {
             uiContainer: document.getElementById('uiContainer'),
 
             // Result
+            resultScreen: document.getElementById('resultScreen'),
             resultTitle: document.getElementById('resultTitle'),
             resultKills: document.getElementById('resultKills'),
             resultTime: document.getElementById('resultTime'),
-            retryButton: document.getElementById('retryButton'),
-            reconnectButton: document.getElementById('reconnectButton'),
-            recalibrateButton: document.getElementById('recalibrateButton'),
+            // NEW Result Button
+            returnToTitleButton: document.getElementById('returnToTitleButton'),
+            // Old buttons removed: retryButton, reconnectButton, recalibrateButton
 
             // Debug
             toggleDebugButton: document.getElementById('toggleDebugButton'),
@@ -111,14 +118,24 @@ export class UIManager {
         this.bindClick(this.elements.resetCalibrationButton, handlers.onResetCalibration);
         this.bindClick(this.elements.startCalibrationButton, handlers.onConfirmCalibration);
 
+        // Title Screen 2 (New)
+        this.bindClick(this.elements.titleStartButton, handlers.onConfirmCalibration); // Reuse Start Logic (Assuming calibrated) or separate handler?
+        // Note: Logic in main.js "confirmCalibration" leads to "calibrationComplete" state.
+        // If coming from Title 2, we should probably assume calibration is still valid OR require recalibration if intended.
+        // However, the Flowchart says "Title 2 -> Game", "Title 2 -> Recalibrate", "Title 2 -> Connect".
+        // "Title 2 -> Game" implies we skip calibration screen if already calibrated.
+        // I will map it to a new handler `onTitleStartGame` to decide in main.js. Use `onStartInScene` logic?
+        // `onStartInScene` shows countdown then starts.
+        // Let's bind it to `handlers.onTitleStartGame`.
+        this.bindClick(this.elements.titleStartButton, handlers.onTitleStartGame);
+        this.bindClick(this.elements.titleReconnectButton, handlers.onReconnect);
+        this.bindClick(this.elements.titleRecalibrateButton, handlers.onRecalibrate);
+
         // Gameplay screen start (in-scene)
         this.bindClick(this.elements.sceneStartButton, handlers.onStartInScene);
-        // (audio test binding removed)
 
-        // Result
-        this.bindClick(this.elements.retryButton, handlers.onRetry);
-        this.bindClick(this.elements.reconnectButton, handlers.onReconnect);
-        this.bindClick(this.elements.recalibrateButton, handlers.onRecalibrate);
+        // Result (Updated)
+        this.bindClick(this.elements.returnToTitleButton, handlers.onReturnToTitle);
 
         // Debug
         this.bindClick(this.elements.toggleDebugButton, handlers.onToggleDebug);
@@ -570,7 +587,27 @@ export class UIManager {
         this.clearEnemyIndicators();
     }
 
+    // --- Title Screen 2 ---
+
+    showTitleScreen2() {
+        // Hide other screens
+        if (this.elements.resultScreen) this.elements.resultScreen.classList.add('hidden');
+        if (this.elements.crtMainDisplay) this.elements.crtMainDisplay.classList.add('hidden'); // Hide game/CRT view
+
+        // Show Title Screen 2
+        if (this.elements.titleScreen2) {
+            this.elements.titleScreen2.classList.remove('hidden');
+        }
+    }
+
+    hideTitleScreen2() {
+        if (this.elements.titleScreen2) {
+            this.elements.titleScreen2.classList.add('hidden');
+        }
+    }
+
     // --- CRT Boot Sequence ---
+    // (Existing code follows)
 
     /**
      * ゲーム開始時のCRT起動演出 & ホログラム表示
@@ -584,6 +621,9 @@ export class UIManager {
             if (onComplete) onComplete();
             return;
         }
+
+        // Ensure display is visible (remove hidden)
+        crtDisplay.classList.remove('hidden');
 
         // 1. Trigger CRT Turn-On Animation
         // Reset animation just in case (remove class, reflow, add class)

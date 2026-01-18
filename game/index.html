@@ -1623,12 +1623,124 @@
                     </div>
                 </div>
 
+                <!-- Title Screen 2 (New) -->
+                <div id="titleScreen2"
+                    class="screen absolute inset-0 z-50 flex flex-col items-center justify-center bg-white text-ink-black font-sans hidden overflow-hidden">
+
+                    <div class="absolute inset-0 z-0 pointer-events-none opacity-[0.08]">
+                        <div class="w-full h-full bg-dot-grid bg-[length:24px_24px]"></div>
+                    </div>
+
+                    <!-- Header elements -->
+                    <div class="absolute top-0 left-0 p-8 z-30">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 bg-ink-black flex items-center justify-center">
+                                <span class="material-symbols-outlined text-white">token</span>
+                            </div>
+                            <div class="flex flex-col">
+                                <span class="font-display text-xs tracking-widest font-bold">ZANBARAI</span>
+                                <span class="font-japanese text-[10px] tracking-widest opacity-60">陰陽師クロニクル</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="absolute top-0 right-0 p-8 z-30 text-right hidden md:block">
+                        <div class="flex items-center justify-end gap-2 mb-1">
+                            <div class="w-2 h-2 bg-primary rounded-full animate-pulse"></div>
+                            <span class="font-display text-sm font-bold tracking-[0.2em] text-primary">SYSTEM:
+                                STANDBY</span>
+                        </div>
+                        <div class="text-[10px] font-mono text-tech-gray">SYS.VER.2.4.0</div>
+                    </div>
+
+                    <!-- Main Content -->
+                    <main class="relative z-10 w-full flex flex-col items-center justify-center p-6 md:p-12">
+                        <div class="mb-6 md:mb-12 relative w-full max-w-lg mx-auto flex justify-center">
+                            <div
+                                class="relative z-10 flex flex-col items-center bg-white px-8 border border-ink-black py-4 text-center">
+                                <h1
+                                    class="font-display text-3xl md:text-5xl font-black tracking-tighter text-ink-black uppercase">
+                                    MAIN <span class="text-primary italic">MENU</span>
+                                </h1>
+                                <p class="font-japanese text-sm tracking-[0.5em] mt-1 font-bold text-tech-gray">メインメニュー
+                                </p>
+                            </div>
+                        </div>
+
+                        <div
+                            class="w-full max-w-md relative bg-white border-[3px] border-ink-black p-5 md:p-10 shadow-2xl flex flex-col gap-4">
+                            <!-- Corner Accents -->
+                            <div
+                                class="absolute top-0 left-0 w-4 h-4 border-l-4 border-t-4 border-primary -ml-[3px] -mt-[3px]">
+                            </div>
+                            <div
+                                class="absolute top-0 right-0 w-4 h-4 border-r-4 border-t-4 border-primary -mr-[3px] -mt-[3px]">
+                            </div>
+                            <div
+                                class="absolute bottom-0 left-0 w-4 h-4 border-l-4 border-b-4 border-primary -ml-[3px] -mb-[3px]">
+                            </div>
+                            <div
+                                class="absolute bottom-0 right-0 w-4 h-4 border-r-4 border-b-4 border-primary -mr-[3px] -mb-[3px]">
+                            </div>
+
+                            <!-- Game Start -->
+                            <button id="titleStartButton" class="w-full h-14 relative group/btn overflow-hidden">
+                                <div
+                                    class="absolute inset-0 bg-primary transform -skew-x-[20deg] transition-transform group-hover/btn:scale-[1.02] shadow-lg">
+                                </div>
+                                <div
+                                    class="absolute inset-0 bg-white/20 transform -skew-x-[20deg] translate-x-full group-hover/btn:translate-x-[-200%] transition-transform duration-700">
+                                </div>
+                                <div
+                                    class="absolute inset-0 flex flex-col items-center justify-center transform -skew-x-[20deg] border border-white/20">
+                                    <span
+                                        class="font-display font-black text-white text-lg italic tracking-widest transform skew-x-[20deg]">GAME
+                                        START</span>
+                                    <span
+                                        class="font-japanese text-[10px] text-white/80 tracking-widest transform skew-x-[20deg] mt-0.5">ゲーム開始</span>
+                                </div>
+                            </button>
+
+                            <!-- Reconnect -->
+                            <button id="titleReconnectButton"
+                                class="w-full h-12 relative group/btn overflow-hidden mt-2">
+                                <div
+                                    class="absolute inset-0 bg-white border border-ink-black transform -skew-x-[20deg] transition-transform group-hover/btn:scale-[1.02]">
+                                </div>
+                                <div
+                                    class="absolute inset-0 flex flex-col items-center justify-center transform -skew-x-[20deg]">
+                                    <span
+                                        class="font-display font-bold text-ink-black text-sm italic tracking-widest transform skew-x-[20deg]">RECONNECT</span>
+                                    <span
+                                        class="font-japanese text-[9px] text-tech-gray tracking-widest transform skew-x-[20deg]">再接続</span>
+                                </div>
+                            </button>
+
+                            <!-- Recalibrate -->
+                            <button id="titleRecalibrateButton" class="w-full h-12 relative group/btn overflow-hidden">
+                                <div
+                                    class="absolute inset-0 bg-white border border-ink-black transform -skew-x-[20deg] transition-transform group-hover/btn:scale-[1.02]">
+                                </div>
+                                <div
+                                    class="absolute inset-0 flex flex-col items-center justify-center transform -skew-x-[20deg]">
+                                    <span
+                                        class="font-display font-bold text-ink-black text-sm italic tracking-widest transform skew-x-[20deg]">RECALIBRATE</span>
+                                    <span
+                                        class="font-japanese text-[9px] text-tech-gray tracking-widest transform skew-x-[20deg]">再キャリブレーション</span>
+                                </div>
+                            </button>
+
+                            <div class="absolute bottom-2 right-2 text-[8px] font-mono text-gray-300">SEC_LEVEL_01</div>
+                        </div>
+                    </main>
+                </div>
+
                 <!-- Debug Toggle (Keeping it) -->
                 <button id="toggleDebugButton"
                     class="absolute top-4 right-4 z-50 text-xs text-white/20 border border-white/10 px-2 py-1 opacity-50 hover:opacity-100">DEBUG</button>
             </div>
 
-            <!-- Result Screen (Existing) -->
+            <!-- Result Screen (Updated) -->
             <div id="resultScreen"
                 class="screen absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/90 hidden">
                 <h2 id="resultTitle" class="text-3xl text-white mb-6">結果</h2>
@@ -1637,11 +1749,8 @@
                     <p class="text-xl">経過時間: <span id="resultTime" class="font-bold">0</span>秒</p>
                 </div>
                 <div class="flex flex-col gap-4">
-                    <button id="retryButton" class="btn-primary w-48 py-2 bg-primary text-white rounded">リトライ</button>
-                    <button id="reconnectButton"
-                        class="w-48 py-2 border border-gray-500 text-gray-300 rounded hover:bg-gray-800">再接続</button>
-                    <button id="recalibrateButton"
-                        class="w-48 py-2 border border-gray-500 text-gray-300 rounded hover:bg-gray-800">再キャリブレーション</button>
+                    <button id="returnToTitleButton"
+                        class="btn-primary w-48 py-2 bg-primary text-white rounded hover:bg-red-600 transition-colors">タイトルに戻る</button>
                 </div>
                 <button id="toggleDebugButtonResult" class="mt-8 text-xs text-gray-600">DEBUG</button>
             </div>

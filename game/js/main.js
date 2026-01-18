@@ -69,6 +69,8 @@ class AROnmyoujiGame {
             onConnectBLE: () => this.connectBLE(),
             onConfirmCalibration: () => this.confirmCalibration(),
             onResetCalibration: () => this.onResetCalibration(),
+            onReturnToTitle: () => this.onReturnToTitle(), // New
+            onTitleStartGame: () => this.onTitleStartGame(), // New
             onRetry: () => this.onRetry(),
             onReconnect: () => this.onReconnect(),
             onRecalibrate: () => this.onRecalibrate(),
@@ -473,7 +475,46 @@ class AROnmyoujiGame {
         this.debugOverlay.update({ hapticEvent: event.type });
     }
 
+    onReturnToTitle() {
+        // Result -> Title Screen 2
+        this.debugOverlay.logInfo('タイトル2へ移動');
+        this.uiManager.showTitleScreen2();
+    }
+
+    onTitleStartGame() {
+        // Title Screen 2 -> Game Start Sequence
+        this.debugOverlay.logInfo('タイトル2からゲーム開始');
+        this.uiManager.hideTitleScreen2();
+
+        // Use existing start sequence logic
+        this.onStartInScene();
+    }
+
+    gameLoop() {
+        if (!this.isRunning) return;
+
+        const now = performance.now();
+        const deltaTime = now - this.lastUpdateTime;
+
+        if (deltaTime >= this.FIXED_DELTA_TIME) {
+            this.lastUpdateTime = now;
+
+            this.gameWorld.update(this.FIXED_DELTA_TIME);
+            const viewDir = this.renderer.getViewDirection();
+            this.combatSystem.update(this.FIXED_DELTA_TIME, viewDir);
+
+            this.updateHUD(viewDir);
+            this.renderer.updateEnemies(this.gameWorld.getEnemies());
+        }
+
+        this.renderer.render(this.FIXED_DELTA_TIME, this.gameWorld.getEnemies());
+        requestAnimationFrame(() => this.gameLoop());
+    }
+
+    // ... (updateHUD, updateDebugInfo unchanged)
+
     onRetry() {
+        // Legacy support if needed, but we use onReturnToTitle mostly now
         this.renderer.dispose();
         this.debugOverlay.clearLogs();
         this.appState.retry();
@@ -481,11 +522,13 @@ class AROnmyoujiGame {
     }
 
     onReconnect() {
+        this.uiManager.hideTitleScreen2(); // Ensure Title 2 is hidden
         this.bleAdapter.disconnect();
         this.appState.reconnect();
     }
 
     onRecalibrate() {
+        this.uiManager.hideTitleScreen2(); // Ensure Title 2 is hidden
         // 再キャリブレーション：既存の校正フラグをクリアしてキャリブレーション画面へ
         try {
             if (this.motionInterpreter) this.motionInterpreter.isCalibrated = false;
@@ -519,27 +562,6 @@ class AROnmyoujiGame {
         // Update UI immediately to show zeros (or very small residuals)
         this.uiManager.updateCalibrationValues(0, 0, 0);
         this.debugOverlay.logInfo('キャリブレーション表示基準をリセットしました');
-    }
-
-    gameLoop() {
-        if (!this.isRunning) return;
-
-        const now = performance.now();
-        const deltaTime = now - this.lastUpdateTime;
-
-        if (deltaTime >= this.FIXED_DELTA_TIME) {
-            this.lastUpdateTime = now;
-
-            this.gameWorld.update(this.FIXED_DELTA_TIME);
-            const viewDir = this.renderer.getViewDirection();
-            this.combatSystem.update(this.FIXED_DELTA_TIME, viewDir);
-
-            this.updateHUD(viewDir);
-            this.renderer.updateEnemies(this.gameWorld.getEnemies());
-        }
-
-        this.renderer.render(this.FIXED_DELTA_TIME, this.gameWorld.getEnemies());
-        requestAnimationFrame(() => this.gameLoop());
     }
 
     updateHUD(viewDir) {

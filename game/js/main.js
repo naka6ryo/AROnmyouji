@@ -34,6 +34,9 @@ class AROnmyoujiGame {
         // UI初期化
         this.uiManager.init();
 
+        // AppState の変化を監視して UI のインラインスタイルや再配置を補正する
+        this.appState.onStateChanged = this.onAppStateChanged.bind(this);
+
         // カメラストリーム
         this.cameraStream = null;
         this.videoElement = document.getElementById('cameraVideo');
@@ -55,6 +58,42 @@ class AROnmyoujiGame {
 
         console.log('[Game] 初期化完了');
         this.debugOverlay.logInfo('ゲーム初期化完了');
+    }
+
+    /**
+     * AppState 変更時の補助処理
+     * スプラッシュが UIManager によりインラインで固定されている場合に
+     * 明示的に非表示にし、権限画面を確実に表示する。
+     */
+    onAppStateChanged(newState) {
+        try {
+            // スプラッシュは UIManager 経由で確実に消す
+            if (this.uiManager && typeof this.uiManager.hideSplashScreen === 'function') {
+                this.uiManager.hideSplashScreen();
+            }
+
+            // さらに万全のため、スプラッシュ要素のインライン表示を明示的に消す
+            const splashEl = document.getElementById('splashScreen');
+            if (splashEl) {
+                splashEl.classList.remove('active');
+                splashEl.classList.add('hidden');
+                try { splashEl.style.display = 'none'; } catch (e) {}
+                try { splashEl.style.pointerEvents = 'none'; } catch (e) {}
+            }
+
+            // 権限画面に遷移する場合は display を確実に設定しておく
+            if (newState === this.appState.states.S1_PERMISSION) {
+                const perm = document.getElementById('permissionScreen');
+                if (perm) {
+                    perm.classList.remove('hidden');
+                    perm.classList.add('active');
+                    try { perm.style.display = 'flex'; } catch (e) {}
+                    try { perm.style.pointerEvents = 'auto'; } catch (e) {}
+                }
+            }
+        } catch (e) {
+            console.warn('[AppStateHandler] onAppStateChanged error', e);
+        }
     }
 
     /**

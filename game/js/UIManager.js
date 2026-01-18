@@ -45,10 +45,7 @@ export class UIManager {
             killCountStart: document.getElementById('killCountStart'),
             timeLeftStart: document.getElementById('timeLeftStart'),
             killCount: document.getElementById('killCount'),
-            // Audio debug/test
-            audioTestButton: document.getElementById('audioTestButton'),
-            audioStatus: document.getElementById('audioStatus'),
-            audioTestLog: document.getElementById('audioTestLog'),
+            // (audio debug UI removed)
             timeLeft: document.getElementById('timeLeft'),
             hudPowerMode: document.getElementById('hudPowerMode'),
             powerModeTime: document.getElementById('powerModeTime'),
@@ -106,8 +103,7 @@ export class UIManager {
 
         // Gameplay screen start (in-scene)
         this.bindClick(this.elements.sceneStartButton, handlers.onStartInScene);
-        // Audio test button
-        this.bindClick(this.elements.audioTestButton, handlers.onAudioTest);
+        // (audio test binding removed)
 
         // Result
         this.bindClick(this.elements.retryButton, handlers.onRetry);
@@ -411,23 +407,7 @@ export class UIManager {
             this._countdownTimer = null;
         }
     }
-
-    updateAudioStatus(msg) {
-        const el = this.elements.audioStatus;
-        if (el) el.textContent = `Audio: ${msg}`;
-    }
-
-    appendAudioLog(msg) {
-        const log = this.elements.audioTestLog;
-        if (!log) return;
-        const entry = document.createElement('div');
-        entry.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
-        entry.style.fontSize = '12px';
-        entry.style.marginTop = '4px';
-        log.appendChild(entry);
-        // limit log size
-        while (log.childNodes.length > 8) log.removeChild(log.firstChild);
-    }
+    
 
     createEnemyIndicator(container) {
         const wrapper = document.createElement('div');

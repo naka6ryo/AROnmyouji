@@ -65,7 +65,6 @@ class AROnmyoujiGame {
         this.uiManager.bindEvents({
             onStartGame: () => this.onStartGame(),
             onStartInScene: () => this.onStartInScene(),
-            onAudioTest: () => this.onAudioTest(),
             onRequestPermission: () => this.requestPermissions(),
             onConnectBLE: () => this.connectBLE(),
             onConfirmCalibration: () => this.confirmCalibration(),
@@ -156,32 +155,7 @@ class AROnmyoujiGame {
         });
     }
 
-    async onAudioTest() {
-        this.uiManager.updateAudioStatus('テスト開始...');
-        this.uiManager.appendAudioLog('テスト実行: unlock/init/load/play');
-        try {
-            this.soundManager.unlock();
-            this.soundManager.initAudioContext();
-            // ensure load kicked
-            const needLoad = ((this.soundManager.buffers && this.soundManager.buffers.size === 0) &&
-                (this.soundManager.sounds && this.soundManager.sounds.size === 0));
-            if (needLoad) {
-                this.uiManager.appendAudioLog('SFXロードを開始します');
-                this.soundManager.load({
-                    polygon_burst: 'assets/sfx/polygon_burst.mp3',
-                    explosion: 'assets/sfx/explosion.mp3',
-                    attack_swipe: 'assets/sfx/atttack.mp3'
-                }).catch(e => this.uiManager.appendAudioLog('ロード失敗: ' + (e && e.message)));
-            }
-
-            const res = await this.soundManager.playTest('attack_swipe', { volume: 1.0 });
-            this.uiManager.updateAudioStatus('再生成功 (' + res.method + ')');
-            this.uiManager.appendAudioLog('再生成功: ' + JSON.stringify(res));
-        } catch (e) {
-            this.uiManager.updateAudioStatus('再生失敗');
-            this.uiManager.appendAudioLog('再生エラー: ' + (e && e.message));
-        }
-    }
+    
 
     /**
      * ゲーム開始 (GameWorld開始)

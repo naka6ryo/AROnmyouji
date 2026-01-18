@@ -202,12 +202,24 @@ export class SoundManager {
                         gain.gain.value = baseVol * norm * this.masterGain;
                         src.connect(gain);
                         gain.connect(this.gainNode || this.audioContext.destination);
-                        src.start(0);
-                        // resolve shortly after start to indicate success
-                        setTimeout(() => {
+                        // resolve when playback ends; do not disconnect immediately
+                        src.onended = () => {
                             try { src.disconnect(); gain.disconnect(); } catch (e) {}
                             resolve({ method: 'webaudio' });
-                        }, 50);
+                        };
+                        src.start(0);
+                        // safety fallback: if onended doesn't fire (very short/test), resolve after 1500ms
+                        const fallback = setTimeout(() => {
+                            try { src.stop && src.stop(); src.disconnect(); gain.disconnect(); } catch (e) {}
+                            resolve({ method: 'webaudio' });
+                        }, 1500);
+                        // clear fallback if ended earlier
+                        const originalOnended = src.onended;
+                        src.onended = () => {
+                            clearTimeout(fallback);
+                            try { src.disconnect(); gain.disconnect(); } catch (e) {}
+                            resolve({ method: 'webaudio' });
+                        };
                         return;
                     } catch (e) {
                         // fallthrough to try HTMLAudio fallback
@@ -226,10 +238,14 @@ export class SoundManager {
                 if (opts.playbackRate !== undefined) instance.playbackRate = opts.playbackRate;
                 const p = instance.play();
                 if (p && typeof p.then === 'function') {
-                    p.then(() => resolve({ method: 'html' })).catch(err => reject(err));
+                    p.then(() => {
+                        // resolve when ended
+                        instance.addEventListener('ended', () => resolve({ method: 'html' }));
+                    }).catch(err => reject(err));
                 } else {
-                    // older browsers: assume success
-                    resolve({ method: 'html' });
+                    // older browsers: listen for ended or resolve after 1500ms
+                    instance.addEventListener('ended', () => resolve({ method: 'html' }));
+                    setTimeout(() => resolve({ method: 'html' }), 1500);
                 }
             } catch (e) {
                 reject(e);

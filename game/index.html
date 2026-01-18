@@ -32,6 +32,10 @@
                         "light-gray": "#e5e5e5",
                         "meter-bg": "#f3f4f6",
                     },
+                    backgroundImage: {
+                        'radial-gradient': 'radial-gradient(var(--tw-gradient-stops))',
+                        'dot-grid': 'radial-gradient(#000000 1.5px, transparent 1.5px)',
+                    },
                     fontFamily: {
                         display: ["'Orbitron'", "sans-serif"],
                         japanese: ["'Shippori Mincho'", "serif"],
@@ -404,31 +408,249 @@
             <button id="startButton" class="btn-primary px-8 py-3 bg-primary text-white font-bold rounded">開始</button>
         </div>
 
-        <!-- Permission Screen (Existing) -->
+        <!-- Permission Screen (Updated) -->
         <div id="permissionScreen"
-            class="screen absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/90 hidden">
-            <h2 class="text-2xl text-white mb-4">権限の確認</h2>
-            <div id="permissionStatus" class="mb-4 text-gray-300">
-                <p id="cameraStatus">📷 カメラ: 未確認</p>
-                <p id="motionStatus">📱 モーション: 未確認</p>
+            class="screen absolute inset-0 z-50 flex flex-col items-center justify-center bg-white text-ink-black font-sans hidden">
+
+            <div class="absolute inset-0 z-0 pointer-events-none opacity-[0.08]">
+                <div class="w-full h-full bg-dot-grid bg-[length:24px_24px]"></div>
             </div>
-            <button id="requestPermissionButton"
-                class="btn-primary px-6 py-2 bg-primary text-white rounded mb-2">権限を許可</button>
-            <p id="permissionError" class="text-red-500 text-sm"></p>
-            <div id="permissionDebugInfo"
-                class="mt-4 p-4 bg-gray-800 rounded border border-gray-600 w-3/4 max-h-48 overflow-auto text-xs text-gray-400">
-                <p id="permissionDebugLog"></p>
+
+            <!-- Header elements from design -->
+            <div class="absolute top-0 left-0 p-8 z-30">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-ink-black flex items-center justify-center">
+                        <span class="material-symbols-outlined text-white">token</span>
+                    </div>
+                    <div class="flex flex-col">
+                        <span class="font-display text-xs tracking-widest font-bold">ZANBARAI</span>
+                        <span class="font-japanese text-[10px] tracking-widest opacity-60">陰陽師クロニクル</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="absolute top-0 right-0 p-8 z-30 text-right hidden md:block">
+                <div class="flex items-center justify-end gap-2 mb-1">
+                    <div class="w-2 h-2 bg-primary rounded-full animate-pulse"></div>
+                    <span class="font-display text-sm font-bold tracking-[0.2em] text-primary">SYSTEM:
+                        AWAITING_AUTH</span>
+                </div>
+                <div class="text-[10px] font-mono text-tech-gray">SYS.VER.2.4.0</div>
+            </div>
+
+            <!-- Deco lines -->
+            <div class="absolute top-1/2 left-4 w-px h-32 bg-ink-black opacity-20 hidden md:block"></div>
+            <div class="absolute top-1/2 right-4 w-px h-32 bg-ink-black opacity-20 hidden md:block"></div>
+            <div class="absolute bottom-8 left-8 flex gap-2 z-20">
+                <div class="w-1 h-1 bg-primary rounded-full"></div>
+                <div class="w-1 h-1 bg-tech-gray rounded-full"></div>
+                <div class="w-1 h-1 bg-tech-gray rounded-full"></div>
+            </div>
+
+            <main class="relative z-10 w-full flex flex-col items-center justify-center p-6 md:p-12">
+                <div class="mb-12 text-center relative w-full max-w-lg">
+                    <div class="absolute top-1/2 left-0 w-full h-px bg-tech-gray opacity-20 -z-10"></div>
+                    <div class="inline-block bg-white px-8 border border-ink-black py-4">
+                        <h1
+                            class="font-display text-3xl md:text-4xl font-black tracking-tighter text-ink-black uppercase">
+                            Permission <span class="text-primary italic">Check</span>
+                        </h1>
+                        <p class="font-japanese text-sm tracking-[0.5em] mt-1 font-bold text-tech-gray">権限の確認</p>
+                    </div>
+                </div>
+
+                <div class="w-full max-w-md relative bg-white border-[3px] border-ink-black p-8 md:p-12 shadow-2xl">
+                    <!-- Corner Accents -->
+                    <div class="absolute top-0 left-0 w-4 h-4 border-l-4 border-t-4 border-primary -ml-[3px] -mt-[3px]">
+                    </div>
+                    <div
+                        class="absolute top-0 right-0 w-4 h-4 border-r-4 border-t-4 border-primary -mr-[3px] -mt-[3px]">
+                    </div>
+                    <div
+                        class="absolute bottom-0 left-0 w-4 h-4 border-l-4 border-b-4 border-primary -ml-[3px] -mb-[3px]">
+                    </div>
+                    <div
+                        class="absolute bottom-0 right-0 w-4 h-4 border-r-4 border-b-4 border-primary -mr-[3px] -mb-[3px]">
+                    </div>
+
+                    <!-- Camera Status -->
+                    <div class="flex items-center justify-between mb-8 border-b border-gray-200 pb-4">
+                        <div class="flex items-center gap-4">
+                            <span class="material-symbols-outlined text-3xl text-ink-black">photo_camera</span>
+                            <div class="flex flex-col">
+                                <span class="font-display text-lg font-bold tracking-widest">CAMERA</span>
+                                <span class="font-japanese text-xs text-tech-gray">カメラ</span>
+                            </div>
+                        </div>
+                        <span id="cameraStatus"
+                            class="font-display text-sm text-primary font-bold tracking-widest animate-pulse">[
+                            UNVERIFIED ]</span>
+                    </div>
+
+                    <!-- Motion Status -->
+                    <div class="flex items-center justify-between mb-12 border-b border-gray-200 pb-4">
+                        <div class="flex items-center gap-4">
+                            <span class="material-symbols-outlined text-3xl text-ink-black">sensors</span>
+                            <div class="flex flex-col">
+                                <span class="font-display text-lg font-bold tracking-widest">MOTION</span>
+                                <span class="font-japanese text-xs text-tech-gray">モーション</span>
+                            </div>
+                        </div>
+                        <span id="motionStatus"
+                            class="font-display text-sm text-primary font-bold tracking-widest animate-pulse">[
+                            UNVERIFIED ]</span>
+                    </div>
+
+                    <!-- Button -->
+                    <button id="requestPermissionButton" class="w-full h-16 relative group/btn overflow-hidden">
+                        <div
+                            class="absolute inset-0 bg-primary transform -skew-x-[20deg] transition-transform group-hover/btn:scale-[1.02] shadow-lg">
+                        </div>
+                        <div
+                            class="absolute inset-0 bg-white/20 transform -skew-x-[20deg] translate-x-full group-hover/btn:translate-x-[-200%] transition-transform duration-700">
+                        </div>
+                        <div
+                            class="absolute inset-0 flex flex-col items-center justify-center transform -skew-x-[20deg] border border-white/20">
+                            <span
+                                class="font-display font-black text-white text-xl italic tracking-widest transform skew-x-[20deg]">ALLOW
+                                ACCESS</span>
+                            <span
+                                class="font-japanese text-[10px] text-white/80 tracking-widest transform skew-x-[20deg] mt-0.5">権限を許可</span>
+                        </div>
+                    </button>
+
+                    <div class="absolute bottom-2 right-2 text-[8px] font-mono text-gray-300">SEC_LEVEL_01</div>
+                    <p id="permissionError" class="text-red-500 text-xs mt-2 text-center absolute -bottom-6 w-full"></p>
+                </div>
+            </main>
+
+            <div
+                class="absolute bottom-0 left-0 w-full h-12 bg-white border-t border-ink-black flex items-center justify-between px-8 z-20">
+                <div class="flex items-center gap-4">
+                    <div class="w-32 h-2 bg-gradient-to-r from-primary to-transparent opacity-50"></div>
+                    <span id="permissionDebugLogStatus"
+                        class="font-display text-[10px] text-tech-gray tracking-widest">INITIALIZING SENSORS...</span>
+                </div>
+                <div class="flex gap-1">
+                    <div class="w-1 h-4 bg-ink-black"></div>
+                    <div class="w-1 h-4 bg-ink-black opacity-50"></div>
+                    <div class="w-1 h-4 bg-ink-black opacity-25"></div>
+                </div>
             </div>
         </div>
 
-        <!-- BLE Connect Screen (Existing) -->
+        <!-- BLE Connect Screen (Updated) -->
         <div id="bleConnectScreen"
-            class="screen absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/90 hidden">
-            <h2 class="text-2xl text-white mb-4">コントローラ接続</h2>
-            <p class="text-gray-300 mb-4">グローブ型コントローラをBLEで接続します</p>
-            <button id="connectBleButton" class="btn-primary px-6 py-2 bg-primary text-white rounded">BLE接続</button>
-            <p id="bleStatus" class="mt-4 text-gray-400">未接続</p>
-            <p id="bleError" class="text-red-500 text-sm mt-2"></p>
+            class="screen absolute inset-0 z-50 flex flex-col items-center justify-center bg-white text-ink-black font-sans hidden">
+
+            <div class="absolute inset-0 z-0 pointer-events-none opacity-[0.08]">
+                <div class="w-full h-full bg-dot-grid bg-[length:24px_24px]"></div>
+            </div>
+
+            <div class="absolute top-0 left-0 p-8 z-30">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-ink-black flex items-center justify-center">
+                        <span class="material-symbols-outlined text-white">token</span>
+                    </div>
+                    <div class="flex flex-col">
+                        <span class="font-display text-xs tracking-widest font-bold">ZANBARAI</span>
+                        <span class="font-japanese text-[10px] tracking-widest opacity-60">陰陽師クロニクル</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="absolute top-0 right-0 p-8 z-30 text-right hidden md:block">
+                <div class="flex items-center justify-end gap-2 mb-1">
+                    <div class="w-2 h-2 bg-primary rounded-full animate-pulse"></div>
+                    <span class="font-display text-sm font-bold tracking-[0.2em] text-primary">SYSTEM:
+                        AWAITING_CONN</span>
+                </div>
+                <div class="text-[10px] font-mono text-tech-gray">SYS.VER.2.4.0</div>
+            </div>
+
+            <div class="absolute top-1/2 left-4 w-px h-32 bg-ink-black opacity-20 hidden md:block"></div>
+            <div class="absolute top-1/2 right-4 w-px h-32 bg-ink-black opacity-20 hidden md:block"></div>
+            <div class="absolute bottom-8 left-8 flex gap-2 z-20">
+                <div class="w-1 h-1 bg-primary rounded-full"></div>
+                <div class="w-1 h-1 bg-tech-gray rounded-full"></div>
+                <div class="w-1 h-1 bg-tech-gray rounded-full"></div>
+            </div>
+
+            <main class="relative z-10 w-full flex flex-col items-center justify-center p-6 md:p-12">
+                <div class="mb-12 text-center relative w-full max-w-lg">
+                    <div class="absolute top-1/2 left-0 w-full h-px bg-tech-gray opacity-20 -z-10"></div>
+                    <div class="inline-block bg-white px-8 border border-ink-black py-4">
+                        <h1
+                            class="font-display text-3xl md:text-4xl font-black tracking-tighter text-ink-black uppercase">
+                            CONTROLLER <span class="text-primary italic">CONNECT</span>
+                        </h1>
+                        <p class="font-japanese text-sm tracking-[0.5em] mt-1 font-bold text-tech-gray">コントローラの接続</p>
+                    </div>
+                </div>
+
+                <div class="w-full max-w-md relative bg-white border-[3px] border-ink-black p-8 md:p-12 shadow-2xl">
+                    <div class="absolute top-0 left-0 w-4 h-4 border-l-4 border-t-4 border-primary -ml-[3px] -mt-[3px]">
+                    </div>
+                    <div
+                        class="absolute top-0 right-0 w-4 h-4 border-r-4 border-t-4 border-primary -mr-[3px] -mt-[3px]">
+                    </div>
+                    <div
+                        class="absolute bottom-0 left-0 w-4 h-4 border-l-4 border-b-4 border-primary -ml-[3px] -mb-[3px]">
+                    </div>
+                    <div
+                        class="absolute bottom-0 right-0 w-4 h-4 border-r-4 border-b-4 border-primary -mr-[3px] -mb-[3px]">
+                    </div>
+
+                    <div class="flex items-start md:items-center gap-4 mb-12 border-b border-gray-200 pb-4 w-full">
+                        <span
+                            class="material-symbols-outlined text-3xl text-ink-black flex-shrink-0 mt-1 md:mt-0">front_hand</span>
+                        <div class="flex flex-col md:flex-row md:items-center justify-between w-full">
+                            <div class="flex flex-col">
+                                <span class="font-display text-lg font-bold tracking-widest break-words">GLOVE
+                                    CONTROLLER</span>
+                                <span class="font-japanese text-xs text-tech-gray">グローブコントローラ</span>
+                            </div>
+                            <span id="bleStatus"
+                                class="font-display text-xs md:text-sm text-primary font-bold tracking-widest animate-pulse mt-2 md:mt-0 whitespace-nowrap">[
+                                DISCONNECTED ]</span>
+                        </div>
+                    </div>
+
+                    <button id="connectBleButton" class="w-full h-16 relative group/btn overflow-hidden">
+                        <div
+                            class="absolute inset-0 bg-primary transform -skew-x-[20deg] transition-transform group-hover/btn:scale-[1.02] shadow-lg">
+                        </div>
+                        <div
+                            class="absolute inset-0 bg-white/20 transform -skew-x-[20deg] translate-x-full group-hover/btn:translate-x-[-200%] transition-transform duration-700">
+                        </div>
+                        <div
+                            class="absolute inset-0 flex flex-col items-center justify-center transform -skew-x-[20deg] border border-white/20">
+                            <span
+                                class="font-display font-black text-white text-xl italic tracking-widest transform skew-x-[20deg]">BLE
+                                CONNECT</span>
+                            <span
+                                class="font-japanese text-[10px] text-white/80 tracking-widest transform skew-x-[20deg] mt-0.5">BLE接続</span>
+                        </div>
+                    </button>
+
+                    <div class="absolute bottom-2 right-2 text-[8px] font-mono text-gray-300">SEC_LEVEL_01</div>
+                    <p id="bleError" class="text-red-500 text-xs mt-2 text-center absolute -bottom-6 w-full"></p>
+                </div>
+            </main>
+
+            <div
+                class="absolute bottom-0 left-0 w-full h-12 bg-white border-t border-ink-black flex items-center justify-between px-8 z-20">
+                <div class="flex items-center gap-4">
+                    <div class="w-32 h-2 bg-gradient-to-r from-primary to-transparent opacity-50"></div>
+                    <span id="bleFooterStatus" class="font-display text-[10px] text-tech-gray tracking-widest">SCANNING
+                        FOR DEVICES...</span>
+                </div>
+                <div class="flex gap-1">
+                    <div class="w-1 h-4 bg-ink-black"></div>
+                    <div class="w-1 h-4 bg-ink-black opacity-50"></div>
+                    <div class="w-1 h-4 bg-ink-black opacity-25"></div>
+                </div>
+            </div>
         </div>
 
         <!-- Calibrate Screen (Existing) -->
@@ -452,7 +674,7 @@
         <!-- Gameplay Screen (Updated with User's HUD) -->
         <div id="gameplayScreen" class="screen hidden w-full h-full absolute inset-0 z-40">
             <!-- Game Effects Overlay (z-50 in user's doc, but inside gameplayScreen) -->
-            <div class="screen-effects absolute inset-0 pointer-events-none z-0">
+            <div class="screen-effects absolute inset-0 pointer-events-none z-50">
                 <div class="scanlines absolute inset-0 opacity-50"></div>
                 <div class="grid-overlay absolute inset-0"></div>
                 <div class="absolute inset-0 opacity-[0.08]"
@@ -460,6 +682,8 @@
                 </div>
                 <div class="random-glitch-lines"></div>
                 <div class="horror-flash"></div>
+                <!-- Vignette -->
+                <div class="absolute inset-0 bg-radial-gradient from-transparent to-black/40"></div>
                 <!-- Damage Vignette (Mapped to ID) -->
                 <div id="damage-vignette"
                     class="absolute inset-0 bg-radial-gradient from-transparent to-red-900/60 opacity-0 pointer-events-none transition-opacity duration-100">

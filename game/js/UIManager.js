@@ -22,11 +22,14 @@ export class UIManager {
             cameraStatus: document.getElementById('cameraStatus'),
             motionStatus: document.getElementById('motionStatus'),
             permissionError: document.getElementById('permissionError'),
-            permissionDebugLog: document.getElementById('permissionDebugLog'),
+            // Replaced default log area with footer status text
+            permissionDebugLogStatus: document.getElementById('permissionDebugLogStatus'),
 
             // BLE Connect
             connectBleButton: document.getElementById('connectBleButton'),
             bleStatus: document.getElementById('bleStatus'),
+            bleError: document.getElementById('bleError'),
+            bleFooterStatus: document.getElementById('bleFooterStatus'),
             bleError: document.getElementById('bleError'),
 
             // Calibrate
@@ -125,51 +128,69 @@ export class UIManager {
 
     updatePermissionStatus(type, status, message) {
         // type: 'camera' or 'motion'
-        // status: 'granted', 'denied', 'prompt', 'unknown'
         const el = type === 'camera' ? this.elements.cameraStatus : this.elements.motionStatus;
         if (!el) return;
 
-        let icon = status === 'granted' ? '✓' : (status === 'denied' ? '✗' : '?');
-        let text = type === 'camera' ? '📷 カメラ: ' : '📱 モーション: ';
-
-        if (message) {
-            el.textContent = `${text} ${message}`;
+        if (status === 'granted') {
+            el.textContent = '[ OK ]';
+            el.classList.remove('animate-pulse', 'text-primary'); // Remove pulse/red
+            el.classList.add('text-ink-black');
+        } else if (status === 'denied') {
+            el.textContent = '[ DENIED ]';
+            el.classList.remove('animate-pulse');
+            el.classList.add('text-gray-400');
         } else {
-            el.textContent = `${text} ${status} ${icon}`;
+            // Pending/Prompt
+            if (message) el.textContent = `[ ${message} ]`;
         }
     }
 
     showPermissionError(message) {
         if (this.elements.permissionError) {
-            this.elements.permissionError.textContent = `エラー: ${message}`;
+            this.elements.permissionError.textContent = `ERROR: ${message}`;
         }
     }
 
     addPermissionLog(message) {
-        const log = this.elements.permissionDebugLog;
-        if (!log) return;
+        // Log to console
+        console.log(`[Permission] ${message}`);
 
-        const timestamp = new Date().toLocaleTimeString('ja-JP');
-        const entry = document.createElement('div');
-        entry.textContent = `[${timestamp}] ${message}`;
-        entry.style.padding = '0.3rem';
-        entry.style.borderBottom = '1px solid #333';
-
-        log.appendChild(entry);
-        log.parentElement.scrollTop = log.parentElement.scrollHeight;
+        // Update footer status text (single line only)
+        const statusEl = this.elements.permissionDebugLogStatus;
+        if (statusEl) {
+            statusEl.textContent = message.toUpperCase();
+        }
     }
 
     // --- BLE Screen Updates ---
 
     updateBLEStatus(status, message) {
         if (this.elements.bleStatus) {
-            this.elements.bleStatus.textContent = message || status;
+            // Check if status implies success (e.g. "Connected")
+            const isConnected = (status === '接続成功' || status === 'Connected' || message === '接続成功');
+
+            if (isConnected) {
+                this.elements.bleStatus.textContent = '[ CONNECTED ]';
+                this.elements.bleStatus.classList.remove('animate-pulse', 'text-primary');
+                this.elements.bleStatus.classList.add('text-ink-black');
+            } else {
+                // Formatting for display
+                const displayMsg = message || status;
+                this.elements.bleStatus.textContent = `[ ${displayMsg.toUpperCase()} ]`;
+                this.elements.bleStatus.classList.add('animate-pulse', 'text-primary');
+                this.elements.bleStatus.classList.remove('text-ink-black');
+            }
+        }
+
+        // Also update footer
+        if (this.elements.bleFooterStatus) {
+            this.elements.bleFooterStatus.textContent = (message || status).toUpperCase();
         }
     }
 
     showBLEError(message) {
         if (this.elements.bleError) {
-            this.elements.bleError.textContent = `接続エラー: ${message}`;
+            this.elements.bleError.textContent = `ERROR: ${message}`;
         }
     }
 
@@ -407,7 +428,7 @@ export class UIManager {
             this._countdownTimer = null;
         }
     }
-    
+
 
     createEnemyIndicator(container) {
         const wrapper = document.createElement('div');

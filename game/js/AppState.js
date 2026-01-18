@@ -60,6 +60,8 @@ export class AppState {
             try {
                 this.screens[newState].style.display = '';
                 this.screens[newState].style.pointerEvents = '';
+                // 追加: global overlays (例: #global-tv-effects z-80) より前面に表示するため z-index を引き上げる
+                try { this.screens[newState].style.zIndex = '90'; } catch (e) { }
             } catch (e) { }
         }
         

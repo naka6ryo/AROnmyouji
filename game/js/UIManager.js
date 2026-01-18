@@ -400,6 +400,7 @@ export class UIManager {
             btn.style.pointerEvents = show ? 'auto' : 'none';
         }
         if (overlay) {
+            // Note: overlay is now at top level with flex display in class when active
             overlay.style.display = show ? 'flex' : 'none';
             overlay.style.pointerEvents = show ? 'auto' : 'none';
             if (show) overlay.classList.remove('hidden'); else overlay.classList.add('hidden');
@@ -586,6 +587,10 @@ export class UIManager {
 
         // 1. Trigger CRT Turn-On Animation
         // Reset animation just in case (remove class, reflow, add class)
+
+        // Ensure opacity is 1 (it starts at 0)
+        crtDisplay.classList.remove('opacity-0');
+
         crtDisplay.classList.remove('crt-turn-on-active');
         void crtDisplay.offsetWidth; // Force reflow
         crtDisplay.classList.add('crt-turn-on-active');

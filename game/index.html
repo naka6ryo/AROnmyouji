@@ -668,8 +668,8 @@
     </svg>
 
     <!-- Global Background: Video & Horror Effects -->
-    <!-- WRAPPER FOR CRT ANIMATION -->
-    <div id="crt-main-display" class="crt-screen-container">
+    <!-- WRAPPER FOR CRT ANIMATION - INITIALLY HIDDEN (Screen Off) -->
+    <div id="crt-main-display" class="crt-screen-container opacity-0">
         <div class="absolute inset-0 z-0 bg-black">
 
             <!-- Real Camera Feed Container with Horror Effects -->
@@ -761,7 +761,7 @@
                         </div>
                         <img alt="Zanbarai Chronicle Graphic"
                             class="w-full opacity-10 dark:opacity-20 mix-blend-multiply dark:mix-blend-screen absolute grayscale"
-                            src="https://lh3.googleusercontent.com/aida-public/AB6AXuAbg-PdMvEPPj6opfRWtqkyYp6AJvBKYmh5WaXm-CkoSTTcBcD5FPZUe7R7Se2TnET4iu8KC7PbTLGOXrYP91y9j9ovomoW0V2PTujaayAxO_ap60hsyHGFs4G0qnW0PTRzwM62t7edwuVApk7SqoKteX6dmjMKF2luP2IIj68o1pRKXPSPyLWXNG6tvg9b0ZBOT34mbmWKIR35I8UXwW2L-UaSWtF91daNa0rsQE5Tl2j2HqOPk95U_6ok4utwAPnr3rc-zaDr7js" />
+                            src="https://lh3.googleusercontent.com/aida-public/AB6AXuAbg-PdMvEPPj6opfRWtqkyYp6AJvBKYmh5WaXm-CkoSTTcBcD5FPZUe7R7Se2TnET4iu8KC7PbTLGOXrYP91y9j9ovomoW0V2PTujaayAxO_ap60hsyHGFs4G0qnW0PTRzwM62t7edwuVApk7S1Xiv27bKSPYTrFg-vBVZ2Hoy9U4y1Fjj1Z-mB2jqvDJalCOHExWMACE" />
 
                         <div class="relative z-10 flex flex-col items-center">
                             <div class="relative flex items-center justify-center">
@@ -1322,6 +1322,29 @@
                 </div>
             </div>
 
+            <!-- Start Overlay (Moved to top level for clickability and visibility before CRT on) -->
+            <div id="startOverlay"
+                class="screen absolute inset-0 z-[70] flex items-center justify-center bg-black hidden pointer-events-auto">
+                <div class="text-center relative z-10">
+                    <h1 class="font-display text-4xl text-white mb-6 tracking-widest uppercase">System Ready</h1>
+                    <p class="font-mono text-xs text-tech-gray mb-8 tracking-wider">INITIATE COMBAT SEQUENCE</p>
+                    <!-- Syncing stats for start overlay (Optional, keeping hidden inputs or just ignoring if not needed by design) -->
+                    <div class="hidden">
+                        <span id="playerHPStart"></span>
+                        <span id="killCountStart"></span>
+                        <span id="timeLeftStart"></span>
+                    </div>
+                    <button id="sceneStartButton"
+                        class="parallelogram bg-primary text-white px-8 py-4 font-display font-bold text-xl tracking-widest hover:bg-red-600 transition-all hover:scale-105 shadow-[0_0_15px_rgba(255,0,0,0.5)]">
+                        START WAVE
+                    </button>
+                </div>
+                <!-- Background grid for start screen -->
+                <div class="absolute inset-0 pointer-events-none opacity-20">
+                    <div class="w-full h-full bg-dot-grid bg-[length:32px_32px]"></div>
+                </div>
+            </div>
+
             <!-- Gameplay Screen (Updated with User's HUD) -->
             <div id="gameplayScreen" class="screen hidden w-full h-full absolute inset-0 z-40">
                 <!-- Game Effects Overlay (z-50 in user's doc, but inside gameplayScreen) -->
@@ -1478,23 +1501,6 @@
                     <!-- Bottom Controls & Status -->
                     <div class="w-full p-6 pb-8 flex flex-col justify-end pointer-events-auto mt-auto relative h-full">
 
-                        <!-- Start Overlay (Hidden by default, shown by JS) -->
-                        <div id="startOverlay"
-                            class="absolute inset-0 z-50 flex items-center justify-center bg-black/60 hidden backdrop-blur-sm pointer-events-auto">
-                            <div class="text-center">
-                                <h1 class="font-display text-4xl text-white mb-6 tracking-widest">GAME START</h1>
-                                <!-- Syncing stats for start overlay (Optional, keeping hidden inputs or just ignoring if not needed by design) -->
-                                <div class="hidden">
-                                    <span id="playerHPStart"></span>
-                                    <span id="killCountStart"></span>
-                                    <span id="timeLeftStart"></span>
-                                </div>
-                                <button id="sceneStartButton"
-                                    class="parallelogram bg-primary text-white px-8 py-3 font-display font-bold tracking-widest hover:bg-red-600 transition-colors">
-                                    START WAVE
-                                </button>
-                            </div>
-                        </div>
 
                         <!-- Countdown Overlay -->
                         <div id="countdownOverlay"

@@ -474,8 +474,47 @@
             }
         }
 
+        @keyframes monitor-flicker {
+            0% {
+                opacity: 1;
+                filter: brightness(1);
+            }
+
+            5% {
+                opacity: 0.95;
+                filter: brightness(0.9);
+            }
+
+            10% {
+                opacity: 1;
+                filter: brightness(1);
+            }
+
+            50% {
+                opacity: 1;
+                filter: brightness(1);
+            }
+
+            55% {
+                opacity: 0.98;
+                filter: brightness(1.1);
+            }
+
+            60% {
+                opacity: 1;
+                filter: brightness(1);
+            }
+
+            100% {
+                opacity: 1;
+                filter: brightness(1);
+            }
+        }
+
         .tv-effect-on {
-            animation: tv-turn-on 0.4s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+            animation:
+                tv-turn-on 0.4s cubic-bezier(0.23, 1, 0.32, 1) forwards,
+                monitor-flicker 4s infinite 0.5s;
             transform-origin: center;
         }
 

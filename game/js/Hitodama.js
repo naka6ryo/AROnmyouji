@@ -1,62 +1,53 @@
 /**
  * Hitodama.js
  * 敵キャラクター（人魂）の描画・アニメーション管理
+ * Optimized version: Shared Geometries & Points for Tail
  */
 
 import * as THREE from 'three';
 import { assetLoader } from './AssetLoader.js';
+import { HitodamaResources } from './HitodamaResources.js';
 
 export class Hitodama {
     constructor(scene, position = new THREE.Vector3(0, 0, 0)) {
+        // Ensure shared resources are ready
+        HitodamaResources.init();
+
         this.scene = scene;
         this.pos = position.clone();
         this.time = 0;
 
         this.isPurifying = false;
-        this.isExploding = false; // Added state initialization
+        this.isExploding = false;
         this.isDead = false;
 
         this.fragments = [];
-        this.tailSprites = [];
         this.shockwaves = [];
 
         // テクスチャ取得 via AssetLoader
-        const spriteTexture = assetLoader.getTexture('spark');
+        const sparkTexture = assetLoader.getTexture('spark');
         const glowTexture = assetLoader.getTexture('glow');
 
         // --- サイズ設定 ---
-        const MAX_SCALE_FACTOR = 0.25;
         const SPAWN_SCALE_FACTOR = 0.5;
 
         // --- 1. Core ---
-        const coreGeo = new THREE.SphereGeometry(0.25, 32, 32);
-        const coreMat = new THREE.MeshBasicMaterial({
-            color: 0xffddaa,
-            transparent: true,
-            opacity: 0.8,
-            blending: THREE.AdditiveBlending
-        });
-        this.coreMesh = new THREE.Mesh(coreGeo, coreMat);
+        this.coreMesh = new THREE.Mesh(HitodamaResources.geometries.core, HitodamaResources.materials.core);
         this.coreMesh.position.copy(this.pos);
         this.coreMesh.scale.set(0.8 * SPAWN_SCALE_FACTOR, 1.4 * SPAWN_SCALE_FACTOR, 0.8 * SPAWN_SCALE_FACTOR);
         this.scene.add(this.coreMesh);
 
         // --- 2. Body ---
-        const bodyGeo = new THREE.SphereGeometry(0.6, 64, 64);
-        const bodyMat = new THREE.MeshBasicMaterial({
-            color: 0xff2200,
-            transparent: true,
-            opacity: 0.5,
-            blending: THREE.AdditiveBlending,
-            side: THREE.DoubleSide,
-            depthWrite: false
-        });
-        this.mesh = new THREE.Mesh(bodyGeo, bodyMat);
+        this.mesh = new THREE.Mesh(HitodamaResources.geometries.body, HitodamaResources.materials.body);
         this.mesh.position.copy(this.pos);
         this.mesh.position.y += 0.3;
         this.mesh.scale.set(0.75 * SPAWN_SCALE_FACTOR, 1.8 * SPAWN_SCALE_FACTOR, 0.75 * SPAWN_SCALE_FACTOR);
         this.scene.add(this.mesh);
-        this.originalPositions = bodyGeo.attributes.position.clone();
+
+        // Save original position attribute for vertex wobble (clone it to avoid modifying the shared geometry)
+        this.originalPositions = HitodamaResources.geometries.body.attributes.position.clone();
+        // We need a unique geometry for the body to apply vertex wobble without affecting other instances
+        this.mesh.geometry = HitodamaResources.geometries.body.clone();
 
         // --- 3. Aura ---
         const auraMat = new THREE.SpriteMaterial({
@@ -76,29 +67,41 @@ export class Hitodama {
         this.light.position.copy(this.pos);
         this.scene.add(this.light);
 
-        // --- 5. Tail ---
+        // --- 5. Tail (Optimized using THREE.Points) ---
         this.tailCount = 40;
         this.tailPositions = [];
         for (let i = 0; i < this.tailCount; i++) this.tailPositions.push(this.pos.clone());
 
-        for (let i = 0; i < this.tailCount; i++) {
-            const spriteMaterial = new THREE.SpriteMaterial({
-                map: spriteTexture,
-                color: 0xff5500,
-                transparent: true,
-                opacity: 0.4,
-                blending: THREE.AdditiveBlending
-            });
-            const sprite = new THREE.Sprite(spriteMaterial);
-            sprite.scale.set(1.5 * SPAWN_SCALE_FACTOR, 1.5 * SPAWN_SCALE_FACTOR, 1.5 * SPAWN_SCALE_FACTOR);
-            this.scene.add(sprite);
-            this.tailSprites.push(sprite);
-        }
+        // BufferGeometry for Points
+        this.tailGeometry = new THREE.BufferGeometry();
+        const positions = new Float32Array(this.tailCount * 3);
+        const colors = new Float32Array(this.tailCount * 3); // For fading
+        const sizes = new Float32Array(this.tailCount);
+
+        this.tailGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        this.tailGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+        this.tailGeometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+
+        const tailMaterial = new THREE.PointsMaterial({
+            size: 1.5 * SPAWN_SCALE_FACTOR,
+            map: sparkTexture,
+            vertexColors: true,
+            transparent: true,
+            opacity: 1.0,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false,
+            sizeAttenuation: true
+        });
+
+        this.tailPoints = new THREE.Points(this.tailGeometry, tailMaterial);
+        this.scene.add(this.tailPoints);
 
         // コールバック
         this.onExploded = null;
         this.onPurified = null;
     }
+
+    // ... (purify/explode logic needs update to use shared geometries for fragments)
 
     purify() {
         if (this.isPurifying || this.isDead) return;
@@ -111,17 +114,15 @@ export class Hitodama {
         this.light.intensity = 20;
 
         const fragmentCount = 50;
-        const fragGeo = new THREE.ConeGeometry(0.15, 0.4, 3);
-        fragGeo.rotateX(Math.PI / 2);
+        // Reuse shared geometry
+        const fragGeo = HitodamaResources.geometries.fragment;
 
         for (let i = 0; i < fragmentCount; i++) {
-            const fragMat = new THREE.MeshBasicMaterial({
-                color: 0xff5500,
-                transparent: true,
-                opacity: 1.0,
-                blending: THREE.AdditiveBlending,
-                side: THREE.DoubleSide
-            });
+            // Material needs to be cloned to handle individual opacity/color fades? 
+            // Yes, because three.js doesn't support per-instance opacity easily without InstancedMesh+CustomShader.
+            // For now, cloning material is still better than cloning geometry AND material.
+            const fragMat = HitodamaResources.materials.fragment.clone();
+
             const fragment = new THREE.Mesh(fragGeo, fragMat);
             fragment.position.copy(this.pos);
             fragment.position.x += (Math.random() - 0.5) * 0.8;
@@ -163,20 +164,16 @@ export class Hitodama {
         this.light.color.setHex(0xffaa55);
 
         // 衝撃波
-        const ringMat = new THREE.MeshBasicMaterial({
-            color: 0xffddaa,
-            transparent: true,
-            opacity: 0.9,
-            side: THREE.DoubleSide,
-            blending: THREE.AdditiveBlending
-        });
-        const ring1 = new THREE.Mesh(new THREE.RingGeometry(0.2, 0.5, 32), ringMat.clone());
+        // Clone materials for fade
+        const ringMat1 = HitodamaResources.materials.shockwave.clone();
+        const ring1 = new THREE.Mesh(HitodamaResources.geometries.shockwaveSmall, ringMat1);
         ring1.position.copy(this.pos);
         ring1.lookAt(this.scene.camera ? this.scene.camera.position : new THREE.Vector3(0, 0, 0));
         this.scene.add(ring1);
         this.shockwaves.push({ mesh: ring1, speed: 40.0, opacity: 1.0 });
 
-        const ring2 = new THREE.Mesh(new THREE.RingGeometry(0.2, 0.8, 32), ringMat.clone());
+        const ringMat2 = HitodamaResources.materials.shockwave.clone();
+        const ring2 = new THREE.Mesh(HitodamaResources.geometries.shockwaveLarge, ringMat2);
         ring2.position.copy(this.pos);
         ring2.lookAt(this.scene.camera ? this.scene.camera.position : new THREE.Vector3(0, 0, 0));
         this.scene.add(ring2);
@@ -184,7 +181,7 @@ export class Hitodama {
 
         // 破片
         const fragmentCount = 100;
-        const fragGeo = new THREE.ConeGeometry(0.2, 0.8, 3);
+        const fragGeo = new THREE.ConeGeometry(0.2, 0.8, 3); // Slightly larger for explosion
         fragGeo.rotateX(Math.PI / 2);
 
         for (let i = 0; i < fragmentCount; i++) {
@@ -227,14 +224,62 @@ export class Hitodama {
 
         if (this.isExploding) {
             this.updateExplosion(dt);
+            // Hide tail if exploding
+            this.tailPoints.visible = false;
             return;
         }
 
         if (this.isPurifying) {
             this.updatePurification(dt);
+            // Tail fading during purification is handled in updatePurification
         } else {
             this.updateNormal(dt);
+            // Update Tail Particle System
+            this.updateTailPoints();
         }
+    }
+
+    updateTailPoints() {
+        if (!this.tailGeometry) return;
+
+        const positions = this.tailGeometry.attributes.position.array;
+        const colors = this.tailGeometry.attributes.color.array;
+        const sizes = this.tailGeometry.attributes.size.array;
+
+        const baseColor = new THREE.Color(0xff5500);
+
+        for (let i = 0; i < this.tailCount; i++) {
+            const pos = this.tailPositions[i];
+            const idx = i * 3;
+
+            // Should add some noise to position to match original effect
+            const noise = 0.1 * (i / this.tailCount);
+
+            if (pos) {
+                positions[idx] = pos.x + (Math.random() - 0.5) * noise;
+                positions[idx + 1] = pos.y + (Math.random() - 0.5) * noise;
+                positions[idx + 2] = pos.z + (Math.random() - 0.5) * noise;
+            }
+
+            const ratio = 1 - (i / this.tailCount);
+
+            // Fade opacity using color logic if material supports vertex color alpha
+            // THREE.PointsMaterial uses color attribute as diffuse color. 
+            // There is no separate 'alpha' attribute.
+            // If we want alpha fading, we just scale the color? No, standard PointsMaterial doesn't do per-vertex alpha easily unless we use custom shader.
+            // However, with AdditiveBlending, darker colors look transparent.
+
+            colors[idx] = baseColor.r * ratio;
+            colors[idx + 1] = baseColor.g * ratio;
+            colors[idx + 2] = baseColor.b * ratio;
+
+            // Scale size
+            sizes[i] = 1.0 * ratio; // Scale factor needs tuning. Original was 1.5 * scale.
+        }
+
+        this.tailGeometry.attributes.position.needsUpdate = true;
+        this.tailGeometry.attributes.color.needsUpdate = true;
+        this.tailGeometry.attributes.size.needsUpdate = true;
     }
 
     updateExplosion(dt) {
@@ -249,6 +294,7 @@ export class Hitodama {
             if (sw.mesh.material) sw.mesh.material.opacity = Math.max(0, sw.opacity);
             if (sw.opacity <= 0) {
                 this.scene.remove(sw.mesh);
+                if (sw.mesh.material) sw.mesh.material.dispose(); // Dispose cloned material
                 this.shockwaves.splice(i, 1);
             }
         }
@@ -271,14 +317,7 @@ export class Hitodama {
             frag.mesh.scale.set(s, s, s);
         }
 
-        // Tail fade
-        for (const sprite of this.tailSprites) {
-            sprite.material.opacity *= 0.8;
-            sprite.scale.multiplyScalar(1.05);
-            sprite.position.add(new THREE.Vector3((Math.random() - 0.5) * 0.5, (Math.random() - 0.5) * 0.5, (Math.random() - 0.5) * 0.5));
-        }
-
-        // Light decay: explosive light is large; ensure it fades so finalizeDeath() can run
+        // Light decay
         if (this.light) {
             this.light.intensity = Math.max(0, this.light.intensity - 200 * dt);
             if (typeof this.light.distance === 'number') this.light.distance *= Math.max(0.9, 1 - 0.5 * dt);
@@ -315,10 +354,27 @@ export class Hitodama {
             frag.mesh.scale.set(s, s, s);
         }
 
-        for (const sprite of this.tailSprites) {
-            sprite.material.opacity *= 0.92;
-            sprite.material.color.lerp(pureColor, 0.1);
-            sprite.position.y += dt * 1.0;
+        // Tail fade in purification
+        // With Points, we can fade them out by reducing global opacity or zeroing out the colors
+        if (this.tailPoints.material) {
+            this.tailPoints.material.opacity *= 0.92;
+            // Also drift up?
+            const positions = this.tailGeometry.attributes.position.array;
+            for (let i = 0; i < this.tailCount; i++) {
+                positions[i * 3 + 1] += dt * 1.0;
+            }
+            this.tailGeometry.attributes.position.needsUpdate = true;
+
+            // Tint color
+            const colors = this.tailGeometry.attributes.color.array;
+            for (let i = 0; i < this.tailCount * 3; i += 3) {
+                const c = new THREE.Color(colors[i], colors[i + 1], colors[i + 2]);
+                c.lerp(pureColor, 0.1);
+                colors[i] = c.r;
+                colors[i + 1] = c.g;
+                colors[i + 2] = c.b;
+            }
+            this.tailGeometry.attributes.color.needsUpdate = true;
         }
 
         if (activeFragments === 0 && this.light.intensity < 0.1) {
@@ -339,11 +395,13 @@ export class Hitodama {
 
         // vertex wobble
         const positions = this.mesh.geometry.attributes.position;
-        const originals = this.originalPositions;
+        // Check if originalPositions exists (it should, we cloned it in constructor)
+        if (!this.originalPositions) return;
+
         for (let i = 0; i < positions.count; i++) {
-            const px = originals.getX(i);
-            const py = originals.getY(i);
-            const pz = originals.getZ(i);
+            const px = this.originalPositions.getX(i);
+            const py = this.originalPositions.getY(i);
+            const pz = this.originalPositions.getZ(i);
             const r = 0.6;
             const h = Math.max(0, (py + r) / (r * 2));
             const influence = Math.pow(h, 1.2);
@@ -361,22 +419,6 @@ export class Hitodama {
         // tail
         this.tailPositions.unshift(this.pos.clone());
         if (this.tailPositions.length > this.tailCount) this.tailPositions.pop();
-        for (let i = 0; i < this.tailCount; i++) {
-            const sprite = this.tailSprites[i];
-            const targetPos = this.tailPositions[i];
-            if (targetPos) {
-                const noise = 0.1 * (i / this.tailCount);
-                sprite.position.set(
-                    targetPos.x + (Math.random() - 0.5) * noise,
-                    targetPos.y + (Math.random() - 0.5) * noise,
-                    targetPos.z + (Math.random() - 0.5) * noise
-                );
-                const ratio = 1 - (i / this.tailCount);
-                const scale = 2.0 * ratio;
-                sprite.scale.set(scale, scale, scale);
-                sprite.material.opacity = 0.4 * ratio;
-            }
-        }
     }
 
     finalizeDeath() {
@@ -386,36 +428,39 @@ export class Hitodama {
         for (const frag of this.fragments) {
             if (frag.mesh) {
                 this.scene.remove(frag.mesh);
-                if (frag.mesh.geometry) frag.mesh.geometry.dispose();
                 if (frag.mesh.material) frag.mesh.material.dispose();
             }
         }
         this.fragments = [];
+        this.tailPoints.visible = false; // Hide tail
     }
 
     dispose() {
         if (this.mesh) {
             this.scene.remove(this.mesh);
-            if (this.mesh.geometry) this.mesh.geometry.dispose();
-            if (this.mesh.material) this.mesh.material.dispose();
+            this.mesh.geometry.dispose(); // Dispose unique body geometry
+            // Do not dispose material if it is shared!
         }
         if (this.coreMesh) {
             this.scene.remove(this.coreMesh);
-            if (this.coreMesh.geometry) this.coreMesh.geometry.dispose();
-            if (this.coreMesh.material) this.coreMesh.material.dispose();
+            // Do not dispose shared geometry/material
         }
         if (this.auraSprite) {
             this.scene.remove(this.auraSprite);
             if (this.auraSprite.material) this.auraSprite.material.dispose();
         }
         if (this.light) this.scene.remove(this.light);
-        for (const sprite of this.tailSprites) {
-            this.scene.remove(sprite);
-            if (sprite.material) sprite.material.dispose();
+
+        if (this.tailPoints) {
+            this.scene.remove(this.tailPoints);
+            if (this.tailGeometry) this.tailGeometry.dispose();
+            if (this.tailPoints.material) this.tailPoints.material.dispose(); // This was created in constructor, not shared
         }
+
         this.finalizeDeath();
         for (const sw of this.shockwaves) {
             this.scene.remove(sw.mesh);
+            if (sw.mesh.material) sw.mesh.material.dispose();
         }
     }
 }

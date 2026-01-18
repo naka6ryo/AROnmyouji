@@ -1,6 +1,7 @@
 /**
  * SwingTracer.js
  * 術式段階の軌跡表示を管理するクラス
+ * Optimized: Reuses Material.
  */
 
 import * as THREE from 'three';
@@ -15,6 +16,21 @@ export class SwingTracer {
         this.TRACER_BASE_WIDTH = 0.006; // 軌跡基本幅
 
         this._startTime = performance.now();
+
+        // Shared material (Pre-compiled)
+        this.material = new THREE.ShaderMaterial({
+            vertexShader: tubeVertexShader,
+            fragmentShader: tracerFragmentShader,
+            uniforms: {
+                uTime: { value: 0 },
+                uColorCore: { value: new THREE.Color(0x000000) },
+                uColorEdge: { value: new THREE.Color(0x0066ff) }
+            },
+            transparent: true,
+            depthTest: false,
+            blending: THREE.AdditiveBlending,
+            side: THREE.DoubleSide
+        });
     }
 
     /**
@@ -53,22 +69,10 @@ export class SwingTracer {
 
         const tubeGeometry = new THREE.TubeGeometry(curve, tubularSegments, radius, radialSegments, false);
 
-        // シェーダー利用
-        const material = new THREE.ShaderMaterial({
-            vertexShader: tubeVertexShader,
-            fragmentShader: tracerFragmentShader,
-            uniforms: {
-                uTime: { value: (performance.now() - this._startTime) * 0.001 },
-                uColorCore: { value: new THREE.Color(0x000000) },
-                uColorEdge: { value: new THREE.Color(0x0066ff) }
-            },
-            transparent: true,
-            depthTest: false,
-            blending: THREE.AdditiveBlending,
-            side: THREE.DoubleSide
-        });
+        // Update Uniforms
+        this.material.uniforms.uTime.value = (performance.now() - this._startTime) * 0.001;
 
-        this.mesh = new THREE.Mesh(tubeGeometry, material);
+        this.mesh = new THREE.Mesh(tubeGeometry, this.material);
         this.mesh.frustumCulled = false;
         this.scene.add(this.mesh);
     }
@@ -77,8 +81,8 @@ export class SwingTracer {
      * 時間更新（シェーダー用）
      */
     updateTime() {
-        if (this.mesh && this.mesh.material && this.mesh.material.uniforms) {
-            this.mesh.material.uniforms.uTime.value = (performance.now() - this._startTime) * 0.001;
+        if (this.material && this.material.uniforms) {
+            this.material.uniforms.uTime.value = (performance.now() - this._startTime) * 0.001;
         }
     }
 
@@ -96,7 +100,7 @@ export class SwingTracer {
         if (this.mesh) {
             this.scene.remove(this.mesh);
             if (this.mesh.geometry) this.mesh.geometry.dispose();
-            if (this.mesh.material) this.mesh.material.dispose();
+            // Do not dispose shared material here
             this.mesh = null;
         }
     }
@@ -106,5 +110,6 @@ export class SwingTracer {
      */
     dispose() {
         this.disposeMesh();
+        if (this.material) this.material.dispose();
     }
 }

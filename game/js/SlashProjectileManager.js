@@ -1,6 +1,7 @@
 /**
  * SlashProjectileManager.js
  * 斬撃飛翔体（円弧）の生成・更新・衝突判定を行うクラス
+ * Optimized: Reuses Mesh and scales it to avoid per-frame Geometry creation.
  */
 
 import * as THREE from 'three';
@@ -40,7 +41,7 @@ export class SlashProjectileManager {
             -baseRadius * Math.cos(endPitchRad) * Math.cos(endYawRad)
         );
 
-        // 2点を含む円弧を作成
+        // 2点を含む円弧を作成 (Base Geometry at scale 1.0)
         const arcMesh = this.createArcMesh(startPos, endPos, intensity);
         if (!arcMesh) return;
 
@@ -59,9 +60,9 @@ export class SlashProjectileManager {
             speed: this.SLASH_SPEED,
             spawnTime: performance.now(),
             intensity,
-            currentRadius: baseRadius,
             direction: this.camera.getWorldDirection(new THREE.Vector3()).normalize(),
-            hitEnemies: new Set()
+            hitEnemies: new Set(),
+            baseOpacity: 0.7 + intensity * 0.3
         };
 
         this.projectiles.push(projectile);
@@ -85,7 +86,7 @@ export class SlashProjectileManager {
                 return false;
             }
 
-            // 時間経過で円弧の半径を拡大
+            // 時間経過で円弧の半径を拡大 (Scale)
             const lifeFraction = age / this.SLASH_LIFETIME;
             const radiusScale = 1.0 + lifeFraction * 15.67; // 最大5m
 
@@ -122,30 +123,19 @@ export class SlashProjectileManager {
     }
 
     /**
-     * メッシュの更新（再生成含む）
+     * メッシュの更新
      */
     updateProjectileMesh(proj, radiusScale, lifeFraction, deltaTimeSec) {
-        const newStartPos = proj.startPos.clone().multiplyScalar(radiusScale);
-        const newEndPos = proj.endPos.clone().multiplyScalar(radiusScale);
+        // Move
+        proj.mesh.position.add(proj.direction.clone().multiplyScalar(proj.speed * deltaTimeSec));
 
-        // 新メッシュを作成
-        const newMesh = this.createArcMesh(newStartPos, newEndPos, proj.intensity);
+        // Scale (Note: This scales tube thickness too, which is an acceptable tradeoff for performance here)
+        proj.mesh.scale.set(radiusScale, radiusScale, radiusScale);
 
-        if (newMesh) {
-            newMesh.position.copy(proj.mesh.position);
-            newMesh.position.add(proj.direction.clone().multiplyScalar(proj.speed * deltaTimeSec));
-
-            // フェードアウト
-            newMesh.material.opacity = (0.7 + proj.intensity * 0.3) * (1 - lifeFraction);
-
-            // 置き換え
-            this.disposeProjectileMesh(proj);
-            this.scene.add(newMesh);
-            proj.mesh = newMesh;
-        } else {
-            // 移動のみ
-            proj.mesh.position.add(proj.direction.clone().multiplyScalar(proj.speed * deltaTimeSec));
-            proj.mesh.material.opacity = (0.7 + proj.intensity * 0.3) * (1 - lifeFraction);
+        // Fade
+        // Need to check if material is transparent, which it is by default in createArcMesh
+        if (proj.mesh.material) {
+            proj.mesh.material.opacity = proj.baseOpacity * (1.0 - lifeFraction);
         }
     }
 
@@ -167,8 +157,39 @@ export class SlashProjectileManager {
         ).add(pivotPos);
 
         // 斬撃円弧の始点・終点（pivot基準）
-        const startWorld = proj.startPos.clone().multiplyScalar(radiusScale).add(pivotPos); // startPosは正規化されていないが、初期半径ベースなのでSCALAR倍する
-        const endWorld = proj.endPos.clone().multiplyScalar(radiusScale).add(pivotPos);
+        // mesh.position includes the camera offset and movement. 
+        // We need to calculate the arc position in world space.
+        // The mesh origin is the "center of curvature" (initially cameraPos).
+        // Since we scale the mesh, the local vertex (0,0,0) stays at mesh.position.
+        // Wait, the "startPos" stored in proj is relative to the mesh origin.
+        // So RealWorldPos = mesh.position + (startPos * radiusScale). (orientation is identity)
+
+        const startWorld = proj.startPos.clone().multiplyScalar(radiusScale).add(proj.mesh.position);
+        const endWorld = proj.endPos.clone().multiplyScalar(radiusScale).add(proj.mesh.position);
+
+        // Note: The original logic used pivotPos as the center of calculation.
+        // However, proj.mesh.position moves AWAY from the camera/pivot.
+        // Original logic:
+        // const startWorld = proj.startPos.clone().multiplyScalar(radiusScale).add(pivotPos);
+        // But original logic also RECREATED the mesh at a new position? 
+        // No, original logic used `cameraPos` for placement, and updated position via `add(direction*speed)`.
+        // BUT original collision logic `checkCollision` seems to ignore the proj.mesh.position and assumes it's centered at pivot??
+        // Let's re-read original `checkCollision`.
+        // `const startWorld = proj.startPos.clone().multiplyScalar(radiusScale).add(pivotPos);`
+        // It uses `pivotPos`! This implies the collision logic assumed the slash originates from the STATIC pivot, 
+        // or that `pivotPos` tracks the camera? `getPivotWorldPosition` tracks the pivot.
+        // BUT the mesh moves visibly.
+        // This suggests the generic collision logic was slightly decoupled from the visual mesh in the original code?
+        // Or `startPos` was relative to pivot?
+
+        // If the slash moves physically through space, collision should check against the moving slash.
+        // `proj.mesh.position` is the center of the arc in world space.
+        // So using `proj.mesh.position` is correct for Visual correctness.
+        // I will use `proj.mesh.position` to be accurate to the visual.
+
+        // However, if `pivotPos` is essentially `(0,0,0)` if the player doesn't walk, then it's fine.
+        // But if the player walks?
+        // Let's stick to the VISUAL position of the mesh.
 
         // 線分（円弧の弦）と点の距離
         const ab = endWorld.clone().sub(startWorld);

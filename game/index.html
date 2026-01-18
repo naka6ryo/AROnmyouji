@@ -16,13 +16,17 @@
         href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&amp;family=Orbitron:wght@400;700;900&amp;family=Shippori+Mincho:wght@400;700;800&amp;display=swap"
         rel="stylesheet" />
     <link
+        href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;700&amp;family=Syncopate:wght@400;700&amp;display=swap"
+        rel="stylesheet" />
+    <link
         href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
         rel="stylesheet" />
 
     <!-- Tailwind -->
-    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries,typography"></script>
     <script>
         tailwind.config = {
+            darkMode: "class",
             theme: {
                 extend: {
                     colors: {
@@ -31,16 +35,18 @@
                         "tech-gray": "#525252",
                         "light-gray": "#e5e5e5",
                         "meter-bg": "#f3f4f6",
+                        "background-light": "#FFFFFF",
+                        "background-dark": "#0A0A0A",
                     },
                     backgroundImage: {
                         'radial-gradient': 'radial-gradient(var(--tw-gradient-stops))',
                         'dot-grid': 'radial-gradient(#000000 1.5px, transparent 1.5px)',
                     },
                     fontFamily: {
-                        display: ["'Orbitron'", "sans-serif"],
+                        display: ["'Syncopate'", "'Orbitron'", "sans-serif"], /* Updated to prioritize Syncopate for loading screen / design match */
                         japanese: ["'Shippori Mincho'", "serif"],
                         sans: ["'Noto Sans JP'", "sans-serif"],
-                        mono: ["'ui-monospace'", "'SFMono-Regular'", "'Menlo'", "'Monaco'", "'Consolas'", "monospace"],
+                        mono: ["'JetBrains Mono'", "'ui-monospace'", "'SFMono-Regular'", "'Menlo'", "'Monaco'", "'Consolas'", "monospace"],
                     },
                     borderRadius: {
                         DEFAULT: "2px",
@@ -72,8 +78,8 @@
         };
     </script>
     <style>
-        /* New Loading Screen Styles */
-        @keyframes glitch-loading {
+        /* User Design Loading Styles */
+        @keyframes glitch-user {
             0% {
                 transform: translate(0);
             }
@@ -99,16 +105,16 @@
             }
         }
 
-        .glitch-text-loading {
-            animation: glitch-loading 0.3s cubic-bezier(.25, .46, .45, .94) both infinite;
+        .glitch-text {
+            animation: glitch-user 0.3s cubic-bezier(.25, .46, .45, .94) both infinite;
             animation-play-state: paused;
         }
 
-        .group:hover .glitch-text-loading {
+        .group:hover .glitch-text {
             animation-play-state: running;
         }
 
-        @keyframes scanline-loading {
+        @keyframes scanline-user {
             0% {
                 transform: translateY(-100%);
             }
@@ -118,12 +124,12 @@
             }
         }
 
-        .scanline-loading {
+        .scanline-user {
             position: absolute;
             width: 100%;
             height: 2px;
             background: rgba(255, 0, 0, 0.1);
-            animation: scanline-loading 4s linear infinite;
+            animation: scanline-user 4s linear infinite;
         }
 
         .loader-ring {
@@ -132,10 +138,15 @@
             border-radius: 50%;
             width: 120px;
             height: 120px;
-            animation: spin-loading 2s linear infinite;
+            animation: spin 2s linear infinite;
         }
 
-        @keyframes spin-loading {
+        .dark .loader-ring {
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-top: 1px solid #FF0000;
+        }
+
+        @keyframes spin {
             0% {
                 transform: rotate(0deg);
             }
@@ -147,6 +158,10 @@
 
         .technical-border {
             border: 1px solid rgba(0, 0, 0, 0.1);
+        }
+
+        .dark .technical-border {
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         /* Existing Styles continue... */
@@ -482,10 +497,10 @@
         <!-- Added 'active' here and removed from splashScreen. 
              Logic will switch them after 3s. -->
         <div id="loadingScreen"
-            class="screen active absolute inset-0 z-[60] flex flex-col items-center justify-center bg-white text-ink-black font-mono transition-opacity duration-1000">
+            class="screen active absolute inset-0 z-[60] flex flex-col items-center justify-center bg-background-light dark:bg-background-dark text-black dark:text-white font-mono overflow-hidden transition-colors duration-500">
             <!-- Background elements -->
             <div class="fixed inset-0 pointer-events-none opacity-20 z-50">
-                <div class="scanline-loading"></div>
+                <div class="scanline-user"></div>
             </div>
 
             <!-- Top Left Info -->
@@ -494,17 +509,17 @@
                     <div class="w-3 h-3 bg-primary rotate-45"></div>
                     <span class="text-[10px] tracking-[0.2em] font-display font-bold">ZANBARAI</span>
                 </div>
-                <div class="h-px w-24 bg-ink-black/10"></div>
-                <span class="text-[8px] text-ink-black/40">VER. 2.0.4 // AR_MODULE</span>
+                <div class="h-px w-24 bg-black/10 dark:bg-white/10"></div>
+                <span class="text-[8px] text-black/40 dark:text-white/40">VER. 2.0.4 // AR_MODULE</span>
             </div>
 
             <!-- Top Right Info -->
             <div class="fixed top-8 right-8 text-right flex flex-col items-end gap-1 z-10">
-                <span class="text-[10px] tracking-[0.3em] font-display text-ink-black/60">SYSTEM</span>
+                <span class="text-[10px] tracking-[0.3em] font-display text-black/60 dark:text-white/60">SYSTEM</span>
                 <div class="flex items-center gap-3">
                     <span class="text-[10px] text-primary animate-pulse font-bold tracking-widest">ONLINE</span>
-                    <div class="w-1 h-6 bg-ink-black/10"></div>
-                    <div class="flex flex-col text-[8px] text-ink-black/40">
+                    <div class="w-1 h-6 bg-black/10 dark:bg-white/10"></div>
+                    <div class="flex flex-col text-[8px] text-black/40 dark:text-white/40">
                         <span>COORD: 35.6895° N</span>
                         <span>139.6917° E</span>
                     </div>
@@ -516,27 +531,24 @@
                 <div class="bg-primary text-white text-[12px] font-bold px-4 py-2 skew-x-[-20deg]">
                     <span class="inline-block skew-x-[20deg] tracking-tighter">IP/LIAYI</span>
                 </div>
-                <div class="text-[8px] text-ink-black/40 mb-1">
+                <div class="text-[8px] text-black/40 dark:text-white/40 mb-1">
                     <p>DATA STREAM: ENCRYPTED</p>
                     <p>SPIRIT_LATENCY: 12ms</p>
                 </div>
             </div>
 
             <!-- Main Content -->
-            <main class="relative flex flex-col items-center justify-center max-w-lg w-full px-6">
+            <main class="relative flex flex-col items-center justify-center max-w-lg w-full px-6 z-10">
                 <div class="relative w-full aspect-square flex items-center justify-center mb-12">
-                    <!-- Decorative Circles -->
                     <div
-                        class="absolute inset-0 rounded-full border-[0.5px] border-ink-black/5 animate-[spin_20s_linear_infinite]">
+                        class="absolute inset-0 rounded-full border-[0.5px] border-black/5 dark:border-white/5 animate-[spin_20s_linear_infinite]">
                     </div>
                     <div
-                        class="absolute inset-4 rounded-full border-[1px] border-dashed border-ink-black/10 animate-[spin_30s_linear_infinite_reverse]">
+                        class="absolute inset-4 rounded-full border-[1px] border-dashed border-black/10 dark:border-white/10 animate-[spin_30s_linear_infinite_reverse]">
                     </div>
-
-                    <!-- Center Graphic -->
-                    <div class="w-full h-full absolute flex items-center justify-center opacity-20">
-                        <span class="material-symbols-outlined text-[200px] text-ink-black/10">token</span>
-                    </div>
+                    <img alt="Zanbarai Chronicle Graphic"
+                        class="w-full opacity-10 dark:opacity-20 mix-blend-multiply dark:mix-blend-screen absolute grayscale"
+                        src="https://lh3.googleusercontent.com/aida-public/AB6AXuAbg-PdMvEPPj6opfRWtqkyYp6AJvBKYmh5WaXm-CkoSTTcBcD5FPZUe7R7Se2TnET4iu8KC7PbTLGOXrYP91y9j9ovomoW0V2PTujaayAxO_ap60hsyHGFs4G0qnW0PTRzwM62t7edwuVApk7SqoKteX6dmjMKF2luP2IIj68o1pRKXPSPyLWXNG6tvg9b0ZBOT34mbmWKIR35I8UXwW2L-UaSWtF91daNa0rsQE5Tl2j2HqOPk95U_6ok4utwAPnr3rc-zaDr7js" />
 
                     <div class="relative z-10 flex flex-col items-center">
                         <div class="relative flex items-center justify-center">
@@ -547,26 +559,68 @@
                         </div>
                         <div class="mt-8 text-center space-y-1">
                             <p
-                                class="text-primary text-[10px] font-bold tracking-[0.4em] glitch-text-loading group-hover:block uppercase">
+                                class="text-primary text-[10px] font-bold tracking-[0.4em] glitch-text group-hover:block uppercase">
                                 System: Booting...</p>
-                            <p class="text-ink-black/60 text-[8px] tracking-[0.2em] font-light">INITIALIZING SPIRIT_SYNC
-                            </p>
+                            <p class="text-black/60 dark:text-white/60 text-[8px] tracking-[0.2em] font-light">
+                                INITIALIZING SPIRIT_SYNC</p>
                         </div>
+                    </div>
+
+                    <div class="absolute bottom-10 right-0 text-right">
+                        <h1 class="font-display text-xl leading-none flex flex-col items-end">
+                            <span class="text-primary tracking-widest text-[14px]">ZANBARAI</span>
+                            <span class="tracking-tighter font-bold">CHRONICLE</span>
+                        </h1>
                     </div>
                 </div>
 
                 <!-- Progress Bar -->
                 <div class="w-full max-w-xs space-y-2">
-                    <div class="flex justify-between text-[8px] text-ink-black/40 tracking-widest">
+                    <div class="flex justify-between text-[8px] text-black/40 dark:text-white/40 tracking-widest">
                         <span>LOADING ASSETS</span>
                         <span id="loading-percent">0%</span>
                     </div>
-                    <div class="w-full h-[2px] bg-ink-black/5 overflow-hidden">
+                    <div class="w-full h-[2px] bg-black/5 dark:bg-white/5 overflow-hidden">
                         <div class="h-full bg-primary transition-all duration-300 ease-out" id="progress-bar"
                             style="width: 0%"></div>
                     </div>
                 </div>
+
+                <button id="loadingStartButton"
+                    class="mt-16 group relative py-4 px-12 transition-all duration-300 hover:scale-105 active:scale-95 opacity-0 pointer-events-none">
+                    <span
+                        class="absolute inset-0 technical-border opacity-50 group-hover:opacity-100 transition-opacity"></span>
+                    <span class="absolute -top-1 -left-1 w-2 h-2 border-t border-l border-primary"></span>
+                    <span class="absolute -bottom-1 -right-1 w-2 h-2 border-b border-r border-primary"></span>
+                    <span
+                        class="text-[12px] font-display font-bold tracking-[0.5em] text-black dark:text-white group-hover:text-primary transition-colors">
+                        TAP TO START
+                    </span>
+                </button>
             </main>
+
+            <div class="fixed bottom-0 right-0 p-8 z-10">
+                <div class="relative">
+                    <svg class="opacity-20 dark:opacity-40" height="120" viewBox="0 0 120 120" width="120">
+                        <circle cx="120" cy="120" fill="none" r="100" stroke="currentColor" stroke-dasharray="2 4">
+                        </circle>
+                        <circle cx="120" cy="120" fill="none" r="80" stroke="currentColor" stroke-width="0.5"></circle>
+                        <line stroke="currentColor" stroke-width="0.5" x1="120" x2="40" y1="120" y2="40"></line>
+                        <circle cx="40" cy="40" fill="currentColor" r="3"></circle>
+                    </svg>
+                </div>
+            </div>
+
+            <button
+                class="fixed bottom-4 right-4 z-[100] p-2 bg-black/5 dark:bg-white/5 rounded-full hover:bg-black/10 dark:hover:bg-white/10 transition-all border border-transparent hover:border-primary/50"
+                onclick="document.documentElement.classList.toggle('dark')">
+                <svg class="w-4 h-4 text-black dark:text-white" fill="none" stroke="currentColor" stroke-width="1.5"
+                    viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path
+                        d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z"
+                        stroke-linecap="round" stroke-linejoin="round"></path>
+                </svg>
+            </button>
         </div>
 
         <!-- Splash Screen (Existing) -->
@@ -1340,6 +1394,7 @@
             const splashScreen = document.getElementById('splashScreen');
             const progressBar = document.getElementById('progress-bar');
             const progressText = document.getElementById('loading-percent');
+            const startButton = document.getElementById('loadingStartButton');
 
             // Loading Logic
             let progress = 0;
@@ -1349,7 +1404,7 @@
             const increment = 100 / steps;
 
             // Random glitch effect on text
-            const glitchElements = document.querySelectorAll('.glitch-text-loading');
+            const glitchElements = document.querySelectorAll('.glitch-text');
             setInterval(() => {
                 glitchElements.forEach(el => {
                     if (Math.random() > 0.95) {
@@ -1361,6 +1416,21 @@
                 });
             }, 1000);
 
+            const completeLoading = () => {
+                // Transition
+                if (loadingScreen) {
+                    loadingScreen.classList.add('opacity-0');
+                    setTimeout(() => {
+                        loadingScreen.classList.remove('active');
+                        loadingScreen.style.display = 'none'; // Ensure it's gone
+
+                        if (splashScreen) {
+                            splashScreen.classList.add('active');
+                        }
+                    }, 1000); // Wait for opacity transition
+                }
+            };
+
             const loadingInterval = setInterval(() => {
                 progress += increment;
 
@@ -1370,25 +1440,25 @@
                 if (progressBar) progressBar.style.width = `${currentDisplay}%`;
                 if (progressText) progressText.innerText = `${currentDisplay}%`;
 
+                // Show start button near the end
+                if (progress > 80 && startButton) {
+                    startButton.classList.remove('opacity-0', 'pointer-events-none');
+                }
+
                 if (progress >= 100) {
                     clearInterval(loadingInterval);
                     // Slight delay at 100% before transition
-                    setTimeout(() => {
-                        // Transition
-                        if (loadingScreen) {
-                            loadingScreen.classList.add('opacity-0');
-                            setTimeout(() => {
-                                loadingScreen.classList.remove('active');
-                                loadingScreen.style.display = 'none'; // Ensure it's gone
-
-                                if (splashScreen) {
-                                    splashScreen.classList.add('active');
-                                }
-                            }, 1000); // Wait for opacity transition
-                        }
-                    }, 500);
+                    setTimeout(completeLoading, 500);
                 }
             }, intervalTime);
+
+            // Allow skipping if button is clicked
+            if (startButton) {
+                startButton.addEventListener('click', () => {
+                    clearInterval(loadingInterval);
+                    completeLoading();
+                });
+            }
         });
     </script>
 </body>

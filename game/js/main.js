@@ -141,7 +141,7 @@ class AROnmyoujiGame {
                 this.soundManager.load({
                     polygon_burst: 'assets/sfx/polygon_burst.mp3',
                     explosion: 'assets/sfx/explosion.mp3',
-                    attack_swipe: 'assets/sfx/attack_swipe.mp3'
+                    attack_swipe: 'assets/sfx/atttack.mp3'
                 }).then(() => this.debugOverlay.logInfo('SFXロード完了')).catch(e => console.warn('sound load failed', e));
             }
         } catch (e) {
@@ -170,7 +170,7 @@ class AROnmyoujiGame {
                 this.soundManager.load({
                     polygon_burst: 'assets/sfx/polygon_burst.mp3',
                     explosion: 'assets/sfx/explosion.mp3',
-                    attack_swipe: 'assets/sfx/attack_swipe.mp3'
+                    attack_swipe: 'assets/sfx/atttack.mp3'
                 }).catch(e => this.uiManager.appendAudioLog('ロード失敗: ' + (e && e.message)));
             }
 
@@ -196,7 +196,7 @@ class AROnmyoujiGame {
                 this.soundManager.load({
                     polygon_burst: 'assets/sfx/polygon_burst.mp3',
                     explosion: 'assets/sfx/explosion.mp3',
-                    attack_swipe: 'assets/sfx/attack_swipe.mp3'
+                    attack_swipe: 'assets/sfx/atttack.mp3'
                 }).then(() => this.debugOverlay.logInfo('SFXロード完了')).catch(e => console.warn('sound load failed', e));
             } catch (e) {
                 console.warn('sound init/load failed', e);

@@ -36,6 +36,9 @@ export class UIManager {
             calibPitch: document.getElementById('calibPitch'),
             calibYaw: document.getElementById('calibYaw'),
             calibRoll: document.getElementById('calibRoll'),
+            calibPitchBars: document.getElementById('calibPitchBars'),
+            calibYawBars: document.getElementById('calibYawBars'),
+            calibRollBars: document.getElementById('calibRollBars'),
             resetCalibrationButton: document.getElementById('resetCalibrationButton'),
             startCalibrationButton: document.getElementById('startCalibrationButton'),
 
@@ -197,9 +200,36 @@ export class UIManager {
     // --- Calibration Screen Updates ---
 
     updateCalibrationValues(pitch, yaw, roll) {
-        if (this.elements.calibPitch) this.elements.calibPitch.textContent = pitch.toFixed(1);
-        if (this.elements.calibYaw) this.elements.calibYaw.textContent = yaw.toFixed(1);
-        if (this.elements.calibRoll) this.elements.calibRoll.textContent = roll.toFixed(1);
+        if (this.elements.calibPitch) this.elements.calibPitch.textContent = `${pitch.toFixed(1)}°`;
+        if (this.elements.calibYaw) this.elements.calibYaw.textContent = `${yaw.toFixed(1)}°`;
+        if (this.elements.calibRoll) this.elements.calibRoll.textContent = `${roll.toFixed(1)}°`;
+
+        this._updateBarDisplay(this.elements.calibPitchBars, pitch);
+        this._updateBarDisplay(this.elements.calibYawBars, yaw);
+        this._updateBarDisplay(this.elements.calibRollBars, roll);
+    }
+
+    _updateBarDisplay(container, value) {
+        if (!container) return;
+
+        // Calculate number of active bars (Max 15)
+        // Assume 90 degrees is full scale, so approx 6 degrees per bar.
+        const maxBars = 15;
+        const degPerBar = 6;
+        const activeCount = Math.min(maxBars, Math.ceil(Math.abs(value) / degPerBar));
+
+        // Get all bar divs
+        const bars = container.children;
+        for (let i = 0; i < bars.length; i++) {
+            const bar = bars[i];
+            if (i < activeCount) {
+                // Active: bg-primary and shadow
+                bar.className = 'w-1 h-2 bg-primary shadow-[0_0_4px_#FF0000]';
+            } else {
+                // Inactive: bg-ink-black/10
+                bar.className = 'w-1 h-2 bg-ink-black/10';
+            }
+        }
     }
 
     // --- HUD Updates ---

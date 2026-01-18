@@ -539,6 +539,58 @@
             animation: crt-turn-on 1.2s cubic-bezier(0.23, 1, 0.32, 1) forwards;
         }
 
+        /* Apply similar CRT "stretch/brightness" animation to images placed inside the CRT container */
+        .crt-img-animated {
+            transform-origin: center;
+            animation: crt-img-anim 1.2s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+        }
+
+        @keyframes crt-img-anim {
+            0% {
+                transform: scale(0, 0.005);
+                filter: brightness(30) contrast(5);
+                opacity: 0;
+            }
+
+            5% {
+                opacity: 1;
+            }
+
+            15% {
+                transform: scale(1, 0.005);
+                filter: brightness(30) contrast(5);
+                opacity: 1;
+            }
+
+            40% {
+                transform: scale(1, 1);
+                filter: brightness(5) contrast(2);
+                opacity: 1;
+            }
+
+            50% {
+                transform: scale(1, 1);
+                filter: brightness(0.5) contrast(0.8);
+                opacity: 0.7;
+            }
+
+            60% {
+                filter: brightness(2) contrast(1.2);
+                opacity: 1;
+            }
+
+            80% {
+                filter: brightness(1.5) contrast(1.1);
+                opacity: 1;
+            }
+
+            100% {
+                transform: scale(1, 1);
+                filter: brightness(1) contrast(1);
+                opacity: 1;
+            }
+        }
+
         /* Bright White Line Overlay during expansion */
         .crt-turn-on-active::after {
             content: '';
@@ -549,6 +601,18 @@
             /* Above everything inside */
             animation: crt-line-fade 1.2s cubic-bezier(0.23, 1, 0.32, 1) forwards;
             pointer-events: none;
+        }
+
+        /* Fallback/explicit overlay element for CRT line effect (restores original white-line->stretch visual)
+           Some environments may not render pseudo-element reliably due to stacking contexts; this ensures
+           the effect is present by adding/removing a real DOM element during the boot sequence. */
+        .crt-line-overlay {
+            position: absolute;
+            inset: 0;
+            background: white;
+            z-index: 200;
+            pointer-events: none;
+            animation: crt-line-fade 1.2s cubic-bezier(0.23, 1, 0.32, 1) forwards;
         }
 
         @keyframes crt-line-fade {
@@ -870,8 +934,7 @@
     <!-- Splash Screen (Existing) -->
     <!-- Splash Screen (Existing) -->
     <!-- Splash Screen (Existing) -->
-    <div id="splashScreen"
-        class="screen absolute inset-0 z-50 bg-black flex items-center justify-center overflow-hidden">
+    <div id="splashScreen" class="screen absolute inset-0 z-50 bg-black overflow-hidden">
         <!-- Container for TV Effect -->
         <div id="splashContent" class="w-full h-full relative opacity-0">
             <img src="assets/picture/Title.jpg" class="w-full h-full object-cover" alt="Title Screen">
@@ -1740,20 +1803,227 @@
                     class="absolute top-4 right-4 z-50 text-xs text-white/20 border border-white/10 px-2 py-1 opacity-50 hover:opacity-100">DEBUG</button>
             </div>
 
-            <!-- Result Screen (Updated) -->
-            <div id="resultScreen"
-                class="screen absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/90 hidden">
-                <h2 id="resultTitle" class="text-3xl text-white mb-6">結果</h2>
-                <div id="resultStats" class="mb-8 text-center text-white">
-                    <p class="text-xl mb-2">撃破数: <span id="resultKills" class="font-bold text-primary">0</span></p>
-                    <p class="text-xl">経過時間: <span id="resultTime" class="font-bold">0</span>秒</p>
-                </div>
-                <div class="flex flex-col gap-4">
-                    <button id="returnToTitleButton"
-                        class="btn-primary w-48 py-2 bg-primary text-white rounded hover:bg-red-600 transition-colors">タイトルに戻る</button>
-                </div>
-                <button id="toggleDebugButtonResult" class="mt-8 text-xs text-gray-600">DEBUG</button>
+            <!-- Mission Result Screens -->
+            <div id="resultScreen" class="screen absolute inset-0 z-50 hidden">
+                <!-- Success -->
+                <main id="missionCompletedScreen"
+                    class="screen absolute inset-0 z-50 bg-white hidden flex flex-col items-center justify-center overflow-hidden">
+                    <div
+                        class="relative w-full max-w-[420px] h-[840px] max-h-[95vh] bg-white shadow-2xl overflow-hidden flex flex-col border border-gray-200">
+                        <div class="absolute inset-0 z-0 bg-dot-grid opacity-40 pointer-events-none"></div>
+                        <header class="relative z-20 flex justify-between items-start p-6 pt-8">
+                            <div class="relative w-14 h-14 flex items-center justify-center">
+                                <svg class="absolute inset-0 w-full h-full animate-spin-slow" viewBox="0 0 100 100">
+                                    <circle cx="50" cy="50" fill="none" r="48" stroke="#e5e5e5" stroke-dasharray="4 4"
+                                        stroke-width="1"></circle>
+                                    <path d="M50 2 a 48 48 0 0 1 48 48" fill="none" stroke="#525252"
+                                        stroke-linecap="round" stroke-width="2"></path>
+                                </svg>
+                                <div class="flex flex-col items-center">
+                                    <span class="text-[8px] font-display font-bold text-tech-gray">NET</span>
+                                    <span class="text-[10px] font-display font-bold text-primary">OK</span>
+                                </div>
+                            </div>
+                            <div class="flex flex-col items-end gap-1">
+                                <div
+                                    class="flex items-center gap-2 border border-primary bg-red-50 px-2 py-1 transform skew-x-[-12deg]">
+                                    <span
+                                        class="w-1.5 h-1.5 bg-primary rounded-full animate-pulse transform skew-x-[12deg]"></span>
+                                    <span
+                                        class="font-display text-[10px] font-bold text-primary tracking-widest transform skew-x-[12deg]">SECURE</span>
+                                </div>
+                                <span class="font-mono text-[9px] text-tech-gray">HASH: 99-XA-02</span>
+                            </div>
+                        </header>
+                        <div class="relative z-10 flex-grow flex flex-col items-center pt-8">
+                            <div class="relative w-full flex items-center justify-center h-64 mb-4">
+                                <div class="relative z-10 text-center">
+                                    <h1 class="font-japanese font-black text-7xl text-primary tracking-tighter leading-none glitch-text drop-shadow-2xl"
+                                        data-text="任務完了">任務完了</h1>
+                                    <div
+                                        class="mt-4 inline-block border-t border-b border-primary/50 py-1 px-4 bg-black/80 backdrop-blur-sm">
+                                        <p class="font-display font-bold text-xs tracking-[0.4em] text-white uppercase">
+                                            Mission Complete</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="w-full px-6 relative z-20">
+                                <div class="bg-white border border-gray-200 shadow-xl p-6 relative overflow-hidden">
+                                    <div class="flex flex-col gap-6 relative z-10">
+                                        <div class="flex items-center justify-between group">
+                                            <div class="flex flex-col">
+                                                <span
+                                                    class="text-[10px] text-tech-gray font-display tracking-widest mb-0.5 uppercase">Total
+                                                    Score</span>
+                                                <div class="h-1 w-12 bg-primary"></div>
+                                            </div>
+                                            <div class="flex items-baseline gap-1">
+                                                <span id="completedScore"
+                                                    class="text-5xl font-display font-black text-ink-black tracking-tight">0</span>
+                                            </div>
+                                        </div>
+                                        <div class="w-full h-px bg-gray-100"></div>
+                                        <div class="flex justify-between items-start">
+                                            <div class="flex flex-col">
+                                                <span
+                                                    class="text-[10px] text-tech-gray font-display tracking-widest mb-1 uppercase">Elapsed
+                                                    Time</span>
+                                                <span id="completedTime"
+                                                    class="text-xl font-display font-bold text-ink-black">00:00:00</span>
+                                            </div>
+                                            <div class="flex flex-col items-end">
+                                                <span
+                                                    class="text-[10px] text-tech-gray font-display tracking-widest mb-1 text-right uppercase">Defeated</span>
+                                                <div class="flex flex-col items-end gap-1">
+                                                    <div id="completedKills"
+                                                        class="bg-ink-black text-white px-3 py-1 text-xs font-bold font-display skew-x-[-10deg]">
+                                                        0 KILLS</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="p-6 pb-10 w-full z-30 mt-auto bg-gradient-to-t from-white via-white to-transparent">
+                            <button id="returnToTitleButtonSuccess" class="w-full h-16 relative group outline-none">
+                                <div
+                                    class="absolute inset-0 bg-primary transform -skew-x-12 transition-all duration-300 shadow-[4px_4px_0px_0px_rgba(13,13,13,1)] group-hover:translate-x-1 group-hover:translate-y-1 group-hover:shadow-none">
+                                </div>
+                                <div class="absolute inset-0 flex items-center justify-center transform -skew-x-12">
+                                    <span
+                                        class="font-display font-black text-white text-lg tracking-[0.2em] group-hover:animate-pulse">RETURN
+                                        TO BASE</span>
+                                    <span
+                                        class="material-symbols-outlined text-white ml-2 text-xl group-hover:translate-x-1 transition-transform">east</span>
+                                </div>
+                            </button>
+                            <div class="flex justify-between items-center mt-4 px-2 opacity-60">
+                                <span class="text-[8px] font-mono text-tech-gray">ZANBARAI_SYS // V.2.0.4</span>
+                                <div class="flex gap-1">
+                                    <div class="w-1 h-1 bg-tech-gray rounded-full"></div>
+                                    <div class="w-1 h-1 bg-tech-gray rounded-full"></div>
+                                    <div class="w-1 h-1 bg-primary rounded-full animate-pulse"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </main>
+
             </div>
+
+            <!-- Failure -->
+            <main id="missionFailScreen"
+                class="screen absolute inset-0 z-50 hidden flex flex-col items-center justify-center bg-black text-white">
+                <div
+                    class="relative w-full max-w-[420px] h-[840px] max-h-[95vh] bg-dark-bg shadow-2xl overflow-hidden flex flex-col border border-gray-900">
+                    <div
+                        class="absolute top-[25%] left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] bg-primary rounded-full blur-[90px] opacity-20 pointer-events-none z-0">
+                    </div>
+                    <header class="relative z-20 flex justify-between items-start p-6 pt-8">
+                        <div class="relative w-14 h-14 flex items-center justify-center">
+                            <svg class="absolute inset-0 w-full h-full animate-spin-slow" viewBox="0 0 100 100">
+                                <circle cx="50" cy="50" fill="none" r="48" stroke="#444" stroke-dasharray="4 4"
+                                    stroke-width="1"></circle>
+                                <path d="M50 2 a 48 48 0 0 1 48 48" fill="none" stroke="#777" stroke-linecap="round"
+                                    stroke-width="2"></path>
+                            </svg>
+                            <div class="flex flex-col items-center">
+                                <span class="text-[8px] font-display font-bold text-tech-gray">NET</span>
+                                <span
+                                    class="text-[10px] font-display font-bold text-primary drop-shadow-[0_0_5px_rgba(255,0,51,0.8)]">ERR</span>
+                            </div>
+                        </div>
+                        <div class="flex flex-col items-end gap-1">
+                            <div
+                                class="flex items-center gap-2 border border-primary bg-primary/10 px-2 py-1 transform skew-x-[-12deg] shadow-[0_0_10px_rgba(255,0,51,0.3)]">
+                                <span
+                                    class="w-1.5 h-1.5 bg-primary rounded-full animate-pulse transform skew-x-[12deg]"></span>
+                                <span
+                                    class="font-display text-[10px] font-bold text-primary tracking-widest transform skew-x-[12deg] drop-shadow-[0_0_3px_rgba(255,0,51,1)]">CRITICAL</span>
+                            </div>
+                            <span class="font-mono text-[9px] text-red-500/50">HASH: 99-XA-02 // FAIL</span>
+                        </div>
+                    </header>
+                    <div class="relative z-10 flex-grow flex flex-col items-center pt-8">
+                        <div class="relative w-full flex items-center justify-center h-64 mb-4">
+                            <div class="relative z-10 text-center">
+                                <h1 class="font-japanese font-black text-7xl text-primary tracking-tighter leading-none glitch-text drop-shadow-[0_0_15px_rgba(255,0,51,0.6)]"
+                                    data-text="任務失敗">任務失敗</h1>
+                                <div
+                                    class="mt-4 inline-block border-t border-b border-primary/50 py-1 px-4 bg-black/80 backdrop-blur-sm">
+                                    <p
+                                        class="font-display font-bold text-xs tracking-[0.4em] text-red-100 uppercase drop-shadow-md">
+                                        MISSION FAILED</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="w-full px-6 relative z-20">
+                            <div
+                                class="bg-panel-bg/90 backdrop-blur-md border border-primary/40 p-6 relative overflow-hidden animate-border-pulse">
+                                <div class="flex flex-col gap-6 relative z-10">
+                                    <div class="flex items-center justify-between group">
+                                        <div class="flex flex-col">
+                                            <span
+                                                class="text-[10px] text-red-300/50 font-display tracking-widest mb-0.5 uppercase">Total
+                                                Score</span>
+                                            <div class="h-1 w-12 bg-primary shadow-[0_0_8px_rgba(255,0,51,0.8)]"></div>
+                                        </div>
+                                        <div class="flex items-baseline gap-1">
+                                            <span id="failScore"
+                                                class="text-5xl font-display font-black text-white tracking-tight">0</span>
+                                        </div>
+                                    </div>
+                                    <div class="w-full h-px bg-red-500/20"></div>
+                                    <div class="flex justify-between items-start">
+                                        <div class="flex flex-col">
+                                            <span
+                                                class="text-[10px] text-red-300/50 font-display tracking-widest mb-1 uppercase">Elapsed
+                                                Time</span>
+                                            <span id="failTime"
+                                                class="text-xl font-display font-bold text-gray-200">00:00:00</span>
+                                        </div>
+                                        <div class="flex flex-col items-end">
+                                            <span
+                                                class="text-[10px] text-red-300/50 font-display tracking-widest mb-1 text-right uppercase">Defeated</span>
+                                            <div class="flex flex-col items-end gap-1">
+                                                <div id="failKills"
+                                                    class="bg-primary text-white px-3 py-1 text-xs font-bold font-display skew-x-[-10deg] shadow-[0_0_10px_rgba(255,0,51,0.4)]">
+                                                    0 KILLS</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="p-6 pb-10 w-full z-30 mt-auto bg-gradient-to-t from-dark-bg via-dark-bg to-transparent">
+                        <button id="returnToTitleButtonFail" class="w-full h-16 relative group outline-none">
+                            <div
+                                class="absolute inset-0 bg-primary transform -skew-x-12 transition-all duration-300 shadow-[4px_4px_0px_0px_rgba(150,0,0,0.3)] group-hover:translate-x-1 group-hover:translate-y-1 group-hover:shadow-[0_0_20px_rgba(255,0,51,0.6)]">
+                            </div>
+                            <div class="absolute inset-0 flex items-center justify-center transform -skew-x-12">
+                                <span
+                                    class="font-display font-black text-white text-lg tracking-[0.1em] group-hover:animate-pulse drop-shadow-md">RETURN
+                                    TO BASE <span class="text-sm ml-2 font-japanese font-bold">(帰還)</span></span>
+                                <span
+                                    class="material-symbols-outlined text-white ml-2 text-xl group-hover:rotate-180 transition-transform duration-700">refresh</span>
+                            </div>
+                        </button>
+                        <div class="flex justify-between items-center mt-4 px-2 opacity-60">
+                            <span class="text-[8px] font-mono text-red-500/60">ZANBARAI_SYS // V.2.0.4 //
+                                ERR_CODE_0x0</span>
+                            <div class="flex gap-1">
+                                <div class="w-1 h-1 bg-red-900 rounded-full"></div>
+                                <div class="w-1 h-1 bg-red-900 rounded-full"></div>
+                                <div
+                                    class="w-1 h-1 bg-primary rounded-full animate-pulse shadow-[0_0_5px_rgba(255,0,51,0.8)]">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
 
         </div> <!-- End CRT Container Wrapper -->
     </div>
@@ -1831,22 +2101,33 @@
                 });
             }, 1000);
 
-            const completeLoading = () => {
+                    const completeLoading = () => {
                 // Transition
                 if (loadingScreen) {
                     loadingScreen.classList.add('opacity-0');
                     setTimeout(() => {
                         loadingScreen.classList.remove('active');
                         loadingScreen.style.display = 'none'; // Ensure it's gone
+                                // Mark loading as complete globally
+                                window.__loadingComplete = true;
 
-                        if (splashScreen) {
-                            splashScreen.classList.add('active');
-                            // Trigger TV Effect
-                            const splashContent = document.getElementById('splashContent');
-                            if (splashContent) {
-                                splashContent.classList.add('tv-effect-on');
-                            }
-                        }
+                                // Prefer UIManager-managed splash if available (replicates Title Screen 2 reveal)
+                                try {
+                                    if (window.game && window.game.uiManager && typeof window.game.uiManager.showSplashScreen === 'function') {
+                                        window.game.uiManager.showSplashScreen();
+                                    } else {
+                                        // Fallback: show splash and enable global TV overlay
+                                        if (splashScreen) {
+                                            splashScreen.classList.add('active');
+                                            const splashContent = document.getElementById('splashContent');
+                                            const globalTv = document.getElementById('global-tv-effects');
+                                            if (splashContent) { splashContent.style.opacity = '1'; splashContent.style.transition = 'opacity 0.6s ease-out'; }
+                                            if (globalTv) { globalTv.classList.add('tv-effect-on'); globalTv.style.display = ''; globalTv.style.opacity = ''; }
+                                        }
+                                    }
+                                } catch (e) {
+                                    // ignore
+                                }
                     }, 1000); // Wait for opacity transition
                 }
             };

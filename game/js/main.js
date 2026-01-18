@@ -478,6 +478,55 @@ class AROnmyoujiGame {
     onReturnToTitle() {
         // Result -> Title Screen 2
         this.debugOverlay.logInfo('タイトル2へ移動');
+
+        // Stop game loop and clear gameplay visuals
+        try {
+            // Stop the loop
+            this.isRunning = false;
+
+            // Ensure TV effects persist on title
+            try {
+                const globalTv = document.getElementById('global-tv-effects');
+                if (globalTv) {
+                    globalTv.classList.add('tv-effect-on');
+                    // force visible
+                    globalTv.style.display = '';
+                    globalTv.style.opacity = '';
+                }
+            } catch (e) { }
+
+            // Fully dispose renderer and related resources to remove all Three.js effects
+            try {
+                if (this.renderer && typeof this.renderer.dispose === 'function') {
+                    this.renderer.dispose();
+                }
+            } catch (e) { console.warn('renderer dispose failed', e); }
+
+            // Recreate a fresh renderer instance so future games start from a clean slate
+            try {
+                this.renderer = new Renderer('gameCanvas', this.debugOverlay);
+                // rebind callback
+                this.renderer.onSlashHitEnemy = (data) => this.onRendererSlashHit(data);
+                // keep canvas hidden while on title
+                if (this.renderer.canvas) {
+                    this.renderer.canvas.classList.add('hidden');
+                    this.renderer.canvas.style.pointerEvents = 'none';
+                }
+                const vid = document.getElementById('cameraVideo');
+                if (vid) vid.style.display = 'none';
+            } catch (e) { console.warn('renderer recreate failed', e); }
+
+            // Clear in-memory enemies and indicators
+            try { if (this.gameWorld && this.gameWorld.enemyManager) this.gameWorld.enemyManager.reset(); } catch (e) {}
+            try { this.uiManager.clearEnemyIndicators(); } catch (e) {}
+
+            // Hide gameplay HUD overlays if present
+            try { this.uiManager.toggleSceneStartButton(false); } catch (e) {}
+        } catch (e) {
+            console.warn('onReturnToTitle cleanup error', e);
+        }
+
+        // Finally, show Title Screen 2
         this.uiManager.showTitleScreen2();
     }
 
@@ -616,4 +665,10 @@ class AROnmyoujiGame {
 // 起動
 window.addEventListener('load', () => {
     window.game = new AROnmyoujiGame();
+    // If loading completed earlier, show splash via UIManager
+    try {
+        if (window.__loadingComplete && window.game && window.game.uiManager && typeof window.game.uiManager.showSplashScreen === 'function') {
+            window.game.uiManager.showSplashScreen();
+        }
+    } catch (e) { }
 });

@@ -81,12 +81,25 @@ export class UIManager {
             uiContainer: document.getElementById('uiContainer'),
 
             // Result
+            // Legacy simple result (kept for compatibility)
             resultScreen: document.getElementById('resultScreen'),
             resultTitle: document.getElementById('resultTitle'),
             resultKills: document.getElementById('resultKills'),
             resultTime: document.getElementById('resultTime'),
-            // NEW Result Button
-            returnToTitleButton: document.getElementById('returnToTitleButton'),
+
+            // New Mission Result - Success
+            missionCompletedScreen: document.getElementById('missionCompletedScreen'),
+            completedScore: document.getElementById('completedScore'),
+            completedKills: document.getElementById('completedKills'),
+            completedTime: document.getElementById('completedTime'),
+            returnToTitleButtonSuccess: document.getElementById('returnToTitleButtonSuccess'),
+
+            // New Mission Result - Failure
+            missionFailScreen: document.getElementById('missionFailScreen'),
+            failScore: document.getElementById('failScore'),
+            failKills: document.getElementById('failKills'),
+            failTime: document.getElementById('failTime'),
+            returnToTitleButtonFail: document.getElementById('returnToTitleButtonFail'),
             // Old buttons removed: retryButton, reconnectButton, recalibrateButton
 
             // Debug
@@ -119,15 +132,8 @@ export class UIManager {
         this.bindClick(this.elements.startCalibrationButton, handlers.onConfirmCalibration);
 
         // Title Screen 2 (New)
-        this.bindClick(this.elements.titleStartButton, handlers.onConfirmCalibration); // Reuse Start Logic (Assuming calibrated) or separate handler?
-        // Note: Logic in main.js "confirmCalibration" leads to "calibrationComplete" state.
-        // If coming from Title 2, we should probably assume calibration is still valid OR require recalibration if intended.
-        // However, the Flowchart says "Title 2 -> Game", "Title 2 -> Recalibrate", "Title 2 -> Connect".
-        // "Title 2 -> Game" implies we skip calibration screen if already calibrated.
-        // I will map it to a new handler `onTitleStartGame` to decide in main.js. Use `onStartInScene` logic?
-        // `onStartInScene` shows countdown then starts.
-        // Let's bind it to `handlers.onTitleStartGame`.
-        this.bindClick(this.elements.titleStartButton, handlers.onTitleStartGame);
+        // Title02 のプレイボタンは 「キャリブレーション画面へ遷移」 にする（フローチャートに合わせる）
+        this.bindClick(this.elements.titleStartButton, handlers.onRecalibrate);
         this.bindClick(this.elements.titleReconnectButton, handlers.onReconnect);
         this.bindClick(this.elements.titleRecalibrateButton, handlers.onRecalibrate);
 
@@ -135,7 +141,9 @@ export class UIManager {
         this.bindClick(this.elements.sceneStartButton, handlers.onStartInScene);
 
         // Result (Updated)
-        this.bindClick(this.elements.returnToTitleButton, handlers.onReturnToTitle);
+        // Bind both success and failure return buttons if present
+        this.bindClick(this.elements.returnToTitleButtonSuccess, handlers.onReturnToTitle);
+        this.bindClick(this.elements.returnToTitleButtonFail, handlers.onReturnToTitle);
 
         // Debug
         this.bindClick(this.elements.toggleDebugButton, handlers.onToggleDebug);
@@ -579,12 +587,50 @@ export class UIManager {
 
     // --- Result Screen ---
 
-    showResult(title, kills, time) {
-        if (this.elements.resultTitle) this.elements.resultTitle.textContent = title;
-        if (this.elements.resultKills) this.elements.resultKills.textContent = kills;
-        if (this.elements.resultTime) this.elements.resultTime.textContent = time.toFixed(1);
+    // Show mission result. time is seconds.
+    showResult(title, kills, timeSeconds) {
+        // compute score = elapsed_ms * kills
+        const elapsedMs = Math.round((timeSeconds || 0) * 1000);
+        const score = Math.round(elapsedMs * (kills || 0));
 
+        const fmt = (n) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+
+        // Clear indicators and hide any existing mission screens
         this.clearEnemyIndicators();
+        if (this.elements.resultScreen) this.elements.resultScreen.classList.add('hidden');
+        if (this.elements.missionCompletedScreen) this.elements.missionCompletedScreen.classList.add('hidden');
+        if (this.elements.missionFailScreen) this.elements.missionFailScreen.classList.add('hidden');
+
+        const isSuccess = /クリア|Clear|任務完了/.test(title);
+
+        // Show success screen
+        if (isSuccess && this.elements.missionCompletedScreen) {
+            this.elements.missionCompletedScreen.classList.remove('hidden');
+            if (this.elements.completedScore) this.elements.completedScore.textContent = fmt(score);
+            if (this.elements.completedKills) this.elements.completedKills.textContent = `${kills} KILLS`;
+            if (this.elements.completedTime) {
+                // display as HH:MM:SS if possible or fallback
+                const sec = Math.floor(timeSeconds || 0);
+                const hh = String(Math.floor(sec / 3600)).padStart(2, '0');
+                const mm = String(Math.floor((sec % 3600) / 60)).padStart(2, '0');
+                const ss = String(sec % 60).padStart(2, '0');
+                this.elements.completedTime.textContent = `${hh}:${mm}:${ss}`;
+            }
+        }
+
+        // Show failure screen
+        if (!isSuccess && this.elements.missionFailScreen) {
+            this.elements.missionFailScreen.classList.remove('hidden');
+            if (this.elements.failScore) this.elements.failScore.textContent = fmt(score);
+            if (this.elements.failKills) this.elements.failKills.textContent = `${kills} KILLS`;
+            if (this.elements.failTime) {
+                const sec = Math.floor(timeSeconds || 0);
+                const hh = String(Math.floor(sec / 3600)).padStart(2, '0');
+                const mm = String(Math.floor((sec % 3600) / 60)).padStart(2, '0');
+                const ss = String(sec % 60).padStart(2, '0');
+                this.elements.failTime.textContent = `${hh}:${mm}:${ss}`;
+            }
+        }
     }
 
     // --- Title Screen 2 ---
@@ -592,17 +638,428 @@ export class UIManager {
     showTitleScreen2() {
         // Hide other screens
         if (this.elements.resultScreen) this.elements.resultScreen.classList.add('hidden');
-        if (this.elements.crtMainDisplay) this.elements.crtMainDisplay.classList.add('hidden'); // Hide game/CRT view
+        // Do NOT hide the entire CRT container (it contains Title2). Only hide camera and canvas below.
+        const videoEl = document.getElementById('cameraVideo');
+        const canvasEl = document.getElementById('gameCanvas');
+        if (videoEl) videoEl.style.display = 'none';
+        if (canvasEl) canvasEl.style.display = 'none';
 
-        // Show Title Screen 2
-        if (this.elements.titleScreen2) {
-            this.elements.titleScreen2.classList.remove('hidden');
+        // Prepare Title Screen 2 visual (background image + button layout)
+        const titleEl = this.elements.titleScreen2;
+        const startBtn = this.elements.titleStartButton;
+        const reconnectBtn = this.elements.titleReconnectButton;
+
+        if (titleEl) {
+            // If title element is nested inside a hidden gameplay container, reparent it to <body>
+            // and set fullscreen fixed styles so it can be visible independent of parent layout.
+            if (!titleEl._origParent) {
+                try {
+                    titleEl._origParent = titleEl.parentNode;
+                    titleEl._origNext = titleEl.nextSibling;
+                    document.body.appendChild(titleEl);
+                    // Prepare fixed fullscreen but keep it hidden until animation completes
+                    Object.assign(titleEl.style, {
+                        position: 'fixed',
+                        left: '0',
+                        top: '0',
+                        width: '100%',
+                        height: '100%',
+                        display: 'none',
+                        zIndex: '99999',
+                        pointerEvents: 'auto'
+                    });
+                } catch (e) {
+                    // fall back silently if reparenting fails
+                    console.warn('reparent titleScreen2 failed', e);
+                }
+            }
+            // We use an <img> element for the title background to avoid
+            // CSS background-image double-loading and layout shifts.
+            // Ensure no padding from .screen affects fullscreen layout
+            titleEl.style.padding = '0';
+            titleEl.style.background = 'transparent';
+            titleEl.style.display = 'none'; // will be shown after boot sequence
+
+            // Ensure buttons are placed: left-bottom Play, right-bottom Reconnect
+            if (startBtn) {
+                startBtn.style.position = 'absolute';
+                startBtn.style.left = '4%';
+                startBtn.style.bottom = '4%';
+                startBtn.style.zIndex = '30';
+            }
+            if (reconnectBtn) {
+                reconnectBtn.style.position = 'absolute';
+                reconnectBtn.style.right = '4%';
+                reconnectBtn.style.bottom = '4%';
+                reconnectBtn.style.zIndex = '30';
+            }
+
+            // We'll insert a temporary image inside the CRT container so that
+            // the CRT "turn on" animation reveals the image (same as loading->title).
+            const globalTv = document.getElementById('global-tv-effects');
+            const origGlobalTvOpacity = globalTv ? globalTv.style.opacity : null;
+            const crtDisplay = this.elements.crtMainDisplay;
+
+            // Prepare UI-side bg image (hidden until CRT finishes)
+            let bgImg = document.getElementById('title02Img');
+            if (!bgImg) {
+                bgImg = document.createElement('img');
+                bgImg.id = 'title02Img';
+                bgImg.alt = 'Title 02';
+                bgImg.className = 'title-02-bg';
+                titleEl.insertBefore(bgImg, titleEl.firstChild);
+            }
+            bgImg.src = 'assets/picture/Title02.jpg';
+            // Make UI title image fixed to viewport so it's unaffected by parent padding
+            bgImg.style.position = 'fixed';
+            bgImg.style.left = '0';
+            bgImg.style.top = '0';
+            bgImg.style.width = '100vw';
+            bgImg.style.height = '100vh';
+            bgImg.style.objectFit = 'cover';
+            bgImg.style.zIndex = '60';
+            bgImg.style.pointerEvents = 'none';
+            // keep UI image hidden until CRT reveals image
+            bgImg.style.opacity = '0';
+            bgImg.style.transition = '';
+
+            // Create a temporary CRT-side image so CRT animation affects it
+            let crtImg = null;
+            try {
+                    if (crtDisplay) {
+                    crtImg = document.getElementById('title02CrtImg');
+                    if (!crtImg) {
+                        crtImg = document.createElement('img');
+                        crtImg.id = 'title02CrtImg';
+                        crtImg.alt = 'Title 02 CRT';
+                        // insert as first child so it sits above video/canvas but under overlays
+                        crtDisplay.insertBefore(crtImg, crtDisplay.firstChild);
+                    }
+                    crtImg.src = 'assets/picture/Title02.jpg';
+                    // Ensure CRT-side image also occupies full viewport (fixed) so no parent padding shows
+                    crtImg.style.position = 'fixed';
+                    crtImg.style.left = '0';
+                    crtImg.style.top = '0';
+                    crtImg.style.width = '100vw';
+                    crtImg.style.height = '100vh';
+                    // allow the image to stretch to container to enable vertical squash effect
+                    crtImg.style.objectFit = 'fill';
+                    crtImg.style.zIndex = '59';
+                    crtImg.style.pointerEvents = 'none';
+                    // Ensure it's fully visible so CRT turn-on affects its brightness/contrast
+                    crtImg.style.opacity = '1';
+                    crtImg.style.filter = '';
+                        // Prepare animation class so it receives the CRT stretch/brightness animation
+                        try {
+                            crtImg.classList.remove('crt-img-animated');
+                            void crtImg.offsetWidth;
+                            crtImg.classList.add('crt-img-animated');
+                        } catch (e) { }
+                }
+            } catch (e) {
+                console.warn('failed to insert crt-side title img', e);
+                crtImg = null;
+            }
+
+            // Start CRT boot; when complete, remove temporary crt image and reveal UI title
+            this.playBootSequence(() => {
+                // Ensure background color doesn't block image
+                titleEl.style.backgroundColor = 'transparent';
+
+                // Ensure TV effects remain active: apply tv-effect-on to global overlay
+                if (globalTv) globalTv.classList.add('tv-effect-on');
+
+                // Reveal UI title image (no fade) and show title overlay
+                if (bgImg) {
+                    bgImg.style.opacity = '1';
+                }
+                titleEl.classList.remove('hidden');
+                titleEl.style.display = 'flex';
+                titleEl.style.pointerEvents = 'auto';
+                // Place title under global TV overlay so TV effects remain visible
+                titleEl.style.zIndex = '60';
+
+                // Make UI minimal: hide all buttons/labels except invisible hit areas
+                try {
+                    // Hide visible UI children (texts, overlays) under titleEl
+                    const children = Array.from(titleEl.children);
+                    children.forEach(ch => {
+                        if (ch.id !== 'title02Img' && ch.id !== 'titleStartButton' && ch.id !== 'titleReconnectButton') {
+                            // keep element in DOM but visually hidden
+                            ch.style.display = 'none';
+                        }
+                    });
+
+                    // Create transparent hit areas (do not move original buttons)
+                    const ensureHitArea = (id, left, right, bottom, widthPct, heightPct) => {
+                        let el = document.getElementById(id);
+                        if (!el) {
+                            el = document.createElement('div');
+                            el.id = id;
+                            titleEl.appendChild(el);
+                        }
+                        Object.assign(el.style, {
+                            position: 'absolute',
+                            left: left || '',
+                            right: right || '',
+                            bottom: bottom || '4%',
+                            width: widthPct || '28%',
+                            height: heightPct || '18%',
+                            zIndex: '70', // above title image, below global-tv-effects (80)
+                            background: 'transparent',
+                            pointerEvents: 'auto'
+                        });
+                        el.setAttribute('aria-hidden', 'true');
+                        return el;
+                    };
+
+                    // Left-bottom Play area (matches visual in attachment)
+                    const playHit = ensureHitArea('titlePlayHit', '4%', '', '6%', '34%', '18%');
+                    // Right-bottom Reconnect area
+                    const reconnectHit = ensureHitArea('titleReconnectHit', '', '4%', '6%', '26%', '14%');
+
+                    // Wire hit areas to existing buttons via .click() so bound handlers run
+                    if (playHit && startBtn) {
+                        playHit.onclick = () => { startBtn.click(); };
+                    }
+                    if (reconnectHit && reconnectBtn) {
+                        reconnectHit.onclick = () => { reconnectBtn.click(); };
+                    }
+                } catch (e) {
+                    console.warn('failed to simplify title UI', e);
+                }
+
+                // Remove temporary CRT image now that UI title is visible
+                try {
+                    if (crtImg && crtImg.parentElement) crtImg.parentElement.removeChild(crtImg);
+                } catch (e) { /* ignore */ }
+            }, false);
+        }
+    }
+
+    /**
+     * Show Splash Screen with CRT boot reveal similar to Title Screen 2.
+     * Uses a UI-side image and a temporary CRT-side image so the CRT boot
+     * animation affects the visual. Safe to call even if elements are missing.
+     */
+    showSplashScreen() {
+        const splashEl = document.getElementById('splashScreen');
+        const splashContent = document.getElementById('splashContent');
+        const crtDisplay = this.elements.crtMainDisplay || document.getElementById('crt-main-display');
+        const globalTv = document.getElementById('global-tv-effects');
+
+        if (!splashEl) return;
+
+        // Ensure splashContent is visible (override any `opacity-0` class)
+        try {
+            if (splashContent) {
+                splashContent.classList.remove('opacity-0');
+                splashContent.style.opacity = '1';
+                splashContent.style.transition = 'opacity 0.4s ease-out';
+            }
+        } catch (e) { }
+
+        // Ensure splash element is at top-level and visible
+        try {
+            if (!splashEl._origParent) {
+                splashEl._origParent = splashEl.parentNode;
+                splashEl._origNext = splashEl.nextSibling;
+                document.body.appendChild(splashEl);
+                Object.assign(splashEl.style, {
+                    position: 'fixed', left: '0', top: '0', width: '100%', height: '100%', zIndex: '60', pointerEvents: 'auto'
+                });
+            }
+        } catch (e) { }
+
+        // Ensure existing splash image (if any) is preserved and forced visible after CRT
+        let existingImg = null;
+        if (splashContent) existingImg = splashContent.querySelector('img');
+        // If no existing image, create a UI-side image as fallback
+        let uiImg = document.getElementById('splashUiImg');
+        if (!existingImg) {
+            if (!uiImg) {
+                uiImg = document.createElement('img');
+                uiImg.id = 'splashUiImg';
+                uiImg.className = 'image-width-based';
+                uiImg.alt = 'Splash';
+                if (splashContent) splashContent.insertBefore(uiImg, splashContent.firstChild);
+                else splashEl.insertBefore(uiImg, splashEl.firstChild);
+            }
+            uiImg.src = 'assets/picture/Title.jpg';
+            uiImg.style.opacity = '0';
+            uiImg.style.transition = 'opacity 0.4s ease-out';
+            uiImg.style.zIndex = '50';
+            uiImg.style.pointerEvents = 'none';
+        } else {
+            // Ensure original image fills viewport and stays visible after the animation
+            try {
+                existingImg.style.position = 'fixed';
+                existingImg.style.left = '0';
+                existingImg.style.top = '0';
+                existingImg.style.width = '100vw';
+                existingImg.style.height = '100vh';
+                existingImg.style.objectFit = 'cover';
+                existingImg.style.zIndex = '50';
+                existingImg.style.pointerEvents = 'none';
+                existingImg.style.opacity = '0';
+                existingImg.style.transition = 'opacity 0.4s ease-out';
+            } catch (e) { }
+        }
+
+        // Create CRT-side image to receive CRT animation
+        let crtImg = null;
+        try {
+            if (crtDisplay) {
+                crtImg = document.getElementById('splashCrtImg');
+                if (!crtImg) {
+                    crtImg = document.createElement('img');
+                    crtImg.id = 'splashCrtImg';
+                    crtImg.alt = 'Splash CRT';
+                    crtDisplay.insertBefore(crtImg, crtDisplay.firstChild);
+                }
+                crtImg.src = 'assets/picture/Title.jpg';
+                crtImg.style.position = 'fixed';
+                crtImg.style.left = '0';
+                crtImg.style.top = '0';
+                crtImg.style.width = '100vw';
+                crtImg.style.height = '100vh';
+                crtImg.style.objectFit = 'fill';
+                crtImg.style.zIndex = '59';
+                crtImg.style.pointerEvents = 'none';
+                crtImg.style.opacity = '1';
+                try { crtImg.classList.remove('crt-img-animated'); void crtImg.offsetWidth; crtImg.classList.add('crt-img-animated'); } catch (e) { }
+            }
+        } catch (e) { crtImg = null; }
+
+        // Ensure global TV overlay visible
+        if (globalTv) { globalTv.classList.add('tv-effect-on'); globalTv.style.display = ''; globalTv.style.opacity = ''; }
+
+        // Start CRT boot; reveal image immediately after CRT turn-on animation (so user sees switch right after effect)
+        const revealDelayMs = 1250; // slightly after 1.2s CRT CSS animation
+        let revealTimer = null;
+
+        revealTimer = setTimeout(() => {
+            try {
+                const imgToReveal = existingImg || uiImg;
+                if (imgToReveal) imgToReveal.style.opacity = '1';
+                splashEl.classList.add('active');
+                splashEl.style.display = 'block';
+                splashEl.style.pointerEvents = 'auto';
+                const startBtn = document.getElementById('startButton');
+                if (startBtn) startBtn.style.zIndex = '70';
+            } catch (e) { }
+        }, revealDelayMs);
+
+        this.playBootSequence(() => {
+            // If revealTimer still pending, clear it and ensure image is shown
+            try { if (revealTimer) { clearTimeout(revealTimer); revealTimer = null; } } catch (e) {}
+
+            try {
+                const imgToReveal = existingImg || uiImg;
+                if (imgToReveal) imgToReveal.style.opacity = '1';
+                splashEl.classList.add('active');
+                splashEl.style.display = 'block';
+                splashEl.style.pointerEvents = 'auto';
+                const startBtn = document.getElementById('startButton');
+                if (startBtn) startBtn.style.zIndex = '70';
+            } catch (e) { }
+
+            // Remove temporary CRT-side image
+            try { if (crtImg && crtImg.parentElement) crtImg.parentElement.removeChild(crtImg); } catch (e) { }
+        }, false);
+    }
+
+    hideSplashScreen() {
+        const splashEl = document.getElementById('splashScreen');
+        const uiImg = document.getElementById('splashUiImg');
+        if (uiImg && uiImg.parentElement) uiImg.parentElement.removeChild(uiImg);
+        if (splashEl) {
+            splashEl.classList.remove('active');
+            splashEl.style.display = 'none';
+            // restore if reparented
+            try {
+                if (splashEl._origParent) {
+                    if (splashEl._origNext) splashEl._origParent.insertBefore(splashEl, splashEl._origNext);
+                    else splashEl._origParent.appendChild(splashEl);
+                    delete splashEl._origParent; delete splashEl._origNext;
+                }
+            } catch (e) { }
         }
     }
 
     hideTitleScreen2() {
         if (this.elements.titleScreen2) {
             this.elements.titleScreen2.classList.add('hidden');
+            // clear inline styles added when showing
+            this.elements.titleScreen2.style.display = '';
+            const sb = this.elements.titleStartButton;
+            const rb = this.elements.titleReconnectButton;
+            if (sb) {
+                sb.style.position = '';
+                sb.style.left = '';
+                sb.style.bottom = '';
+                sb.style.zIndex = '';
+                sb.style.width = '';
+                sb.style.height = '';
+                sb.style.background = '';
+                sb.style.color = '';
+                sb.style.border = '';
+                sb.style.pointerEvents = '';
+                sb.style.opacity = '';
+            }
+            if (rb) {
+                rb.style.position = '';
+                rb.style.right = '';
+                rb.style.bottom = '';
+                rb.style.zIndex = '';
+                rb.style.width = '';
+                rb.style.height = '';
+                rb.style.background = '';
+                rb.style.color = '';
+                rb.style.border = '';
+                rb.style.pointerEvents = '';
+                rb.style.opacity = '';
+            }
+
+            // If we reparented the element to body earlier, restore it to original parent
+            try {
+                const titleEl = this.elements.titleScreen2;
+                if (titleEl._origParent) {
+                    if (titleEl._origNext) titleEl._origParent.insertBefore(titleEl, titleEl._origNext);
+                    else titleEl._origParent.appendChild(titleEl);
+                    // clear saved refs
+                    delete titleEl._origParent;
+                    delete titleEl._origNext;
+                }
+                // clear positioning inline styles
+                titleEl.style.position = '';
+                titleEl.style.left = '';
+                titleEl.style.top = '';
+                titleEl.style.width = '';
+                titleEl.style.height = '';
+                titleEl.style.zIndex = '';
+                titleEl.style.pointerEvents = '';
+
+                // restore any hidden children we visually hid earlier
+                try {
+                    const children = Array.from(titleEl.children);
+                    children.forEach(ch => {
+                        ch.style.display = '';
+                    });
+                } catch (e) { }
+                // Remove hit-area overlays we created
+                try {
+                    const playHit = document.getElementById('titlePlayHit');
+                    if (playHit && playHit.parentElement) playHit.parentElement.removeChild(playHit);
+                    const reconnectHit = document.getElementById('titleReconnectHit');
+                    if (reconnectHit && reconnectHit.parentElement) reconnectHit.parentElement.removeChild(reconnectHit);
+                    // Also remove CRT-side temp image if still present
+                    const crtTemp = document.getElementById('title02CrtImg');
+                    if (crtTemp && crtTemp.parentElement) crtTemp.parentElement.removeChild(crtTemp);
+                } catch (e) { }
+            } catch (e) {
+                // ignore
+            }
         }
     }
 
@@ -613,52 +1070,80 @@ export class UIManager {
      * ゲーム開始時のCRT起動演出 & ホログラム表示
      * @param {Function} onComplete - 演出完了後のコールバック
      */
-    playBootSequence(onComplete) {
+    playBootSequence(onComplete, showCamera = true) {
         const crtDisplay = this.elements.crtMainDisplay;
         const hologram = this.elements.hologramText;
+        const videoEl = document.getElementById('cameraVideo');
+        const canvasEl = document.getElementById('gameCanvas');
 
         if (!crtDisplay) {
             if (onComplete) onComplete();
             return;
         }
 
+        // Control camera / canvas visibility according to caller intent
+        if (!showCamera) {
+            if (videoEl) videoEl.style.display = 'none';
+            if (canvasEl) canvasEl.style.display = 'none';
+        }
+
         // Ensure display is visible (remove hidden)
         crtDisplay.classList.remove('hidden');
 
+        // Insert explicit white-line overlay to guarantee the horizontal-line -> stretch visual
+        let crtLineEl = null;
+        try {
+            crtLineEl = document.createElement('div');
+            crtLineEl.className = 'crt-line-overlay';
+            crtDisplay.appendChild(crtLineEl);
+        } catch (e) {
+            crtLineEl = null;
+        }
+
         // 1. Trigger CRT Turn-On Animation
-        // Reset animation just in case (remove class, reflow, add class)
-
-        // Ensure opacity is 1 (it starts at 0)
         crtDisplay.classList.remove('opacity-0');
-
         crtDisplay.classList.remove('crt-turn-on-active');
         void crtDisplay.offsetWidth; // Force reflow
         crtDisplay.classList.add('crt-turn-on-active');
 
+        // Remove overlay after animation finishes (slightly after keyframe)
+        if (crtLineEl) {
+            setTimeout(() => {
+                try { if (crtLineEl && crtLineEl.parentElement) crtLineEl.parentElement.removeChild(crtLineEl); } catch (e) {}
+            }, 1400);
+        }
+
         // 2. Hologram Sequence
         if (hologram) {
-            // Reset state
-            hologram.className = 'hologram-fuda-text'; // Remove all animation classes
-            void hologram.offsetWidth; // Reflow
+            hologram.className = 'hologram-fuda-text';
+            void hologram.offsetWidth;
 
-            // Phase 1: ENTER (after slight delay to match CRT flash)
-            setTimeout(() => {
-                hologram.classList.add('hologram-in');
-            }, 600);
-
-            // Phase 2: IDLE (Transition after Enter finishes ~0.5s)
+            setTimeout(() => { hologram.classList.add('hologram-in'); }, 600);
             setTimeout(() => {
                 hologram.classList.remove('hologram-in');
                 hologram.classList.add('hologram-idle');
             }, 1100);
 
-            // Phase 3: PERSISTENT (Keep in Idle, just callback)
             setTimeout(() => {
+                // If caller requested camera visible, ensure it's shown now
+                if (showCamera) {
+                    if (videoEl) videoEl.style.display = '';
+                    if (canvasEl) {
+                        canvasEl.style.display = '';
+                        canvasEl.classList.remove('hidden');
+                    }
+                }
                 if (onComplete) onComplete();
-            }, 2000); // Wait for sequence to "settle"
+            }, 2000);
         } else {
-            // Fallback if no hologram
             setTimeout(() => {
+                if (showCamera) {
+                    if (videoEl) videoEl.style.display = '';
+                    if (canvasEl) {
+                        canvasEl.style.display = '';
+                        canvasEl.classList.remove('hidden');
+                    }
+                }
                 if (onComplete) onComplete();
             }, 2000);
         }

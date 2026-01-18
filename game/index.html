@@ -655,20 +655,20 @@
 
         <!-- Calibrate Screen (Updated) -->
         <div id="calibrateScreen"
-            class="screen absolute inset-0 z-50 flex flex-col items-center justify-center bg-white text-ink-black font-sans hidden">
+            class="screen absolute inset-0 z-50 flex flex-col items-center justify-center bg-white text-ink-black font-sans hidden overflow-hidden">
 
             <div class="absolute inset-0 z-0 pointer-events-none opacity-[0.08]">
                 <div class="w-full h-full bg-dot-grid bg-[length:24px_24px]"></div>
             </div>
 
-            <div class="absolute top-0 left-0 p-8 z-30">
+            <div class="absolute top-0 left-0 p-4 md:p-8 z-30">
                 <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 bg-ink-black flex items-center justify-center">
-                        <span class="material-symbols-outlined text-white">token</span>
+                    <div class="w-8 h-8 md:w-10 md:h-10 bg-ink-black flex items-center justify-center">
+                        <span class="material-symbols-outlined text-white text-sm md:text-base">token</span>
                     </div>
                     <div class="flex flex-col">
-                        <span class="font-display text-xs tracking-widest font-bold">ZANBARAI</span>
-                        <span class="font-japanese text-[10px] tracking-widest opacity-60">陰陽師クロニクル</span>
+                        <span class="font-display text-[10px] md:text-xs tracking-widest font-bold">ZANBARAI</span>
+                        <span class="font-japanese text-[8px] md:text-[10px] tracking-widest opacity-60">陰陽師クロニクル</span>
                     </div>
                 </div>
             </div>
@@ -684,25 +684,27 @@
 
             <div class="absolute top-1/2 left-4 w-px h-32 bg-ink-black opacity-20 hidden md:block"></div>
             <div class="absolute top-1/2 right-4 w-px h-32 bg-ink-black opacity-20 hidden md:block"></div>
-            <div class="absolute bottom-8 left-8 flex gap-2 z-20">
+            <div class="absolute bottom-8 left-8 flex gap-2 z-20 hidden md:flex">
                 <div class="w-1 h-1 bg-primary rounded-full"></div>
                 <div class="w-1 h-1 bg-tech-gray rounded-full"></div>
                 <div class="w-1 h-1 bg-tech-gray rounded-full"></div>
             </div>
 
-            <main class="relative z-10 w-full h-screen flex flex-col items-center justify-center p-6 md:p-12">
-                <div class="mb-8 text-center relative w-full max-w-lg">
+            <main class="relative z-10 w-full h-full flex flex-col items-center justify-center p-4">
+                <div class="mb-4 text-center relative w-full max-w-lg">
                     <div class="absolute top-1/2 left-0 w-full h-px bg-tech-gray opacity-20 -z-10"></div>
-                    <div class="inline-block bg-white px-8 border border-ink-black py-4">
+                    <div class="inline-block bg-white px-6 border border-ink-black py-2 md:py-4">
                         <h1
-                            class="font-display text-3xl md:text-4xl font-black tracking-tighter text-ink-black uppercase">
+                            class="font-display text-2xl md:text-4xl font-black tracking-tighter text-ink-black uppercase">
                             CALIBRATION
                         </h1>
-                        <p class="font-japanese text-sm tracking-[0.5em] mt-1 font-bold text-tech-gray">キャリブレーション</p>
+                        <p class="font-japanese text-xs md:text-sm tracking-[0.5em] mt-1 font-bold text-tech-gray">
+                            キャリブレーション</p>
                     </div>
                 </div>
 
-                <div class="w-full max-w-lg relative bg-white border-[3px] border-ink-black p-8 md:p-10 shadow-2xl">
+                <div
+                    class="w-full max-w-md relative bg-white border-[3px] border-ink-black p-4 md:p-10 shadow-2xl scale-95 md:scale-100 origin-center">
                     <div class="absolute top-0 left-0 w-4 h-4 border-l-4 border-t-4 border-primary -ml-[3px] -mt-[3px]">
                     </div>
                     <div
@@ -715,26 +717,28 @@
                         class="absolute bottom-0 right-0 w-4 h-4 border-r-4 border-b-4 border-primary -mr-[3px] -mb-[3px]">
                     </div>
 
-                    <div class="text-center mb-8">
+                    <div class="text-center mb-4 md:mb-8">
                         <p
-                            class="font-sans font-bold text-ink-black text-sm md:text-base leading-relaxed tracking-wide">
-                            端末を正面に向け、グローブも正面へ<br>構えてください
+                            class="font-sans font-bold text-ink-black text-xs md:text-base leading-relaxed tracking-wide">
+                            端末を正面に向け、グローブも<br class="md:hidden">正面へ構えてください
                         </p>
-                        <p class="font-display text-[10px] text-tech-gray mt-2 tracking-widest uppercase opacity-70">
+                        <p
+                            class="font-display text-[8px] md:text-[10px] text-tech-gray mt-1 tracking-widest uppercase opacity-70">
                             Face the device forward and ready the glove
                         </p>
                     </div>
 
-                    <div class="bg-ink-black/5 p-6 mb-8 border border-ink-black/10 relative">
+                    <div class="bg-ink-black/5 p-4 mb-4 md:mb-8 border border-ink-black/10 relative">
                         <div
                             class="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-primary to-transparent opacity-30">
                         </div>
-                        <div class="space-y-4">
+                        <div class="space-y-3">
                             <!-- PITCH -->
-                            <div class="flex items-center gap-3 border-b border-dashed border-tech-gray/30 pb-3">
+                            <div class="flex items-center gap-2 border-b border-dashed border-tech-gray/30 pb-2">
                                 <span
-                                    class="font-display font-bold text-tech-gray text-xs md:text-sm tracking-[0.2em] w-14">PITCH</span>
-                                <div id="calibPitchBars" class="flex-1 flex items-center justify-end gap-[2px] h-3">
+                                    class="font-display font-bold text-tech-gray text-[10px] md:text-sm tracking-[0.2em] w-12">PITCH</span>
+                                <div id="calibPitchBars"
+                                    class="flex-1 flex items-center justify-end gap-[1px] md:gap-[2px] h-3">
                                     <!-- 15 bars -->
                                     <div class="w-1 h-2 bg-ink-black/10"></div>
                                     <div class="w-1 h-2 bg-ink-black/10"></div>
@@ -753,13 +757,14 @@
                                     <div class="w-1 h-2 bg-ink-black/10"></div>
                                 </div>
                                 <span id="calibPitch"
-                                    class="text-primary font-bold tracking-widest font-display text-base md:text-lg w-20 text-right">0.0°</span>
+                                    class="text-primary font-bold tracking-widest font-display text-sm md:text-lg w-16 text-right">0.0°</span>
                             </div>
                             <!-- YAW -->
-                            <div class="flex items-center gap-3 border-b border-dashed border-tech-gray/30 pb-3">
+                            <div class="flex items-center gap-2 border-b border-dashed border-tech-gray/30 pb-2">
                                 <span
-                                    class="font-display font-bold text-tech-gray text-xs md:text-sm tracking-[0.2em] w-14">YAW</span>
-                                <div id="calibYawBars" class="flex-1 flex items-center justify-end gap-[2px] h-3">
+                                    class="font-display font-bold text-tech-gray text-[10px] md:text-sm tracking-[0.2em] w-12">YAW</span>
+                                <div id="calibYawBars"
+                                    class="flex-1 flex items-center justify-end gap-[1px] md:gap-[2px] h-3">
                                     <!-- 15 bars -->
                                     <div class="w-1 h-2 bg-ink-black/10"></div>
                                     <div class="w-1 h-2 bg-ink-black/10"></div>
@@ -778,13 +783,14 @@
                                     <div class="w-1 h-2 bg-ink-black/10"></div>
                                 </div>
                                 <span id="calibYaw"
-                                    class="text-primary font-bold tracking-widest font-display text-base md:text-lg w-20 text-right">0.0°</span>
+                                    class="text-primary font-bold tracking-widest font-display text-sm md:text-lg w-16 text-right">0.0°</span>
                             </div>
                             <!-- ROLL -->
-                            <div class="flex items-center gap-3">
+                            <div class="flex items-center gap-2">
                                 <span
-                                    class="font-display font-bold text-tech-gray text-xs md:text-sm tracking-[0.2em] w-14">ROLL</span>
-                                <div id="calibRollBars" class="flex-1 flex items-center justify-end gap-[2px] h-3">
+                                    class="font-display font-bold text-tech-gray text-[10px] md:text-sm tracking-[0.2em] w-12">ROLL</span>
+                                <div id="calibRollBars"
+                                    class="flex-1 flex items-center justify-end gap-[1px] md:gap-[2px] h-3">
                                     <!-- 15 bars -->
                                     <div class="w-1 h-2 bg-ink-black/10"></div>
                                     <div class="w-1 h-2 bg-ink-black/10"></div>
@@ -803,27 +809,29 @@
                                     <div class="w-1 h-2 bg-ink-black/10"></div>
                                 </div>
                                 <span id="calibRoll"
-                                    class="text-primary font-bold tracking-widest font-display text-base md:text-lg w-20 text-right">0.0°</span>
+                                    class="text-primary font-bold tracking-widest font-display text-sm md:text-lg w-16 text-right">0.0°</span>
                             </div>
                         </div>
                     </div>
 
-                    <div class="flex gap-4">
-                        <button id="resetCalibrationButton" class="flex-1 h-14 relative group/btn overflow-hidden">
+                    <div class="flex gap-3 md:gap-4">
+                        <button id="resetCalibrationButton"
+                            class="flex-1 h-12 md:h-14 relative group/btn overflow-hidden">
                             <div
-                                class="absolute inset-0 bg-white border border-ink-black transform -skew-x-[20deg] transition-transform group-hover/btn:scale-[1.02] shadow-[4px_4px_0px_0px_rgba(0,0,0,0.8)]">
+                                class="absolute inset-0 bg-white border border-ink-black transform -skew-x-[20deg] transition-transform group-hover/btn:scale-[1.02] shadow-[2px_2px_0px_0px_rgba(0,0,0,0.8)] md:shadow-[4px_4px_0px_0px_rgba(0,0,0,0.8)]">
                             </div>
                             <div
                                 class="absolute inset-0 flex flex-col items-center justify-center transform -skew-x-[20deg]">
                                 <span
-                                    class="font-display font-black text-ink-black text-xl tracking-wider italic transform skew-x-[20deg]">RESET</span>
+                                    class="font-display font-black text-ink-black text-lg md:text-xl tracking-wider italic transform skew-x-[20deg]">RESET</span>
                                 <span
                                     class="font-japanese text-[10px] text-tech-gray font-bold tracking-widest transform skew-x-[20deg]">リセット</span>
                             </div>
                         </button>
-                        <button id="startCalibrationButton" class="flex-1 h-14 relative group/btn overflow-hidden">
+                        <button id="startCalibrationButton"
+                            class="flex-1 h-12 md:h-14 relative group/btn overflow-hidden">
                             <div
-                                class="absolute inset-0 bg-primary transform -skew-x-[20deg] transition-transform group-hover/btn:scale-[1.02] shadow-[4px_4px_0px_0px_rgba(13,13,13,0.8)]">
+                                class="absolute inset-0 bg-primary transform -skew-x-[20deg] transition-transform group-hover/btn:scale-[1.02] shadow-[2px_2px_0px_0px_rgba(13,13,13,0.8)] md:shadow-[4px_4px_0px_0px_rgba(13,13,13,0.8)]">
                             </div>
                             <div
                                 class="absolute inset-0 bg-white/20 transform -skew-x-[20deg] translate-x-full group-hover/btn:translate-x-[-200%] transition-transform duration-700">
@@ -831,7 +839,7 @@
                             <div
                                 class="absolute inset-0 flex flex-col items-center justify-center transform -skew-x-[20deg]">
                                 <span
-                                    class="font-display font-black text-white text-lg tracking-wider italic transform skew-x-[20deg]">START
+                                    class="font-display font-black text-white text-base md:text-lg tracking-wider italic transform skew-x-[20deg]">START
                                     GAME</span>
                                 <span
                                     class="font-japanese text-[10px] text-white/90 font-bold tracking-widest transform skew-x-[20deg]">ゲーム開始</span>
@@ -839,20 +847,23 @@
                         </button>
                     </div>
 
-                    <div class="absolute bottom-2 right-2 text-[8px] font-mono text-gray-300">SEC_LEVEL_02</div>
+                    <div class="absolute bottom-1 right-2 text-[8px] font-mono text-gray-300">SEC_LEVEL_02</div>
                 </div>
             </main>
 
             <div
-                class="absolute bottom-0 left-0 w-full h-12 bg-white border-t border-ink-black flex items-center justify-between px-8 z-20">
+                class="absolute bottom-0 left-0 w-full h-10 md:h-12 bg-white border-t border-ink-black flex items-center justify-between px-4 md:px-8 z-20">
                 <div class="flex items-center gap-4">
-                    <div class="w-32 h-2 bg-gradient-to-r from-primary to-transparent opacity-50 animate-pulse"></div>
-                    <span class="font-display text-[10px] text-tech-gray tracking-widest">SENSORS ACTIVE</span>
+                    <div
+                        class="w-16 md:w-32 h-1 md:h-2 bg-gradient-to-r from-primary to-transparent opacity-50 animate-pulse">
+                    </div>
+                    <span class="font-display text-[8px] md:text-[10px] text-tech-gray tracking-widest">SENSORS
+                        ACTIVE</span>
                 </div>
                 <div class="flex gap-1">
-                    <div class="w-1 h-4 bg-ink-black"></div>
-                    <div class="w-1 h-4 bg-ink-black opacity-50"></div>
-                    <div class="w-1 h-4 bg-ink-black opacity-25"></div>
+                    <div class="w-1 h-3 md:h-4 bg-ink-black"></div>
+                    <div class="w-1 h-3 md:h-4 bg-ink-black opacity-50"></div>
+                    <div class="w-1 h-3 md:h-4 bg-ink-black opacity-25"></div>
                 </div>
             </div>
         </div>

@@ -612,17 +612,10 @@ export class UIManager {
                 hologram.classList.add('hologram-idle');
             }, 1100);
 
-            // Phase 3: EXIT (After ~1.5s of idle)
+            // Phase 3: PERSISTENT (Keep in Idle, just callback)
             setTimeout(() => {
-                hologram.classList.remove('hologram-idle');
-                hologram.classList.add('hologram-out');
-
-                // Final Cleanup
-                setTimeout(() => {
-                    hologram.classList.remove('hologram-out');
-                    if (onComplete) onComplete();
-                }, 500); // Wait for exit animation
-            }, 3000); // Total display time
+                if (onComplete) onComplete();
+            }, 2000); // Wait for sequence to "settle"
         } else {
             // Fallback if no hologram
             setTimeout(() => {

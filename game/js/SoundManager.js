@@ -182,6 +182,60 @@ export class SoundManager {
     }
 
     setEnabled(v) { this.enabled = !!v; }
+
+    /**
+     * Test playback that returns a Promise so callers (UI) can show result.
+     * Resolves { method: 'webaudio'|'html' } or rejects with error.
+     */
+    playTest(key, opts = {}) {
+        return new Promise((resolve, reject) => {
+            try {
+                const buffer = this.buffers.get(key);
+                if (buffer && this.audioContext) {
+                    try {
+                        const src = this.audioContext.createBufferSource();
+                        src.buffer = buffer;
+                        if (opts.playbackRate !== undefined) src.playbackRate.value = opts.playbackRate;
+                        const gain = this.audioContext.createGain();
+                        const baseVol = (opts.volume !== undefined) ? opts.volume : 1.0;
+                        const norm = this.buffersGain.get(key) || 1.0;
+                        gain.gain.value = baseVol * norm * this.masterGain;
+                        src.connect(gain);
+                        gain.connect(this.gainNode || this.audioContext.destination);
+                        src.start(0);
+                        // resolve shortly after start to indicate success
+                        setTimeout(() => {
+                            try { src.disconnect(); gain.disconnect(); } catch (e) {}
+                            resolve({ method: 'webaudio' });
+                        }, 50);
+                        return;
+                    } catch (e) {
+                        // fallthrough to try HTMLAudio fallback
+                        console.warn('[SoundManager] webaudio playTest failed', key, e);
+                    }
+                }
+
+                const audio = this.sounds.get(key);
+                if (!audio) {
+                    reject(new Error('sound not loaded'));
+                    return;
+                }
+
+                const instance = audio.cloneNode();
+                if (opts.volume !== undefined) instance.volume = Math.min(1.0, opts.volume * (this.buffersGain.get(key) || 1.0) * this.masterGain);
+                if (opts.playbackRate !== undefined) instance.playbackRate = opts.playbackRate;
+                const p = instance.play();
+                if (p && typeof p.then === 'function') {
+                    p.then(() => resolve({ method: 'html' })).catch(err => reject(err));
+                } else {
+                    // older browsers: assume success
+                    resolve({ method: 'html' });
+                }
+            } catch (e) {
+                reject(e);
+            }
+        });
+    }
 }
 
 export const soundManager = new SoundManager();

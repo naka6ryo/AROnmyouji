@@ -622,6 +622,15 @@
                         </div>
                     </div>
 
+                    <!-- Audio debug panel for mobile testing -->
+                    <div id="audioDebugPanel" class="absolute left-4 bottom-4 z-50 bg-black/60 backdrop-blur-sm p-3 rounded-md text-white max-w-xs">
+                        <div id="audioStatus" class="text-sm">Audio: unknown</div>
+                        <div class="mt-2 flex gap-2">
+                            <button id="audioTestButton" class="parallelogram bg-white text-black px-3 py-1 text-sm">サウンドテスト</button>
+                        </div>
+                        <div id="audioTestLog" class="small-log mt-2 text-xs text-gray-300" style="max-height:6rem; overflow:auto;"></div>
+                    </div>
+
                     <!-- Right: Vertical HP Bar -->
                     <div class="absolute bottom-12 right-6 flex flex-col items-end gap-1 pointer-events-none z-20">
                         <div class="flex items-center gap-2 mb-1">

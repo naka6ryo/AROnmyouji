@@ -541,7 +541,7 @@
 
         <!-- BLE Connect Screen (Updated) -->
         <div id="bleConnectScreen"
-            class="screen absolute inset-0 z-50 flex flex-col items-center justify-center bg-white text-ink-black font-sans hidden">
+            class="screen absolute inset-0 z-50 flex flex-col items-center justify-start md:justify-center bg-white text-ink-black font-sans hidden pt-28 md:pt-0">
 
             <div class="absolute inset-0 z-0 pointer-events-none opacity-[0.08]">
                 <div class="w-full h-full bg-dot-grid bg-[length:24px_24px]"></div>
@@ -577,7 +577,7 @@
             </div>
 
             <main class="relative z-10 w-full flex flex-col items-center justify-center p-6 md:p-12">
-                <div class="mb-12 text-center relative w-full max-w-lg">
+                <div class="mb-6 md:mb-12 text-center relative w-full max-w-lg">
                     <div class="absolute top-1/2 left-0 w-full h-px bg-tech-gray opacity-20 -z-10"></div>
                     <div class="inline-block bg-white px-8 border border-ink-black py-4">
                         <h1
@@ -588,7 +588,7 @@
                     </div>
                 </div>
 
-                <div class="w-full max-w-md relative bg-white border-[3px] border-ink-black p-8 md:p-12 shadow-2xl">
+                <div class="w-full max-w-md relative bg-white border-[3px] border-ink-black p-5 md:p-12 shadow-2xl">
                     <div class="absolute top-0 left-0 w-4 h-4 border-l-4 border-t-4 border-primary -ml-[3px] -mt-[3px]">
                     </div>
                     <div
@@ -601,7 +601,8 @@
                         class="absolute bottom-0 right-0 w-4 h-4 border-r-4 border-b-4 border-primary -mr-[3px] -mb-[3px]">
                     </div>
 
-                    <div class="flex items-start md:items-center gap-4 mb-12 border-b border-gray-200 pb-4 w-full">
+                    <div
+                        class="flex items-start md:items-center gap-4 mb-6 md:mb-12 border-b border-gray-200 pb-4 w-full">
                         <span
                             class="material-symbols-outlined text-3xl text-ink-black flex-shrink-0 mt-1 md:mt-0">front_hand</span>
                         <div class="flex flex-col md:flex-row md:items-center justify-between w-full">
@@ -616,7 +617,7 @@
                         </div>
                     </div>
 
-                    <button id="connectBleButton" class="w-full h-16 relative group/btn overflow-hidden">
+                    <button id="connectBleButton" class="w-full h-12 md:h-16 relative group/btn overflow-hidden">
                         <div
                             class="absolute inset-0 bg-primary transform -skew-x-[20deg] transition-transform group-hover/btn:scale-[1.02] shadow-lg">
                         </div>

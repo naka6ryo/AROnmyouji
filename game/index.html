@@ -539,12 +539,41 @@
             animation: crt-turn-on 1.2s cubic-bezier(0.23, 1, 0.32, 1) forwards;
         }
 
+        /* Bright White Line Overlay during expansion */
+        .crt-turn-on-active::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: white;
+            z-index: 200;
+            /* Above everything inside */
+            animation: crt-line-fade 1.2s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+            pointer-events: none;
+        }
+
+        @keyframes crt-line-fade {
+
+            0%,
+            30% {
+                opacity: 1;
+            }
+
+            /* Solid white during line phase */
+            50% {
+                opacity: 0;
+            }
+
+            /* Fades out as it expands */
+            100% {
+                opacity: 0;
+            }
+        }
+
         @keyframes crt-turn-on {
             0% {
                 transform: scale(0, 0.005);
                 filter: brightness(30) contrast(5);
                 opacity: 0;
-                background-color: #ffffff;
             }
 
             5% {
@@ -555,21 +584,18 @@
                 transform: scale(1, 0.005);
                 filter: brightness(30) contrast(5);
                 opacity: 1;
-                background-color: #ffffff;
             }
 
             30% {
                 transform: scale(1, 0.005);
                 filter: brightness(20) contrast(3);
                 opacity: 1;
-                background-color: #ffffff;
             }
 
             40% {
                 transform: scale(1, 1);
                 filter: brightness(5) contrast(2);
                 opacity: 1;
-                background-color: transparent;
             }
 
             50% {
@@ -1325,7 +1351,7 @@
                 <span id="timeLeftStart"></span>
             </div>
             <button id="sceneStartButton"
-                class="mt-16 parallelogram bg-primary text-white px-8 py-4 font-display font-bold text-xl tracking-widest hover:bg-red-600 transition-all hover:scale-105 shadow-[0_0_15px_rgba(255,0,0,0.5)]">
+                class="mt-32 parallelogram bg-primary text-white px-8 py-4 font-display font-bold text-xl tracking-widest hover:bg-red-600 transition-all hover:scale-105 shadow-[0_0_15px_rgba(255,0,0,0.5)]">
                 START WAVE
             </button>
         </div>

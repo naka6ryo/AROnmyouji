@@ -625,16 +625,13 @@
         </div>
 
         <!-- Splash Screen (Existing) -->
-        <div id="splashScreen"
-            class="screen absolute inset-0 z-50 flex flex-col items-center justify-center bg-white hidden">
-            <!-- Full Screen Title Image -->
+        <!-- Splash Screen (Existing) -->
+        <div id="splashScreen" class="screen absolute inset-0 z-50 bg-black">
             <img src="assets/picture/Title.jpg" class="w-full h-full object-cover" alt="Title Screen">
-
-            <!-- Hitbox for Start Button (Bottom Left over IP/LIAYI) -->
-            <!-- Adjusted position based on visual estimation of IP/LIAYI location in the image -->
+            <!-- Hitbox for Play Button (IP/LIAYI logo at bottom left) -->
             <button id="startButton"
-                class="absolute bottom-[4%] left-[4%] w-[35%] h-[12%] z-10 border-2 border-red-500/50 hover:bg-white/10 transition-colors cursor-pointer"
-                title="Start Game">
+                class="absolute bottom-[4%] left-[4%] w-[35%] max-w-[250px] h-[10%] max-h-[100px] bg-transparent z-10 cursor-pointer"
+                aria-label="Start Game">
             </button>
         </div>
 

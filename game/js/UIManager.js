@@ -950,9 +950,13 @@ export class UIManager {
             } catch (e) { }
         }, revealDelayMs);
 
+        // Store timer so hideSplashScreen can cancel pending reveal
+        try { if (splashEl) splashEl._revealTimer = revealTimer; } catch (e) {}
+
         this.playBootSequence(() => {
             // If revealTimer still pending, clear it and ensure image is shown
             try { if (revealTimer) { clearTimeout(revealTimer); revealTimer = null; } } catch (e) {}
+            try { if (splashEl && splashEl._revealTimer) { clearTimeout(splashEl._revealTimer); delete splashEl._revealTimer; } } catch (e) {}
 
             try {
                 const imgToReveal = existingImg || uiImg;
@@ -971,20 +975,31 @@ export class UIManager {
 
     hideSplashScreen() {
         const splashEl = document.getElementById('splashScreen');
+        // Cancel any pending reveal timer
+        try { if (splashEl && splashEl._revealTimer) { clearTimeout(splashEl._revealTimer); delete splashEl._revealTimer; } } catch (e) {}
         const uiImg = document.getElementById('splashUiImg');
         // Remove any UI-side splash image created earlier
         try {
             if (uiImg && uiImg.parentElement) uiImg.parentElement.removeChild(uiImg);
         } catch (e) { }
 
-        // Also remove any temporary CRT-side images that may have been inserted
-        const crtTempIds = ['splashCrtImg', 'title02CrtImg', 'title02CrtImg'];
+        // Also remove any temporary CRT-side or title images that may have been inserted
+        const crtTempIds = ['splashCrtImg', 'title02CrtImg', 'title02Img', 'title02Img', 'title02CrtImg'];
         crtTempIds.forEach(id => {
             try {
                 const el = document.getElementById(id);
                 if (el && el.parentElement) el.parentElement.removeChild(el);
             } catch (e) { }
         });
+
+        // Remove elements by class that were used for UI/title/splash backgrounds
+        try {
+            const classSelectors = ['title-02-bg', 'image-width-based', 'crt-img-animated'];
+            classSelectors.forEach(cls => {
+                const nodes = Array.from(document.getElementsByClassName(cls));
+                nodes.forEach(n => { try { if (n && n.parentElement) n.parentElement.removeChild(n); } catch (e) {} });
+            });
+        } catch (e) { }
 
         // Reset any original splashContent <img> inline styles (avoid leaving fixed-position image)
         try {

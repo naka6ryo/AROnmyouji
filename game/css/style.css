@@ -82,6 +82,14 @@ body {
     display: block !important;
 }
 
+/* Allow programmatic hiding when the 'hidden' class is applied */
+#splashScreen.hidden,
+#titleScreen2.hidden {
+    display: none !important;
+    pointer-events: none !important;
+    opacity: 0 !important;
+}
+
 /* Ensure splash content and its image fill the full area with no inline-gap */
 #splashContent,
 #splashContent>img {

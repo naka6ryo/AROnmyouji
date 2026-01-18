@@ -52,6 +52,34 @@ export class SoundManager {
     }
 
     /**
+     * ユーザージェスチャ内で呼び出してAudioContextのロック解除を試みる。
+     * 小さな（無音）オシレーターを短時間再生してブラウザの再生許可を得る。
+     */
+    unlock() {
+        try {
+            this.initAudioContext();
+            if (!this.audioContext) return;
+
+            // Create a very short silent oscillator connected to a gain node with 0 volume.
+            const osc = this.audioContext.createOscillator();
+            const g = this.audioContext.createGain();
+            g.gain.value = 0.0; // silent but counts as user-initiated audio
+            osc.connect(g);
+            g.connect(this.gainNode || this.audioContext.destination);
+            // start and stop immediately (within user gesture)
+            const now = this.audioContext.currentTime;
+            osc.start(now);
+            osc.stop(now + 0.03);
+            // cleanup onended
+            osc.onended = () => {
+                try { osc.disconnect(); g.disconnect(); } catch (e) {}
+            };
+        } catch (e) {
+            console.warn('[SoundManager] unlock failed', e);
+        }
+    }
+
+    /**
      * サウンド一覧をロードする。キー->URL のオブジェクトを渡す。
      * WebAudio のデコードを試み、失敗したら HTMLAudio を使う。
      */

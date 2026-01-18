@@ -130,6 +130,8 @@ class AROnmyoujiGame {
         this.uiManager.toggleSceneStartButton(false);
 
         try {
+            // unlock first to ensure user gesture grants playback
+            this.soundManager.unlock();
             this.soundManager.initAudioContext();
             // kick off load if not already loaded
             const needLoad = ((this.soundManager.buffers && this.soundManager.buffers.size === 0) &&
@@ -138,7 +140,7 @@ class AROnmyoujiGame {
                 this.soundManager.load({
                     polygon_burst: 'assets/sfx/polygon_burst.mp3',
                     explosion: 'assets/sfx/explosion.mp3',
-                    attack_swipe: 'assets/sfx/atttack.mp3'
+                    attack_swipe: 'assets/sfx/attack_swipe.mp3'
                 }).then(() => this.debugOverlay.logInfo('SFXロード完了')).catch(e => console.warn('sound load failed', e));
             }
         } catch (e) {
@@ -159,16 +161,18 @@ class AROnmyoujiGame {
     onStartGame() {
         // ... (unchanged)
         this.debugOverlay.logInfo('ゲーム開始ボタン押下');
-        try {
-            this.soundManager.initAudioContext();
-            this.soundManager.load({
-                polygon_burst: 'assets/sfx/polygon_burst.mp3',
-                explosion: 'assets/sfx/explosion.mp3',
-                attack_swipe: 'assets/sfx/atttack.mp3'
-            }).then(() => this.debugOverlay.logInfo('SFXロード完了')).catch(e => console.warn('sound load failed', e));
-        } catch (e) {
-            console.warn('sound init/load failed', e);
-        }
+            try {
+                // unlock を最優先で呼ぶ（ユーザージェスチャに紐付ける）
+                this.soundManager.unlock();
+                this.soundManager.initAudioContext();
+                this.soundManager.load({
+                    polygon_burst: 'assets/sfx/polygon_burst.mp3',
+                    explosion: 'assets/sfx/explosion.mp3',
+                    attack_swipe: 'assets/sfx/attack_swipe.mp3'
+                }).then(() => this.debugOverlay.logInfo('SFXロード完了')).catch(e => console.warn('sound load failed', e));
+            } catch (e) {
+                console.warn('sound init/load failed', e);
+            }
         this.appState.startGame();
     }
 

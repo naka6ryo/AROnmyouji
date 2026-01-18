@@ -147,15 +147,18 @@ class AROnmyoujiGame {
             console.warn('sound init/load failed', e);
         }
 
-        // カウントダウン表示後にゲームを開始
-        // 表示基準は開始時点で不要にする
-        this.calibrationDisplayBaseline = null;
-        this.uiManager.showCountdown(3, () => {
-            this.startGameplay();
+        // Play CRT Boot Sequence, then Countdown, then Start
+        this.uiManager.playBootSequence(() => {
+            // カウントダウン表示後にゲームを開始
+            // 表示基準は開始時点で不要にする
+            this.calibrationDisplayBaseline = null;
+            this.uiManager.showCountdown(3, () => {
+                this.startGameplay();
+            });
         });
     }
 
-    
+
 
     /**
      * ゲーム開始 (GameWorld開始)
@@ -163,18 +166,18 @@ class AROnmyoujiGame {
     onStartGame() {
         // ... (unchanged)
         this.debugOverlay.logInfo('ゲーム開始ボタン押下');
-            try {
-                // unlock を最優先で呼ぶ（ユーザージェスチャに紐付ける）
-                this.soundManager.unlock();
-                this.soundManager.initAudioContext();
-                this.soundManager.load({
-                    polygon_burst: 'assets/sfx/polygon_burst.mp3',
-                    explosion: 'assets/sfx/explosion.mp3',
-                    attack_swipe: 'assets/sfx/atttack.mp3'
-                }).then(() => this.debugOverlay.logInfo('SFXロード完了')).catch(e => console.warn('sound load failed', e));
-            } catch (e) {
-                console.warn('sound init/load failed', e);
-            }
+        try {
+            // unlock を最優先で呼ぶ（ユーザージェスチャに紐付ける）
+            this.soundManager.unlock();
+            this.soundManager.initAudioContext();
+            this.soundManager.load({
+                polygon_burst: 'assets/sfx/polygon_burst.mp3',
+                explosion: 'assets/sfx/explosion.mp3',
+                attack_swipe: 'assets/sfx/atttack.mp3'
+            }).then(() => this.debugOverlay.logInfo('SFXロード完了')).catch(e => console.warn('sound load failed', e));
+        } catch (e) {
+            console.warn('sound init/load failed', e);
+        }
         this.appState.startGame();
     }
 

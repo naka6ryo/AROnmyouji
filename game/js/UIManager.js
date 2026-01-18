@@ -84,7 +84,11 @@ export class UIManager {
 
             // Debug
             toggleDebugButton: document.getElementById('toggleDebugButton'),
-            toggleDebugButtonResult: document.getElementById('toggleDebugButtonResult')
+            toggleDebugButtonResult: document.getElementById('toggleDebugButtonResult'),
+
+            // CRT Boot & Hologram
+            crtMainDisplay: document.getElementById('crt-main-display'),
+            hologramText: document.getElementById('hologramText')
         };
     }
 
@@ -563,5 +567,59 @@ export class UIManager {
         if (this.elements.resultTime) this.elements.resultTime.textContent = time.toFixed(1);
 
         this.clearEnemyIndicators();
+    }
+
+    // --- CRT Boot Sequence ---
+
+    /**
+     * ゲーム開始時のCRT起動演出 & ホログラム表示
+     * @param {Function} onComplete - 演出完了後のコールバック
+     */
+    playBootSequence(onComplete) {
+        const crtDisplay = this.elements.crtMainDisplay;
+        const hologram = this.elements.hologramText;
+
+        if (!crtDisplay) {
+            if (onComplete) onComplete();
+            return;
+        }
+
+        // 1. Trigger CRT Turn-On Animation
+        // Reset animation just in case (remove class, reflow, add class)
+        crtDisplay.classList.remove('crt-turn-on-active');
+        void crtDisplay.offsetWidth; // Force reflow
+        crtDisplay.classList.add('crt-turn-on-active');
+
+        // 2. Show Hologram Text
+        if (hologram) {
+            // Remove active class first
+            hologram.classList.remove('hologram-active');
+
+            // Delay slightly to match the "bright flash" of the CRT turn on
+            setTimeout(() => {
+                hologram.classList.add('hologram-active');
+            }, 500); // 500ms delay: appears as screen stabilizes
+        }
+
+        // 3. Wait for animation to finish (approx 1.2s + buffer)
+        // Animation length is 1.2s. Let's give it 1.5s total before starting countdown.
+        setTimeout(() => {
+            // Hide hologram after a while or keep it? 
+            // The prompt says "After clicking... reproduce action". 
+            // Usually game start would clear these overlays.
+            // Let's fade out hologram before callback?
+            if (hologram) {
+                hologram.style.transition = 'opacity 0.5s ease-out';
+                hologram.style.opacity = '0';
+                setTimeout(() => {
+                    hologram.classList.remove('hologram-active');
+                    hologram.style.opacity = ''; // reset inline style
+                }, 500);
+            }
+
+            if (onComplete) {
+                onComplete();
+            }
+        }, 2000); // 2 seconds total for the intro sequence
     }
 }

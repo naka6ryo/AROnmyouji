@@ -576,9 +576,7 @@
         <div id="loadingScreen"
             class="screen active absolute inset-0 z-[60] flex flex-col items-center justify-center bg-background-light dark:bg-background-dark text-black dark:text-white font-mono overflow-hidden transition-colors duration-500">
             <!-- Background elements -->
-            <div class="fixed inset-0 pointer-events-none opacity-20 z-50">
-                <div class="scanline-user"></div>
-            </div>
+            <!-- Background elements (Moved to global) -->
 
             <!-- Top Left Info -->
             <div class="fixed top-8 left-8 flex flex-col gap-1 z-10">
@@ -708,7 +706,7 @@
             class="screen absolute inset-0 z-50 bg-black flex items-center justify-center overflow-hidden">
             <!-- Container for TV Effect -->
             <div id="splashContent" class="w-full h-full relative opacity-0">
-                <img src="assets/picture/Title.jpg" class="image-width-based" alt="Title Screen">
+                <img src="assets/picture/Title.jpg" class="w-full h-full object-cover" alt="Title Screen">
                 <!-- Hitbox for Play Button (IP/LIAYI logo at bottom left) -->
                 <button id="startButton"
                     class="absolute bottom-[4%] left-[4%] w-[35%] max-w-[250px] h-[10%] max-h-[100px] bg-transparent z-10 cursor-pointer"
@@ -719,12 +717,7 @@
             <!-- Global Overlay Effects (High Z-Index) moved inside splash or global? 
                  User said "Image... frontmost... video effects on top" -->
             <!-- We can reuse the .scanline-user style but as a full overlay here -->
-            <div class="absolute inset-0 z-[60] pointer-events-none opacity-30 mix-blend-overlay">
-                <div class="scanline-user"></div>
-            </div>
-            <div
-                class="absolute inset-0 z-[60] pointer-events-none opacity-10 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0IiBoZWlnaHQ9IjQiPgo8cmVjdCB3aWR0aD0iNCIgaGVpZ2h0PSI0IiBmaWxsPSIjZmZmIi8+CjxyZWN0IHdpZHRoPSI0IiBoZWlnaHQ9IjIiIGZpbGw9IiMwMDAiLz4KPC9zdmc+')]">
-            </div>
+            <!-- Global Overlay Effects handled globally now -->
         </div>
 
         <!-- Permission Screen (Updated) -->
@@ -1191,16 +1184,10 @@
         <!-- Gameplay Screen (Updated with User's HUD) -->
         <div id="gameplayScreen" class="screen hidden w-full h-full absolute inset-0 z-40">
             <!-- Game Effects Overlay (z-50 in user's doc, but inside gameplayScreen) -->
+            <!-- Game Effects Overlay (z-50 in user's doc, but inside gameplayScreen) -->
             <div class="screen-effects absolute inset-0 pointer-events-none z-50">
-                <div class="scanlines absolute inset-0 opacity-50"></div>
-                <div class="grid-overlay absolute inset-0"></div>
-                <div class="absolute inset-0 opacity-[0.08]"
-                    style="background-image: url('data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noiseFilter%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.85%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noiseFilter)%22/%3E%3C/svg%3E');">
-                </div>
-                <div class="random-glitch-lines"></div>
                 <div class="horror-flash"></div>
-                <!-- Vignette -->
-                <div class="absolute inset-0 bg-radial-gradient from-transparent to-black/40"></div>
+                <!-- Global effects are now in #global-tv-effects -->
                 <!-- Damage Vignette (Mapped to ID) -->
                 <div id="damage-vignette"
                     class="absolute inset-0 bg-radial-gradient from-transparent to-red-900/60 opacity-0 pointer-events-none transition-opacity duration-100">
@@ -1449,6 +1436,17 @@
             <button id="toggleDebugButtonResult" class="mt-8 text-xs text-gray-600">DEBUG</button>
         </div>
 
+    </div>
+
+    <!-- Global TV Effects (Applied to all screens) -->
+    <div id="global-tv-effects" class="fixed inset-0 pointer-events-none z-[80]">
+        <div class="scanlines absolute inset-0 opacity-50"></div>
+        <div class="grid-overlay absolute inset-0 opacity-50"></div>
+        <div class="absolute inset-0 opacity-[0.08]"
+            style="background-image: url('data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noiseFilter%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.85%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noiseFilter)%22/%3E%3C/svg%3E');">
+        </div>
+        <div class="random-glitch-lines"></div>
+        <div class="absolute inset-0 bg-radial-gradient from-transparent to-black/40"></div>
     </div>
 
     <!-- Debug Overlay -->

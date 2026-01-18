@@ -43,6 +43,11 @@ export class AppState {
             // Tailwind の `hidden` ユーティリティが優先される場合があるため
             // 明示的に隠すクラスを付与して確実に非表示にする
             this.screens[this.currentState].classList.add('hidden');
+            // 追加: inline の display / pointerEvents が残っていると表示が継続するためクリアする
+            try {
+                this.screens[this.currentState].style.display = 'none';
+                this.screens[this.currentState].style.pointerEvents = 'none';
+            } catch (e) { }
         }
         
         // 新しい画面を表示
@@ -51,6 +56,11 @@ export class AppState {
             // もし `hidden` が付与されている場合はまず外す
             this.screens[newState].classList.remove('hidden');
             this.screens[newState].classList.add('active');
+            // 追加: 画面を表示する際は inline display をクリアし pointerEvents を許可
+            try {
+                this.screens[newState].style.display = '';
+                this.screens[newState].style.pointerEvents = '';
+            } catch (e) { }
         }
         
         // コールバック

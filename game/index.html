@@ -635,8 +635,8 @@
         }
 
         .hologram-idle {
-            opacity: 1;
-            animation: hologram-idle-pulse 2s ease-in-out infinite;
+            opacity: 0.35;
+            animation: hologram-idle-pulse 4s ease-in-out infinite;
         }
 
         .hologram-out {
@@ -652,7 +652,7 @@
             }
 
             100% {
-                opacity: 1;
+                opacity: 0.35;
                 transform: translate(-50%, -50%) scale(1) perspective(500px) rotateX(0deg);
                 filter: blur(0px);
                 letter-spacing: 0.3em;
@@ -663,41 +663,30 @@
 
             0%,
             100% {
+                opacity: 0.35;
                 transform: translate(-50%, -50%) scale(1);
                 filter: drop-shadow(0 0 5px rgba(255, 0, 0, 0.5));
-                opacity: 0.9;
-                -webkit-text-stroke: 2px rgba(255, 20, 20, 0.9);
-            }
-
-            5% {
-                /* Glitch Twitch */
-                transform: translate(-51%, -50%) scale(1.02);
-                -webkit-text-stroke: 2px rgba(200, 255, 255, 0.8);
-                opacity: 1;
-            }
-
-            10% {
-                transform: translate(-50%, -50%) scale(1);
                 -webkit-text-stroke: 2px rgba(255, 20, 20, 0.9);
             }
 
             50% {
-                transform: translate(-50%, -50%) scale(1.05);
-                filter: drop-shadow(0 0 15px rgba(255, 0, 0, 0.8));
-                opacity: 1;
+                opacity: 0.15;
+                transform: translate(-50%, -50%) scale(1.02);
+                filter: drop-shadow(0 0 2px rgba(255, 0, 0, 0.3));
+                -webkit-text-stroke: 2px rgba(255, 20, 20, 0.6);
             }
         }
 
         @keyframes hologram-exit {
             0% {
-                opacity: 1;
+                opacity: 0.35;
                 transform: translate(-50%, -50%) scale(1);
                 filter: blur(0px);
             }
 
             100% {
                 opacity: 0;
-                transform: translate(-50%, -50%) scale(0.8);
+                transform: translate(-50%, -50%) scale(0.9);
                 filter: blur(20px);
                 letter-spacing: 0em;
             }

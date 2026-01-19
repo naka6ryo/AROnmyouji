@@ -286,9 +286,9 @@ export class UIManager {
 
         // Top center HUD (Elapsed / Defeated)
         if (this.elements.elapsedTimeDisplay) {
-            const elapsedSec = (stats.gameTime || 0) / 1000;
-            const mm = String(Math.floor(elapsedSec / 60)).padStart(2, '0');
-            const ss = String(Math.floor(elapsedSec % 60)).padStart(2, '0');
+            const remainingSec = Math.max(0, stats.remainingTime);
+            const mm = String(Math.floor(remainingSec / 60)).padStart(2, '0');
+            const ss = String(Math.floor(remainingSec % 60)).padStart(2, '0');
             this.elements.elapsedTimeDisplay.textContent = `${mm}:${ss}`;
         }
         if (this.elements.defeatedDisplay) {
@@ -726,7 +726,7 @@ export class UIManager {
             // Create a temporary CRT-side image so CRT animation affects it
             let crtImg = null;
             try {
-                    if (crtDisplay) {
+                if (crtDisplay) {
                     crtImg = document.getElementById('title02CrtImg');
                     if (!crtImg) {
                         crtImg = document.createElement('img');
@@ -749,12 +749,12 @@ export class UIManager {
                     // Ensure it's fully visible so CRT turn-on affects its brightness/contrast
                     crtImg.style.opacity = '1';
                     crtImg.style.filter = '';
-                        // Prepare animation class so it receives the CRT stretch/brightness animation
-                        try {
-                            crtImg.classList.remove('crt-img-animated');
-                            void crtImg.offsetWidth;
-                            crtImg.classList.add('crt-img-animated');
-                        } catch (e) { }
+                    // Prepare animation class so it receives the CRT stretch/brightness animation
+                    try {
+                        crtImg.classList.remove('crt-img-animated');
+                        void crtImg.offsetWidth;
+                        crtImg.classList.add('crt-img-animated');
+                    } catch (e) { }
                 }
             } catch (e) {
                 console.warn('failed to insert crt-side title img', e);
@@ -951,12 +951,12 @@ export class UIManager {
         }, revealDelayMs);
 
         // Store timer so hideSplashScreen can cancel pending reveal
-        try { if (splashEl) splashEl._revealTimer = revealTimer; } catch (e) {}
+        try { if (splashEl) splashEl._revealTimer = revealTimer; } catch (e) { }
 
         this.playBootSequence(() => {
             // If revealTimer still pending, clear it and ensure image is shown
-            try { if (revealTimer) { clearTimeout(revealTimer); revealTimer = null; } } catch (e) {}
-            try { if (splashEl && splashEl._revealTimer) { clearTimeout(splashEl._revealTimer); delete splashEl._revealTimer; } } catch (e) {}
+            try { if (revealTimer) { clearTimeout(revealTimer); revealTimer = null; } } catch (e) { }
+            try { if (splashEl && splashEl._revealTimer) { clearTimeout(splashEl._revealTimer); delete splashEl._revealTimer; } } catch (e) { }
 
             try {
                 const imgToReveal = existingImg || uiImg;
@@ -976,7 +976,7 @@ export class UIManager {
     hideSplashScreen() {
         const splashEl = document.getElementById('splashScreen');
         // Cancel any pending reveal timer
-        try { if (splashEl && splashEl._revealTimer) { clearTimeout(splashEl._revealTimer); delete splashEl._revealTimer; } } catch (e) {}
+        try { if (splashEl && splashEl._revealTimer) { clearTimeout(splashEl._revealTimer); delete splashEl._revealTimer; } } catch (e) { }
         const uiImg = document.getElementById('splashUiImg');
         // Remove any UI-side splash image created earlier
         try {
@@ -997,7 +997,7 @@ export class UIManager {
             const classSelectors = ['title-02-bg', 'image-width-based', 'crt-img-animated'];
             classSelectors.forEach(cls => {
                 const nodes = Array.from(document.getElementsByClassName(cls));
-                nodes.forEach(n => { try { if (n && n.parentElement) n.parentElement.removeChild(n); } catch (e) {} });
+                nodes.forEach(n => { try { if (n && n.parentElement) n.parentElement.removeChild(n); } catch (e) { } });
             });
         } catch (e) { }
 
@@ -1026,7 +1026,7 @@ export class UIManager {
         if (splashEl) {
             splashEl.classList.remove('active');
             splashEl.classList.add('hidden');
-            try { splashEl.style.display = 'none'; } catch (e) {}
+            try { splashEl.style.display = 'none'; } catch (e) { }
             // restore if reparented
             try {
                 if (splashEl._origParent) {
@@ -1168,7 +1168,7 @@ export class UIManager {
         // Remove overlay after animation finishes (slightly after keyframe)
         if (crtLineEl) {
             setTimeout(() => {
-                try { if (crtLineEl && crtLineEl.parentElement) crtLineEl.parentElement.removeChild(crtLineEl); } catch (e) {}
+                try { if (crtLineEl && crtLineEl.parentElement) crtLineEl.parentElement.removeChild(crtLineEl); } catch (e) { }
             }, 1400);
         }
 

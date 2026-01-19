@@ -77,8 +77,8 @@ class AROnmyoujiGame {
             if (splashEl) {
                 splashEl.classList.remove('active');
                 splashEl.classList.add('hidden');
-                try { splashEl.style.display = 'none'; } catch (e) {}
-                try { splashEl.style.pointerEvents = 'none'; } catch (e) {}
+                try { splashEl.style.display = 'none'; } catch (e) { }
+                try { splashEl.style.pointerEvents = 'none'; } catch (e) { }
             }
 
             // 権限画面に遷移する場合は display を確実に設定しておく
@@ -87,8 +87,8 @@ class AROnmyoujiGame {
                 if (perm) {
                     perm.classList.remove('hidden');
                     perm.classList.add('active');
-                    try { perm.style.display = 'flex'; } catch (e) {}
-                    try { perm.style.pointerEvents = 'auto'; } catch (e) {}
+                    try { perm.style.display = 'flex'; } catch (e) { }
+                    try { perm.style.pointerEvents = 'auto'; } catch (e) { }
                 }
             }
         } catch (e) {
@@ -556,11 +556,11 @@ class AROnmyoujiGame {
             } catch (e) { console.warn('renderer recreate failed', e); }
 
             // Clear in-memory enemies and indicators
-            try { if (this.gameWorld && this.gameWorld.enemyManager) this.gameWorld.enemyManager.reset(); } catch (e) {}
-            try { this.uiManager.clearEnemyIndicators(); } catch (e) {}
+            try { if (this.gameWorld && this.gameWorld.enemyManager) this.gameWorld.enemyManager.reset(); } catch (e) { }
+            try { this.uiManager.clearEnemyIndicators(); } catch (e) { }
 
             // Hide gameplay HUD overlays if present
-            try { this.uiManager.toggleSceneStartButton(false); } catch (e) {}
+            try { this.uiManager.toggleSceneStartButton(false); } catch (e) { }
         } catch (e) {
             console.warn('onReturnToTitle cleanup error', e);
         }
@@ -582,20 +582,24 @@ class AROnmyoujiGame {
         if (!this.isRunning) return;
 
         const now = performance.now();
-        const deltaTime = now - this.lastUpdateTime;
+        // Calculate actual delta time in ms
+        const actualDelta = now - this.lastUpdateTime;
+        this.lastUpdateTime = now;
 
-        if (deltaTime >= this.FIXED_DELTA_TIME) {
-            this.lastUpdateTime = now;
+        // Cap delta to prevent massive jumps (e.g., max 100ms = 10fps min)
+        // This prevents "spiral of death" or physics explosions on resume.
+        const safeDelta = Math.min(actualDelta, 100);
 
-            this.gameWorld.update(this.FIXED_DELTA_TIME);
-            const viewDir = this.renderer.getViewDirection();
-            this.combatSystem.update(this.FIXED_DELTA_TIME, viewDir);
+        this.gameWorld.update(safeDelta);
+        const viewDir = this.renderer.getViewDirection();
+        this.combatSystem.update(safeDelta, viewDir);
 
-            this.updateHUD(viewDir);
-            this.renderer.updateEnemies(this.gameWorld.getEnemies());
-        }
+        this.updateHUD(viewDir);
+        this.renderer.updateEnemies(this.gameWorld.getEnemies());
 
-        this.renderer.render(this.FIXED_DELTA_TIME, this.gameWorld.getEnemies());
+        // Renderer expects seconds usually? No, passed FIXED_DELTA_TIME which is ms (16.66).
+        // Let's verify usage in Renderer.render
+        this.renderer.render(safeDelta, this.gameWorld.getEnemies());
         requestAnimationFrame(() => this.gameLoop());
     }
 

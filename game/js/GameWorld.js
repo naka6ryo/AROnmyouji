@@ -20,7 +20,7 @@ export class GameWorld {
 
         // ゲーム時間
         this.gameTime = 0;
-        this.maxGameTime = 120000; // 2分
+        this.maxGameTime = 30000; // 30秒
 
         // コールバック
         this.onEnemySpawned = null; // via EnemyManager

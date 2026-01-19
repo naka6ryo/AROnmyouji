@@ -38,14 +38,31 @@ export class AppState {
         console.log(`[AppState] 状態遷移: ${this.currentState} -> ${newState}`);
         
         // 現在の画面を非表示
-        if (this.screens[this.currentState]) {
-            this.screens[this.currentState].classList.remove('active');
+        const prevEl = this.screens[this.currentState];
+        if (prevEl) {
+            try { prevEl.classList.remove('active'); } catch (e) {}
+            try { prevEl.classList.add('hidden'); } catch (e) {}
+            try { prevEl.style.display = 'none'; } catch (e) {}
+            try { prevEl.style.pointerEvents = 'none'; } catch (e) {}
+            try { prevEl.style.opacity = '0'; } catch (e) {}
         }
         
         // 新しい画面を表示
         this.currentState = newState;
-        if (this.screens[newState]) {
-            this.screens[newState].classList.add('active');
+        const newEl = this.screens[newState];
+        if (newEl) {
+            try { newEl.classList.remove('hidden'); } catch (e) {}
+            try { newEl.classList.add('active'); } catch (e) {}
+            // 権限画面などは flex 表示を期待しているので明示的に設定
+            try {
+                if (newState === this.states.S1_PERMISSION || newState === this.states.S2_BLE_CONNECT || newState === this.states.S3_CALIBRATE) {
+                    newEl.style.display = 'flex';
+                } else {
+                    newEl.style.display = '';
+                }
+                newEl.style.pointerEvents = 'auto';
+                newEl.style.opacity = '1';
+            } catch (e) {}
         }
         
         // コールバック

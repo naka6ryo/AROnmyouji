@@ -1,121 +1,2167 @@
 <!DOCTYPE html>
 <html lang="ja">
+
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AR陰陽師 - MVP</title>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>Zanbarai Mobile AR HUD</title>
+
+    <!-- Existing Styles -->
     <link rel="stylesheet" href="css/style.css">
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com" rel="preconnect" />
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&amp;family=Orbitron:wght@400;700;900&amp;family=Shippori+Mincho:wght@400;700;800&amp;display=swap"
+        rel="stylesheet" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;700&amp;family=Syncopate:wght@400;700&amp;display=swap"
+        rel="stylesheet" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+        rel="stylesheet" />
+
+    <!-- Tailwind -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries,typography"></script>
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        primary: "#FF0000", // The vibrant red
+                        "ink-black": "#0d0d0d",
+                        "tech-gray": "#525252",
+                        "light-gray": "#e5e5e5",
+                        "meter-bg": "#f3f4f6",
+                        "background-light": "#FFFFFF",
+                        "background-dark": "#0A0A0A",
+                    },
+                    backgroundImage: {
+                        'radial-gradient': 'radial-gradient(var(--tw-gradient-stops))',
+                        'dot-grid': 'radial-gradient(#000000 1.5px, transparent 1.5px)',
+                    },
+                    fontFamily: {
+                        display: ["'Syncopate'", "'Orbitron'", "sans-serif"], /* Updated to prioritize Syncopate for loading screen / design match */
+                        japanese: ["'Shippori Mincho'", "serif"],
+                        sans: ["'Noto Sans JP'", "sans-serif"],
+                        mono: ["'JetBrains Mono'", "'ui-monospace'", "'SFMono-Regular'", "'Menlo'", "'Monaco'", "'Consolas'", "monospace"],
+                    },
+                    borderRadius: {
+                        DEFAULT: "2px",
+                    },
+                    animation: {
+                        'spin-slow': 'spin 12s linear infinite',
+                        'spin-slower': 'spin 20s linear infinite',
+                        'spin-reverse-slow': 'spin 15s linear infinite reverse',
+                        'pulse-fast': 'pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'glitch': 'glitch 2s infinite',
+                        'scanline': 'scanline 8s linear infinite',
+                    },
+                    keyframes: {
+                        glitch: {
+                            '0%': { transform: 'translate(0)' },
+                            '20%': { transform: 'translate(-2px, 2px)' },
+                            '40%': { transform: 'translate(-2px, -2px)' },
+                            '60%': { transform: 'translate(2px, 2px)' },
+                            '80%': { transform: 'translate(2px, -2px)' },
+                            '100%': { transform: 'translate(0)' },
+                        },
+                        scanline: {
+                            '0%': { transform: 'translateY(-100%)' },
+                            '100%': { transform: 'translateY(100%)' }
+                        }
+                    }
+                },
+            },
+        };
+    </script>
+    <style>
+        /* User Design Loading Styles */
+        @keyframes glitch-user {
+            0% {
+                transform: translate(0);
+            }
+
+            20% {
+                transform: translate(-2px, 2px);
+            }
+
+            40% {
+                transform: translate(-2px, -2px);
+            }
+
+            60% {
+                transform: translate(2px, 2px);
+            }
+
+            80% {
+                transform: translate(2px, -2px);
+            }
+
+            100% {
+                transform: translate(0);
+            }
+        }
+
+        .glitch-text {
+            animation: glitch-user 0.3s cubic-bezier(.25, .46, .45, .94) both infinite;
+            animation-play-state: paused;
+        }
+
+        .group:hover .glitch-text {
+            animation-play-state: running;
+        }
+
+        @keyframes scanline-user {
+            0% {
+                transform: translateY(-100%);
+            }
+
+            100% {
+                transform: translateY(100%);
+            }
+        }
+
+        .scanline-user {
+            position: absolute;
+            width: 100%;
+            height: 2px;
+            background: rgba(255, 0, 0, 0.1);
+            animation: scanline-user 4s linear infinite;
+        }
+
+        .loader-ring {
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            border-top: 1px solid #FF0000;
+            border-radius: 50%;
+            width: 120px;
+            height: 120px;
+            animation: spin 2s linear infinite;
+        }
+
+        .dark .loader-ring {
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-top: 1px solid #FF0000;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .technical-border {
+            border: 1px solid rgba(0, 0, 0, 0.1);
+        }
+
+        .dark .technical-border {
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        /* Existing Styles continue... */
+        .glitch-text {
+            position: relative;
+        }
+
+        .glitch-text::before,
+        .glitch-text::after {
+            content: attr(data-text);
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        .glitch-text::before {
+            left: 2px;
+            text-shadow: -1px 0 #ff0000;
+            clip: rect(44px, 450px, 56px, 0);
+            animation: glitch-anim 5s infinite linear alternate-reverse;
+        }
+
+        .glitch-text::after {
+            left: -2px;
+            text-shadow: -1px 0 #525252;
+            clip: rect(44px, 450px, 56px, 0);
+            animation: glitch-anim2 5s infinite linear alternate-reverse;
+        }
+
+        @keyframes glitch-anim {
+            0% {
+                clip: rect(32px, 9999px, 12px, 0);
+            }
+
+            20% {
+                clip: rect(12px, 9999px, 5px, 0);
+            }
+
+            40% {
+                clip: rect(11px, 9999px, 86px, 0);
+            }
+
+            60% {
+                clip: rect(2px, 9999px, 14px, 0);
+            }
+
+            80% {
+                clip: rect(43px, 9999px, 78px, 0);
+            }
+
+            100% {
+                clip: rect(56px, 9999px, 98px, 0);
+            }
+        }
+
+        @keyframes glitch-anim2 {
+            0% {
+                clip: rect(65px, 9999px, 43px, 0);
+            }
+
+            100% {
+                clip: rect(12px, 9999px, 5px, 0);
+            }
+        }
+
+        .parallelogram {
+            clip-path: polygon(15% 0, 100% 0, 85% 100%, 0% 100%);
+        }
+
+        .crosshair-line {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.8);
+        }
+
+        .brush-edge {
+            clip-path: polygon(0 0, 100% 5%, 0 10%, 100% 15%, 0 20%, 100% 25%, 0 30%, 100% 35%, 0 40%, 100% 45%, 0 50%, 100% 55%, 0 60%, 100% 65%, 0 70%, 100% 75%, 0 80%, 100% 85%, 0 90%, 100% 95%, 0 100%);
+        }
+
+        /* TV Effects */
+        .scanlines {
+            background: linear-gradient(to bottom,
+                    rgba(255, 255, 255, 0),
+                    rgba(255, 255, 255, 0) 50%,
+                    rgba(0, 0, 0, 0.3) 50%,
+                    rgba(0, 0, 0, 0.3));
+            background-size: 100% 4px;
+            animation: scroll-scanlines 10s linear infinite;
+        }
+
+        .grid-overlay {
+            background-size: 40px 40px;
+            background-image:
+                linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+        }
+
+        /* New Random Grid Noise */
+        .random-glitch-lines {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image:
+                repeating-linear-gradient(90deg, transparent 0, transparent 2px, rgba(255, 255, 255, 0.15) 2px, rgba(255, 255, 255, 0.15) 4px),
+                repeating-linear-gradient(0deg, transparent 0, transparent 2px, rgba(255, 255, 255, 0.15) 2px, rgba(255, 255, 255, 0.15) 4px);
+            background-size: 100% 100%;
+            mix-blend-mode: overlay;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 60;
+            animation: glitch-grid-anim 4s infinite linear alternate-reverse;
+        }
+
+        /* HORROR FX: Breathing & Distortion */
+        .horror-breathing {
+            animation: breathe-uneasy 8s ease-in-out infinite;
+            transform-origin: center;
+        }
+
+        .distortion-glitch {
+            /* The video element itself gets distorted */
+            animation: distort-shock 6s infinite cubic-bezier(0.1, 0.7, 1.0, 0.1);
+        }
+
+        .horror-flash {
+            position: absolute;
+            inset: 0;
+            background: rgba(255, 0, 0, 0.1);
+            mix-blend-mode: overlay;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 55;
+            animation: horror-flash-anim 7s infinite;
+        }
+
+        @keyframes scroll-scanlines {
+            0% {
+                background-position: 0 0;
+            }
+
+            100% {
+                background-position: 0 100px;
+            }
+        }
+
+        @keyframes glitch-grid-anim {
+            0% {
+                opacity: 0;
+                clip-path: inset(0 0 100% 0);
+                transform: translateX(0);
+            }
+
+            5% {
+                opacity: 0.3;
+                clip-path: inset(10% 0 85% 0);
+                transform: translateX(-5px);
+            }
+
+            10% {
+                opacity: 0;
+                clip-path: inset(100% 0 0 0);
+            }
+
+            35% {
+                opacity: 0.2;
+                clip-path: inset(40% 0 45% 0);
+                transform: translateX(5px);
+            }
+
+            36% {
+                opacity: 0;
+            }
+
+            60% {
+                opacity: 0.4;
+                clip-path: inset(70% 0 20% 0);
+                transform: translateX(-2px);
+            }
+
+            61% {
+                opacity: 0;
+            }
+
+            85% {
+                opacity: 0.2;
+                clip-path: inset(20% 0 75% 0);
+                transform: translateX(3px);
+            }
+
+            86% {
+                opacity: 0;
+            }
+
+            100% {
+                opacity: 0;
+                clip-path: inset(0 0 100% 0);
+            }
+        }
+
+        @keyframes breathe-uneasy {
+
+            0%,
+            100% {
+                transform: scale(1);
+                filter: brightness(1) contrast(1);
+            }
+
+            50% {
+                transform: scale(1.04);
+                filter: brightness(0.9) contrast(1.1);
+            }
+        }
+
+        @keyframes distort-shock {
+
+            0%,
+            90% {
+                transform: scale(1) skew(0deg);
+                filter: none;
+                opacity: 0.8;
+            }
+
+            91% {
+                transform: scale(1.02) skew(2deg);
+                filter: url('#turbulence');
+                opacity: 0.9;
+            }
+
+            92% {
+                transform: scale(1) skew(0deg);
+                filter: none;
+                opacity: 0.8;
+            }
+
+            93% {
+                transform: scale(1.05) skew(-5deg);
+                filter: url('#turbulence');
+                opacity: 1;
+            }
+
+            94% {
+                transform: scale(1) skew(0deg);
+                filter: none;
+                opacity: 0.8;
+            }
+
+            98% {
+                transform: scale(1.01) skew(1deg);
+                filter: hue-rotate(90deg);
+                opacity: 0.85;
+            }
+
+            100% {
+                transform: scale(1) skew(0deg);
+                opacity: 0.8;
+            }
+        }
+
+        @keyframes horror-flash-anim {
+
+            0%,
+            89% {
+                opacity: 0;
+            }
+
+            90% {
+                opacity: 0.5;
+                background: red;
+            }
+
+            91% {
+                opacity: 0;
+            }
+
+            92% {
+                opacity: 0.3;
+                background: #00ffff;
+            }
+
+            93% {
+                opacity: 0;
+            }
+        }
+
+        /* TV Turn On Animation */
+        @keyframes tv-turn-on {
+            0% {
+                transform: scale(1, 0.002);
+                filter: brightness(30);
+                opacity: 0;
+            }
+
+            35% {
+                transform: scale(1, 0.002);
+                opacity: 1;
+            }
+
+            50% {
+                transform: scale(1, 0.4);
+                filter: brightness(10);
+            }
+
+            100% {
+                transform: scale(1, 1);
+                filter: brightness(1);
+                opacity: 1;
+            }
+        }
+
+        @keyframes monitor-flicker {
+            0% {
+                opacity: 1;
+                filter: brightness(1);
+            }
+
+            5% {
+                opacity: 0.95;
+                filter: brightness(0.9);
+            }
+
+            10% {
+                opacity: 1;
+                filter: brightness(1);
+            }
+
+            50% {
+                opacity: 1;
+                filter: brightness(1);
+            }
+
+            55% {
+                opacity: 0.98;
+                filter: brightness(1.1);
+            }
+
+            60% {
+                opacity: 1;
+                filter: brightness(1);
+            }
+
+            100% {
+                opacity: 1;
+                filter: brightness(1);
+            }
+        }
+
+        .tv-effect-on {
+            animation:
+                tv-turn-on 0.4s cubic-bezier(0.23, 1, 0.32, 1) forwards,
+                monitor-flicker 4s infinite 0.5s;
+            transform-origin: center;
+        }
+
+        .image-width-based {
+            width: 100%;
+            height: auto;
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+    </style>
+    <style>
+        /* CRT Turn On Animation */
+        .crt-screen-container {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            transform-origin: center;
+        }
+
+        .crt-turn-on-active {
+            animation: crt-turn-on 1.2s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+        }
+
+        /* Apply similar CRT "stretch/brightness" animation to images placed inside the CRT container */
+        .crt-img-animated {
+            transform-origin: center;
+            animation: crt-img-anim 1.2s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+        }
+
+        @keyframes crt-img-anim {
+            0% {
+                transform: scale(0, 0.005);
+                filter: brightness(30) contrast(5);
+                opacity: 0;
+            }
+
+            5% {
+                opacity: 1;
+            }
+
+            15% {
+                transform: scale(1, 0.005);
+                filter: brightness(30) contrast(5);
+                opacity: 1;
+            }
+
+            40% {
+                transform: scale(1, 1);
+                filter: brightness(5) contrast(2);
+                opacity: 1;
+            }
+
+            50% {
+                transform: scale(1, 1);
+                filter: brightness(0.5) contrast(0.8);
+                opacity: 0.7;
+            }
+
+            60% {
+                filter: brightness(2) contrast(1.2);
+                opacity: 1;
+            }
+
+            80% {
+                filter: brightness(1.5) contrast(1.1);
+                opacity: 1;
+            }
+
+            100% {
+                transform: scale(1, 1);
+                filter: brightness(1) contrast(1);
+                opacity: 1;
+            }
+        }
+
+        /* Bright White Line Overlay during expansion */
+        .crt-turn-on-active::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: white;
+            z-index: 200;
+            /* Above everything inside */
+            animation: crt-line-fade 1.2s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+            pointer-events: none;
+        }
+
+        /* Fallback/explicit overlay element for CRT line effect (restores original white-line->stretch visual)
+           Some environments may not render pseudo-element reliably due to stacking contexts; this ensures
+           the effect is present by adding/removing a real DOM element during the boot sequence. */
+        .crt-line-overlay {
+            position: absolute;
+            inset: 0;
+            background: white;
+            z-index: 200;
+            pointer-events: none;
+            animation: crt-line-fade 1.2s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+        }
+
+        @keyframes crt-line-fade {
+
+            0%,
+            30% {
+                opacity: 1;
+            }
+
+            /* Solid white during line phase */
+            50% {
+                opacity: 0;
+            }
+
+            /* Fades out as it expands */
+            100% {
+                opacity: 0;
+            }
+        }
+
+        @keyframes crt-turn-on {
+            0% {
+                transform: scale(0, 0.005);
+                filter: brightness(30) contrast(5);
+                opacity: 0;
+            }
+
+            5% {
+                opacity: 1;
+            }
+
+            15% {
+                transform: scale(1, 0.005);
+                filter: brightness(30) contrast(5);
+                opacity: 1;
+            }
+
+            30% {
+                transform: scale(1, 0.005);
+                filter: brightness(20) contrast(3);
+                opacity: 1;
+            }
+
+            40% {
+                transform: scale(1, 1);
+                filter: brightness(5) contrast(2);
+                opacity: 1;
+            }
+
+            50% {
+                transform: scale(1, 1);
+                filter: brightness(0.5) contrast(0.8);
+                opacity: 0.7;
+            }
+
+            60% {
+                filter: brightness(2) contrast(1.2);
+                opacity: 1;
+            }
+
+            70% {
+                filter: brightness(0.7) contrast(0.9);
+                opacity: 0.8;
+            }
+
+            80% {
+                filter: brightness(1.5) contrast(1.1);
+                opacity: 1;
+            }
+
+            90% {
+                filter: brightness(0.9) contrast(1);
+                opacity: 0.95;
+            }
+
+            100% {
+                transform: scale(1, 1);
+                filter: brightness(1) contrast(1);
+                opacity: 1;
+                background-color: transparent;
+            }
+        }
+
+        /* Hologram Text - ENHANCED */
+        .hologram-fuda-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            writing-mode: vertical-rl;
+            font-family: 'Shippori Mincho', serif;
+            font-weight: 900;
+            font-size: 5rem;
+            color: transparent;
+            /* Enhanced wireframe look */
+            -webkit-text-stroke: 2px rgba(255, 20, 20, 0.9);
+            text-shadow: 0 0 10px rgba(255, 0, 0, 0.5), 0 0 20px rgba(255, 0, 0, 0.3);
+            letter-spacing: 0.3em;
+            white-space: nowrap;
+            mix-blend-mode: screen;
+            pointer-events: none;
+            z-index: 100;
+            user-select: none;
+            opacity: 0;
+            /* Initially Hidden */
+        }
+
+        .hologram-in {
+            animation: hologram-enter 0.5s cubic-bezier(0.19, 1, 0.22, 1) forwards;
+        }
+
+        .hologram-idle {
+            opacity: 0.35;
+            animation: hologram-idle-pulse 4s ease-in-out infinite;
+        }
+
+        .hologram-out {
+            animation: hologram-exit 0.5s ease-in forwards;
+        }
+
+        @keyframes hologram-enter {
+            0% {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(2) perspective(500px) rotateX(20deg);
+                filter: blur(10px);
+                letter-spacing: 1em;
+            }
+
+            100% {
+                opacity: 0.35;
+                transform: translate(-50%, -50%) scale(1) perspective(500px) rotateX(0deg);
+                filter: blur(0px);
+                letter-spacing: 0.3em;
+            }
+        }
+
+        @keyframes hologram-idle-pulse {
+
+            0%,
+            100% {
+                opacity: 0.35;
+                transform: translate(-50%, -50%) scale(1);
+                filter: drop-shadow(0 0 5px rgba(255, 0, 0, 0.5));
+                -webkit-text-stroke: 2px rgba(255, 20, 20, 0.9);
+            }
+
+            50% {
+                opacity: 0.15;
+                transform: translate(-50%, -50%) scale(1.02);
+                filter: drop-shadow(0 0 2px rgba(255, 0, 0, 0.3));
+                -webkit-text-stroke: 2px rgba(255, 20, 20, 0.6);
+            }
+        }
+
+        @keyframes hologram-exit {
+            0% {
+                opacity: 0.35;
+                transform: translate(-50%, -50%) scale(1);
+                filter: blur(0px);
+            }
+
+            100% {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(0.9);
+                filter: blur(20px);
+                letter-spacing: 0em;
+            }
+        }
+    </style>
+
 </head>
-<body>
-    <!-- ビデオ背景（カメラ映像） -->
-    <video id="cameraVideo" autoplay playsinline></video>
-    
-    <!-- 3Dキャンバス -->
-    <canvas id="gameCanvas"></canvas>
-    
-    <!-- UI コンテナ -->
-    <div id="uiContainer">
-        <!-- Splash画面 (S0) -->
-        <div id="splashScreen" class="screen active">
-            <h1>AR陰陽師</h1>
-            <p>疑似AR グローブコントローラ対応</p>
-            <button id="startButton" class="btn-primary">開始</button>
-        </div>
 
-        <!-- Permission画面 (S1) -->
-        <div id="permissionScreen" class="screen">
-            <h2>権限の確認</h2>
-            <div id="permissionStatus">
-                <p id="cameraStatus">📷 カメラ: 未確認</p>
-                <p id="motionStatus">📱 モーション: 未確認</p>
+<body class="bg-gray-900 h-screen w-full overflow-hidden relative font-sans selection:bg-primary selection:text-white">
+    <!-- SVG Filter for Distortion -->
+    <svg style="position: absolute; width: 0; height: 0; overflow: hidden;" aria-hidden="true">
+        <defs>
+            <filter id="turbulence">
+                <feTurbulence type="fractalNoise" baseFrequency="0.01 0.05" numOctaves="2" seed="2">
+                    <animate attributeName="baseFrequency" values="0.01 0.05;0.05 0.1;0.01 0.05" dur="10s"
+                        repeatCount="indefinite" />
+                </feTurbulence>
+                <feDisplacementMap in="SourceGraphic" scale="30" />
+            </filter>
+        </defs>
+    </svg>
+
+    <!-- Global Background: Video & Horror Effects -->
+
+    <!-- PRE-GAME SCREENS (Moved outside CRT Wrapper to be visible before 'Turn On') -->
+
+    <!-- Loading Screen (New) -->
+    <div id="loadingScreen"
+        class="screen active absolute inset-0 z-[60] flex flex-col items-center justify-center bg-background-light dark:bg-background-dark text-black dark:text-white font-mono overflow-hidden transition-colors duration-500">
+        <!-- Background elements -->
+        <!-- Background elements (Moved to global) -->
+
+        <!-- Top Left Info -->
+        <div class="fixed top-8 left-8 flex flex-col gap-1 z-10">
+            <div class="flex items-center gap-2">
+                <div class="w-3 h-3 bg-primary rotate-45"></div>
+                <span class="text-[10px] tracking-[0.2em] font-display font-bold">ZANBARAI</span>
             </div>
-            <button id="requestPermissionButton" class="btn-primary">権限を許可</button>
-            <p id="permissionError" class="error-message"></p>
+            <div class="h-px w-24 bg-black/10 dark:bg-white/10"></div>
+            <span class="text-[8px] text-black/40 dark:text-white/40">VER. 2.0.4 // AR_MODULE</span>
         </div>
 
-        <!-- BLE接続画面 (S2) -->
-        <div id="bleConnectScreen" class="screen">
-            <h2>コントローラ接続</h2>
-            <p>グローブ型コントローラをBLEで接続します</p>
-            <button id="connectBleButton" class="btn-primary">BLE接続</button>
-            <p id="bleStatus">未接続</p>
-            <p id="bleError" class="error-message"></p>
-        </div>
-
-        <!-- キャリブレーション画面 (S3) -->
-        <div id="calibrateScreen" class="screen">
-            <h2>キャリブレーション</h2>
-            <p>端末を正面に向け、グローブも正面へ構えてください</p>
-            <div id="calibrationData">
-                <p>Pitch: <span id="calibPitch">--</span>°</p>
-                <p>Yaw: <span id="calibYaw">--</span>°</p>
-                <p>Roll: <span id="calibRoll">--</span>°</p>
+        <!-- Top Right Info -->
+        <div class="fixed top-8 right-8 text-right flex flex-col items-end gap-1 z-10">
+            <span class="text-[10px] tracking-[0.3em] font-display text-black/60 dark:text-white/60">SYSTEM</span>
+            <div class="flex items-center gap-3">
+                <span class="text-[10px] text-primary animate-pulse font-bold tracking-widest">ONLINE</span>
+                <div class="w-1 h-6 bg-black/10 dark:bg-white/10"></div>
+                <div class="flex flex-col text-[8px] text-black/40 dark:text-white/40">
+                    <span>COORD: 35.6895° N</span>
+                    <span>139.6917° E</span>
+                </div>
             </div>
-            <button id="confirmCalibrationButton" class="btn-primary">確定</button>
         </div>
 
-        <!-- ゲームプレイ画面 (S4) -->
-        <div id="gameplayScreen" class="screen">
-            <!-- HUD -->
-            <div id="hud">
-                <div id="hudTop">
-                    <div id="hudHP">HP: <span id="playerHP">5</span></div>
-                    <div id="hudKills">撃破数: <span id="killCount">0</span></div>
-                    <div id="hudTimer">残り時間: <span id="timeLeft">120</span>秒</div>
+        <!-- Bottom Left Info -->
+        <div class="fixed bottom-8 left-8 flex items-end gap-4 z-10">
+            <div class="bg-primary text-white text-[12px] font-bold px-4 py-2 skew-x-[-20deg]">
+                <span class="inline-block skew-x-[20deg] tracking-tighter">IP/LIAYI</span>
+            </div>
+            <div class="text-[8px] text-black/40 dark:text-white/40 mb-1">
+                <p>DATA STREAM: ENCRYPTED</p>
+                <p>SPIRIT_LATENCY: 12ms</p>
+            </div>
+        </div>
+
+        <!-- Bottom Right Title (Moved) -->
+        <div class="fixed bottom-8 right-20 text-right z-10 flex flex-col items-end pointer-events-none">
+            <h1 class="font-display text-xl leading-none flex flex-col items-end">
+                <span class="text-primary tracking-widest text-[14px]">ZANBARAI</span>
+                <span class="tracking-tighter font-bold">CHRONICLE</span>
+            </h1>
+        </div>
+
+        <!-- Main Content -->
+        <main class="relative flex flex-col items-center justify-center max-w-lg w-full px-6 z-10">
+            <div class="relative w-full aspect-square flex items-center justify-center mb-12">
+                <div
+                    class="absolute inset-0 rounded-full border-[0.5px] border-black/5 dark:border-white/5 animate-[spin_20s_linear_infinite]">
                 </div>
-                <div id="hudCenter">
-                    <div id="reticle">+</div>
+                <div
+                    class="absolute inset-4 rounded-full border-[1px] border-dashed border-black/10 dark:border-white/10 animate-[spin_30s_linear_infinite_reverse]">
                 </div>
-                <div id="hudBottom">
-                    <div id="hudPowerMode" class="hidden">
-                        強化モード: <span id="powerModeTime">10</span>秒
+                <img alt="Zanbarai Chronicle Graphic"
+                    class="w-full opacity-10 dark:opacity-20 mix-blend-multiply dark:mix-blend-screen absolute grayscale"
+                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuAbg-PdMvEPPj6opfRWtqkyYp6AJvBKYmh5WaXm-CkoSTTcBcD5FPZUe7R7Se2TnET4iu8KC7PbTLGOXrYP91y9j9ovomoW0V2PTujaayAxO_ap60hsyHGFs4G0qnW0PTRzwM62t7edwuVApk7S1Xiv27bKSPYTrFg-vBVZ2Hoy9U4y1Fjj1Z-mB2jqvDJalCOHExWMACE" />
+
+                <div class="relative z-10 flex flex-col items-center">
+                    <div class="relative flex items-center justify-center">
+                        <div class="loader-ring"></div>
+                        <div class="absolute inset-0 flex items-center justify-center">
+                            <div class="w-1 h-1 bg-primary rounded-full animate-ping"></div>
+                        </div>
                     </div>
-                    <div id="bleConnectionIndicator">🔗</div>
+                    <div class="mt-8 text-center space-y-1">
+                        <p
+                            class="text-primary text-[10px] font-bold tracking-[0.4em] glitch-text group-hover:block uppercase">
+                            System: Booting...</p>
+                        <p class="text-black/60 dark:text-white/60 text-[8px] tracking-[0.2em] font-light">
+                            INITIALIZING SPIRIT_SYNC</p>
+                    </div>
                 </div>
             </div>
 
-            <!-- デバッグHUD切替ボタン -->
-            <button id="toggleDebugButton" class="btn-debug">DEBUG</button>
+            <!-- Progress Bar -->
+            <div class="w-full max-w-xs space-y-2">
+                <div class="flex justify-between text-[8px] text-black/40 dark:text-white/40 tracking-widest">
+                    <span>LOADING ASSETS</span>
+                    <span id="loading-percent">0%</span>
+                </div>
+                <div class="w-full h-[2px] bg-black/5 dark:bg-white/5 overflow-hidden">
+                    <div class="h-full bg-primary transition-all duration-300 ease-out" id="progress-bar"
+                        style="width: 0%"></div>
+                </div>
+            </div>
+
+            <button id="loadingStartButton"
+                class="mt-16 group relative py-4 px-12 transition-all duration-300 hover:scale-105 active:scale-95 opacity-0 pointer-events-none">
+                <span
+                    class="absolute inset-0 technical-border opacity-50 group-hover:opacity-100 transition-opacity"></span>
+                <span class="absolute -top-1 -left-1 w-2 h-2 border-t border-l border-primary"></span>
+                <span class="absolute -bottom-1 -right-1 w-2 h-2 border-b border-r border-primary"></span>
+                <span
+                    class="text-[12px] font-display font-bold tracking-[0.5em] text-black dark:text-white group-hover:text-primary transition-colors">
+                    TAP TO START
+                </span>
+            </button>
+        </main>
+
+        <div class="fixed bottom-0 right-0 p-8 z-10">
+            <div class="relative">
+                <svg class="opacity-20 dark:opacity-40" height="120" viewBox="0 0 120 120" width="120">
+                    <circle cx="120" cy="120" fill="none" r="100" stroke="currentColor" stroke-dasharray="2 4">
+                    </circle>
+                    <circle cx="120" cy="120" fill="none" r="80" stroke="currentColor" stroke-width="0.5">
+                    </circle>
+                    <line stroke="currentColor" stroke-width="0.5" x1="120" x2="40" y1="120" y2="40"></line>
+                    <circle cx="40" cy="40" fill="currentColor" r="3"></circle>
+                </svg>
+            </div>
         </div>
 
-        <!-- Result画面 (S5) -->
-        <div id="resultScreen" class="screen">
-            <h2 id="resultTitle">結果</h2>
-            <div id="resultStats">
-                <p>撃破数: <span id="resultKills">0</span></p>
-                <p>経過時間: <span id="resultTime">0</span>秒</p>
+        <button
+            class="fixed bottom-4 right-4 z-[100] p-2 bg-black/5 dark:bg-white/5 rounded-full hover:bg-black/10 dark:hover:bg-white/10 transition-all border border-transparent hover:border-primary/50"
+            onclick="document.documentElement.classList.toggle('dark')">
+            <svg class="w-4 h-4 text-black dark:text-white" fill="none" stroke="currentColor" stroke-width="1.5"
+                viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path
+                    d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z"
+                    stroke-linecap="round" stroke-linejoin="round"></path>
+            </svg>
+        </button>
+    </div>
+
+    <!-- Splash Screen (Existing) -->
+    <!-- Splash Screen (Existing) -->
+    <!-- Splash Screen (Existing) -->
+    <div id="splashScreen" class="screen absolute inset-0 z-50 bg-black overflow-hidden">
+        <!-- Container for TV Effect -->
+        <div id="splashContent" class="w-full h-full relative opacity-0">
+            <img src="assets/picture/Title.jpg" class="w-full h-full object-cover" alt="Title Screen">
+            <!-- Hitbox for Play Button (IP/LIAYI logo at bottom left) -->
+            <button id="startButton"
+                class="absolute bottom-[4%] left-[4%] w-[35%] max-w-[250px] h-[10%] max-h-[100px] bg-transparent z-10 cursor-pointer"
+                aria-label="Start Game">
+            </button>
+        </div>
+
+        <!-- Global Overlay Effects (High Z-Index) moved inside splash or global? 
+                 User said "Image... frontmost... video effects on top" -->
+        <!-- We can reuse the .scanline-user style but as a full overlay here -->
+        <!-- Global Overlay Effects handled globally now -->
+    </div>
+
+    <!-- Permission Screen (Updated) -->
+    <div id="permissionScreen"
+        class="screen absolute inset-0 z-50 flex flex-col items-center justify-center bg-white text-ink-black font-sans hidden">
+
+        <div class="absolute inset-0 z-0 pointer-events-none opacity-[0.08]">
+            <div class="w-full h-full bg-dot-grid bg-[length:24px_24px]"></div>
+        </div>
+
+        <!-- Header elements from design -->
+        <div class="absolute top-0 left-0 p-8 z-30">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-ink-black flex items-center justify-center">
+                    <span class="material-symbols-outlined text-white">token</span>
+                </div>
+                <div class="flex flex-col">
+                    <span class="font-display text-xs tracking-widest font-bold">ZANBARAI</span>
+                    <span class="font-japanese text-[10px] tracking-widest opacity-60">陰陽師クロニクル</span>
+                </div>
             </div>
-            <button id="retryButton" class="btn-primary">リトライ</button>
-            <button id="reconnectButton" class="btn-secondary">再接続</button>
-            <button id="recalibrateButton" class="btn-secondary">再キャリブレーション</button>
+        </div>
+
+        <div class="absolute top-0 right-0 p-8 z-30 text-right hidden md:block">
+            <div class="flex items-center justify-end gap-2 mb-1">
+                <div class="w-2 h-2 bg-primary rounded-full animate-pulse"></div>
+                <span class="font-display text-sm font-bold tracking-[0.2em] text-primary">SYSTEM:
+                    AWAITING_AUTH</span>
+            </div>
+            <div class="text-[10px] font-mono text-tech-gray">SYS.VER.2.4.0</div>
+        </div>
+
+        <!-- Deco lines -->
+        <div class="absolute top-1/2 left-4 w-px h-32 bg-ink-black opacity-20 hidden md:block"></div>
+        <div class="absolute top-1/2 right-4 w-px h-32 bg-ink-black opacity-20 hidden md:block"></div>
+        <div class="absolute bottom-8 left-8 flex gap-2 z-20">
+            <div class="w-1 h-1 bg-primary rounded-full"></div>
+            <div class="w-1 h-1 bg-tech-gray rounded-full"></div>
+            <div class="w-1 h-1 bg-tech-gray rounded-full"></div>
+        </div>
+
+        <main class="relative z-10 w-full flex flex-col items-center justify-center p-6 md:p-12">
+            <div class="mb-6 md:mb-12 relative w-full max-w-lg mx-auto flex justify-center">
+                <div class="absolute top-1/2 left-0 w-full h-px bg-tech-gray opacity-20"></div>
+                <div
+                    class="relative z-10 flex flex-col items-center bg-white px-8 border border-ink-black py-4 text-center">
+                    <h1 class="font-display text-3xl md:text-4xl font-black tracking-tighter text-ink-black uppercase">
+                        Permission <span class="text-primary italic">Check</span>
+                    </h1>
+                    <p class="font-japanese text-sm tracking-[0.5em] mt-1 font-bold text-tech-gray">権限の確認</p>
+                </div>
+            </div>
+
+            <div class="w-full max-w-md relative bg-white border-[3px] border-ink-black p-5 md:p-12 shadow-2xl">
+                <!-- Corner Accents -->
+                <div class="absolute top-0 left-0 w-4 h-4 border-l-4 border-t-4 border-primary -ml-[3px] -mt-[3px]">
+                </div>
+                <div class="absolute top-0 right-0 w-4 h-4 border-r-4 border-t-4 border-primary -mr-[3px] -mt-[3px]">
+                </div>
+                <div class="absolute bottom-0 left-0 w-4 h-4 border-l-4 border-b-4 border-primary -ml-[3px] -mb-[3px]">
+                </div>
+                <div class="absolute bottom-0 right-0 w-4 h-4 border-r-4 border-b-4 border-primary -mr-[3px] -mb-[3px]">
+                </div>
+
+                <!-- Camera Status -->
+                <div class="flex items-center justify-between mb-4 md:mb-8 border-b border-gray-200 pb-4">
+                    <div class="flex items-center gap-4">
+                        <span class="material-symbols-outlined text-3xl text-ink-black">photo_camera</span>
+                        <div class="flex flex-col">
+                            <span class="font-display text-lg font-bold tracking-widest">CAMERA</span>
+                            <span class="font-japanese text-xs text-tech-gray">カメラ</span>
+                        </div>
+                    </div>
+                    <span id="cameraStatus"
+                        class="font-display text-xs md:text-sm text-primary font-bold tracking-wider md:tracking-widest animate-pulse">[
+                        UNVERIFIED ]</span>
+                </div>
+
+                <!-- Motion Status -->
+                <div class="flex items-center justify-between mb-6 md:mb-12 border-b border-gray-200 pb-4">
+                    <div class="flex items-center gap-4">
+                        <span class="material-symbols-outlined text-3xl text-ink-black">sensors</span>
+                        <div class="flex flex-col">
+                            <span class="font-display text-lg font-bold tracking-widest">MOTION</span>
+                            <span class="font-japanese text-xs text-tech-gray">モーション</span>
+                        </div>
+                    </div>
+                    <span id="motionStatus"
+                        class="font-display text-xs md:text-sm text-primary font-bold tracking-wider md:tracking-widest animate-pulse">[
+                        UNVERIFIED ]</span>
+                </div>
+
+                <!-- Button -->
+                <button id="requestPermissionButton" class="w-full h-12 md:h-16 relative group/btn overflow-hidden">
+                    <div
+                        class="absolute inset-0 bg-primary transform -skew-x-[20deg] transition-transform group-hover/btn:scale-[1.02] shadow-lg">
+                    </div>
+                    <div
+                        class="absolute inset-0 bg-white/20 transform -skew-x-[20deg] translate-x-full group-hover/btn:translate-x-[-200%] transition-transform duration-700">
+                    </div>
+                    <div
+                        class="absolute inset-0 flex flex-col items-center justify-center transform -skew-x-[20deg] border border-white/20">
+                        <span
+                            class="font-display font-black text-white text-xl italic tracking-widest transform skew-x-[20deg]">ALLOW
+                            ACCESS</span>
+                        <span
+                            class="font-japanese text-[10px] text-white/80 tracking-widest transform skew-x-[20deg] mt-0.5">権限を許可</span>
+                    </div>
+                </button>
+
+                <div class="absolute bottom-2 right-2 text-[8px] font-mono text-gray-300">SEC_LEVEL_01</div>
+                <p id="permissionError" class="text-red-500 text-xs mt-2 text-center absolute -bottom-6 w-full">
+                </p>
+            </div>
+        </main>
+
+        <div
+            class="absolute bottom-0 left-0 w-full h-12 bg-white border-t border-ink-black flex items-center justify-between px-8 z-20">
+            <div class="flex items-center gap-4">
+                <div class="w-32 h-2 bg-gradient-to-r from-primary to-transparent opacity-50"></div>
+                <span id="permissionDebugLogStatus"
+                    class="font-display text-[10px] text-tech-gray tracking-widest">INITIALIZING
+                    SENSORS...</span>
+            </div>
+            <div class="flex gap-1">
+                <div class="w-1 h-4 bg-ink-black"></div>
+                <div class="w-1 h-4 bg-ink-black opacity-50"></div>
+                <div class="w-1 h-4 bg-ink-black opacity-25"></div>
+            </div>
         </div>
     </div>
 
-    <!-- デバッグオーバーレイ -->
-    <div id="debugOverlay" class="hidden">
-        <h3>デバッグ情報</h3>
+    <!-- BLE Connect Screen (Updated) -->
+    <div id="bleConnectScreen"
+        class="screen absolute inset-0 z-50 flex flex-col items-center justify-center bg-white text-ink-black font-sans hidden">
+
+        <div class="absolute inset-0 z-0 pointer-events-none opacity-[0.08]">
+            <div class="w-full h-full bg-dot-grid bg-[length:24px_24px]"></div>
+        </div>
+
+        <div class="absolute top-0 left-0 p-8 z-30">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-ink-black flex items-center justify-center">
+                    <span class="material-symbols-outlined text-white">token</span>
+                </div>
+                <div class="flex flex-col">
+                    <span class="font-display text-xs tracking-widest font-bold">ZANBARAI</span>
+                    <span class="font-japanese text-[10px] tracking-widest opacity-60">陰陽師クロニクル</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="absolute top-0 right-0 p-8 z-30 text-right hidden md:block">
+            <div class="flex items-center justify-end gap-2 mb-1">
+                <div class="w-2 h-2 bg-primary rounded-full animate-pulse"></div>
+                <span class="font-display text-sm font-bold tracking-[0.2em] text-primary">SYSTEM:
+                    AWAITING_CONN</span>
+            </div>
+            <div class="text-[10px] font-mono text-tech-gray">SYS.VER.2.4.0</div>
+        </div>
+
+        <div class="absolute top-1/2 left-4 w-px h-32 bg-ink-black opacity-20 hidden md:block"></div>
+        <div class="absolute top-1/2 right-4 w-px h-32 bg-ink-black opacity-20 hidden md:block"></div>
+        <div class="absolute bottom-8 left-8 flex gap-2 z-20">
+            <div class="w-1 h-1 bg-primary rounded-full"></div>
+            <div class="w-1 h-1 bg-tech-gray rounded-full"></div>
+            <div class="w-1 h-1 bg-tech-gray rounded-full"></div>
+        </div>
+
+        <main class="relative z-10 w-full flex flex-col items-center justify-center p-6 md:p-12">
+            <div class="mb-6 md:mb-12 relative w-full max-w-lg mx-auto flex justify-center">
+                <div class="absolute top-1/2 left-0 w-full h-px bg-tech-gray opacity-20"></div>
+                <div
+                    class="relative z-10 flex flex-col items-center bg-white px-8 border border-ink-black py-4 text-center">
+                    <h1 class="font-display text-3xl md:text-4xl font-black tracking-tighter text-ink-black uppercase">
+                        CONTROLLER <span class="text-primary italic">CONNECT</span>
+                    </h1>
+                    <p class="font-japanese text-sm tracking-[0.5em] mt-1 font-bold text-tech-gray">コントローラの接続
+                    </p>
+                </div>
+            </div>
+
+            <div class="w-full max-w-md relative bg-white border-[3px] border-ink-black p-5 md:p-12 shadow-2xl">
+                <div class="absolute top-0 left-0 w-4 h-4 border-l-4 border-t-4 border-primary -ml-[3px] -mt-[3px]">
+                </div>
+                <div class="absolute top-0 right-0 w-4 h-4 border-r-4 border-t-4 border-primary -mr-[3px] -mt-[3px]">
+                </div>
+                <div class="absolute bottom-0 left-0 w-4 h-4 border-l-4 border-b-4 border-primary -ml-[3px] -mb-[3px]">
+                </div>
+                <div class="absolute bottom-0 right-0 w-4 h-4 border-r-4 border-b-4 border-primary -mr-[3px] -mb-[3px]">
+                </div>
+
+                <div class="flex items-start md:items-center gap-4 mb-6 md:mb-12 border-b border-gray-200 pb-4 w-full">
+                    <span
+                        class="material-symbols-outlined text-3xl text-ink-black flex-shrink-0 mt-1 md:mt-0">front_hand</span>
+                    <div class="flex flex-col md:flex-row md:items-center justify-between w-full">
+                        <div class="flex flex-col">
+                            <span class="font-display text-lg font-bold tracking-widest break-words">GLOVE
+                                CONTROLLER</span>
+                            <span class="font-japanese text-xs text-tech-gray">グローブコントローラ</span>
+                        </div>
+                        <span id="bleStatus"
+                            class="font-display text-xs md:text-sm text-primary font-bold tracking-widest animate-pulse mt-2 md:mt-0 whitespace-nowrap">[
+                            DISCONNECTED ]</span>
+                    </div>
+                </div>
+
+                <button id="connectBleButton" class="w-full h-12 md:h-16 relative group/btn overflow-hidden">
+                    <div
+                        class="absolute inset-0 bg-primary transform -skew-x-[20deg] transition-transform group-hover/btn:scale-[1.02] shadow-lg">
+                    </div>
+                    <div
+                        class="absolute inset-0 bg-white/20 transform -skew-x-[20deg] translate-x-full group-hover/btn:translate-x-[-200%] transition-transform duration-700">
+                    </div>
+                    <div
+                        class="absolute inset-0 flex flex-col items-center justify-center transform -skew-x-[20deg] border border-white/20">
+                        <span
+                            class="font-display font-black text-white text-xl italic tracking-widest transform skew-x-[20deg]">BLE
+                            CONNECT</span>
+                        <span
+                            class="font-japanese text-[10px] text-white/80 tracking-widest transform skew-x-[20deg] mt-0.5">BLE接続</span>
+                    </div>
+                </button>
+
+                <div class="absolute bottom-2 right-2 text-[8px] font-mono text-gray-300">SEC_LEVEL_01</div>
+                <p id="bleError" class="text-red-500 text-xs mt-2 text-center absolute -bottom-6 w-full"></p>
+            </div>
+        </main>
+
+        <div
+            class="absolute bottom-0 left-0 w-full h-12 bg-white border-t border-ink-black flex items-center justify-between px-8 z-20">
+            <div class="flex items-center gap-4">
+                <div class="w-32 h-2 bg-gradient-to-r from-primary to-transparent opacity-50"></div>
+                <span id="bleFooterStatus" class="font-display text-[10px] text-tech-gray tracking-widest">SCANNING
+                    FOR DEVICES...</span>
+            </div>
+            <div class="flex gap-1">
+                <div class="w-1 h-4 bg-ink-black"></div>
+                <div class="w-1 h-4 bg-ink-black opacity-50"></div>
+                <div class="w-1 h-4 bg-ink-black opacity-25"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Calibrate Screen (Updated) -->
+    <div id="calibrateScreen"
+        class="screen absolute inset-0 z-50 flex flex-col items-center justify-center bg-white text-ink-black font-sans hidden overflow-hidden">
+
+        <div class="absolute inset-0 z-0 pointer-events-none opacity-[0.08]">
+            <div class="w-full h-full bg-dot-grid bg-[length:24px_24px]"></div>
+        </div>
+
+        <div class="absolute top-0 left-0 p-8 z-30">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-ink-black flex items-center justify-center">
+                    <span class="material-symbols-outlined text-white">token</span>
+                </div>
+                <div class="flex flex-col">
+                    <span class="font-display text-xs tracking-widest font-bold">ZANBARAI</span>
+                    <span class="font-japanese text-[10px] tracking-widest opacity-60">陰陽師クロニクル</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="absolute top-0 right-0 p-8 z-30 text-right hidden md:block">
+            <div class="flex items-center justify-end gap-2 mb-1">
+                <div class="w-2 h-2 bg-primary rounded-full animate-pulse"></div>
+                <span class="font-display text-sm font-bold tracking-[0.2em] text-primary">SYSTEM:
+                    CALIBRATING</span>
+            </div>
+            <div class="text-[10px] font-mono text-tech-gray">SYS.VER.2.4.0</div>
+        </div>
+
+        <div class="absolute top-1/2 left-4 w-px h-32 bg-ink-black opacity-20 hidden md:block"></div>
+        <div class="absolute top-1/2 right-4 w-px h-32 bg-ink-black opacity-20 hidden md:block"></div>
+        <div class="absolute bottom-8 left-8 flex gap-2 z-20 hidden md:flex">
+            <div class="w-1 h-1 bg-primary rounded-full"></div>
+            <div class="w-1 h-1 bg-tech-gray rounded-full"></div>
+            <div class="w-1 h-1 bg-tech-gray rounded-full"></div>
+        </div>
+
+        <main class="relative z-10 w-full h-full flex flex-col items-center justify-center p-4">
+            <div class="mb-4 text-center relative w-full max-w-lg">
+                <div class="absolute top-1/2 left-0 w-full h-px bg-tech-gray opacity-20 -z-10"></div>
+                <div class="inline-block bg-white px-6 border border-ink-black py-2 md:py-4">
+                    <h1 class="font-display text-2xl md:text-4xl font-black tracking-tighter text-ink-black uppercase">
+                        CALIBRATION
+                    </h1>
+                    <p class="font-japanese text-xs md:text-sm tracking-[0.5em] mt-1 font-bold text-tech-gray">
+                        キャリブレーション</p>
+                </div>
+            </div>
+
+            <div
+                class="w-full max-w-md relative bg-white border-[3px] border-ink-black p-4 md:p-10 shadow-2xl scale-95 md:scale-100 origin-center">
+                <div class="absolute top-0 left-0 w-4 h-4 border-l-4 border-t-4 border-primary -ml-[3px] -mt-[3px]">
+                </div>
+                <div class="absolute top-0 right-0 w-4 h-4 border-r-4 border-t-4 border-primary -mr-[3px] -mt-[3px]">
+                </div>
+                <div class="absolute bottom-0 left-0 w-4 h-4 border-l-4 border-b-4 border-primary -ml-[3px] -mb-[3px]">
+                </div>
+                <div class="absolute bottom-0 right-0 w-4 h-4 border-r-4 border-b-4 border-primary -mr-[3px] -mb-[3px]">
+                </div>
+
+                <div class="text-center mb-4 md:mb-8">
+                    <p class="font-sans font-bold text-ink-black text-xs md:text-base leading-relaxed tracking-wide">
+                        端末を正面に向け、グローブも<br class="md:hidden">正面へ構えてください
+                    </p>
+                    <p
+                        class="font-display !text-[8px] md:!text-[10px] text-tech-gray mt-1 tracking-widest uppercase opacity-70">
+                        Face the device forward and ready the glove
+                    </p>
+                </div>
+
+                <div class="bg-ink-black/5 p-4 mb-4 md:mb-8 border border-ink-black/10 relative">
+                    <div
+                        class="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-primary to-transparent opacity-30">
+                    </div>
+                    <div class="space-y-3">
+                        <!-- PITCH -->
+                        <div class="flex items-center gap-2 border-b border-dashed border-tech-gray/30 pb-2">
+                            <span
+                                class="font-display font-bold text-tech-gray text-[10px] md:text-sm tracking-[0.2em] w-12">PITCH</span>
+                            <div id="calibPitchBars"
+                                class="flex-1 flex items-center justify-end gap-[1px] md:gap-[2px] h-3">
+                                <!-- 15 bars -->
+                                <div class="w-1 h-2 bg-ink-black/10"></div>
+                                <div class="w-1 h-2 bg-ink-black/10"></div>
+                                <div class="w-1 h-2 bg-ink-black/10"></div>
+                                <div class="w-1 h-2 bg-ink-black/10"></div>
+                                <div class="w-1 h-2 bg-ink-black/10"></div>
+                                <div class="w-1 h-2 bg-ink-black/10"></div>
+                                <div class="w-1 h-2 bg-ink-black/10"></div>
+                                <div class="w-1 h-2 bg-ink-black/10"></div>
+                                <div class="w-1 h-2 bg-ink-black/10"></div>
+                                <div class="w-1 h-2 bg-ink-black/10"></div>
+                                <div class="w-1 h-2 bg-ink-black/10"></div>
+                                <div class="w-1 h-2 bg-ink-black/10"></div>
+                                <div class="w-1 h-2 bg-ink-black/10"></div>
+                                <div class="w-1 h-2 bg-ink-black/10"></div>
+                                <div class="w-1 h-2 bg-ink-black/10"></div>
+                            </div>
+                            <span id="calibPitch"
+                                class="text-primary font-bold tracking-widest font-display text-sm md:text-lg w-16 text-right">0.0°</span>
+                        </div>
+                        <!-- YAW -->
+                        <div class="flex items-center gap-2 border-b border-dashed border-tech-gray/30 pb-2">
+                            <span
+                                class="font-display font-bold text-tech-gray text-[10px] md:text-sm tracking-[0.2em] w-12">YAW</span>
+                            <div id="calibYawBars"
+                                class="flex-1 flex items-center justify-end gap-[1px] md:gap-[2px] h-3">
+                                <!-- 15 bars -->
+                                <div class="w-1 h-2 bg-ink-black/10"></div>
+                                <div class="w-1 h-2 bg-ink-black/10"></div>
+                                <div class="w-1 h-2 bg-ink-black/10"></div>
+                                <div class="w-1 h-2 bg-ink-black/10"></div>
+                                <div class="w-1 h-2 bg-ink-black/10"></div>
+                                <div class="w-1 h-2 bg-ink-black/10"></div>
+                                <div class="w-1 h-2 bg-ink-black/10"></div>
+                                <div class="w-1 h-2 bg-ink-black/10"></div>
+                                <div class="w-1 h-2 bg-ink-black/10"></div>
+                                <div class="w-1 h-2 bg-ink-black/10"></div>
+                                <div class="w-1 h-2 bg-ink-black/10"></div>
+                                <div class="w-1 h-2 bg-ink-black/10"></div>
+                                <div class="w-1 h-2 bg-ink-black/10"></div>
+                                <div class="w-1 h-2 bg-ink-black/10"></div>
+                                <div class="w-1 h-2 bg-ink-black/10"></div>
+                            </div>
+                            <span id="calibYaw"
+                                class="text-primary font-bold tracking-widest font-display text-sm md:text-lg w-16 text-right">0.0°</span>
+                        </div>
+                        <!-- ROLL -->
+                        <div class="flex items-center gap-2">
+                            <span
+                                class="font-display font-bold text-tech-gray text-[10px] md:text-sm tracking-[0.2em] w-12">ROLL</span>
+                            <div id="calibRollBars"
+                                class="flex-1 flex items-center justify-end gap-[1px] md:gap-[2px] h-3">
+                                <!-- 15 bars -->
+                                <div class="w-1 h-2 bg-ink-black/10"></div>
+                                <div class="w-1 h-2 bg-ink-black/10"></div>
+                                <div class="w-1 h-2 bg-ink-black/10"></div>
+                                <div class="w-1 h-2 bg-ink-black/10"></div>
+                                <div class="w-1 h-2 bg-ink-black/10"></div>
+                                <div class="w-1 h-2 bg-ink-black/10"></div>
+                                <div class="w-1 h-2 bg-ink-black/10"></div>
+                                <div class="w-1 h-2 bg-ink-black/10"></div>
+                                <div class="w-1 h-2 bg-ink-black/10"></div>
+                                <div class="w-1 h-2 bg-ink-black/10"></div>
+                                <div class="w-1 h-2 bg-ink-black/10"></div>
+                                <div class="w-1 h-2 bg-ink-black/10"></div>
+                                <div class="w-1 h-2 bg-ink-black/10"></div>
+                                <div class="w-1 h-2 bg-ink-black/10"></div>
+                                <div class="w-1 h-2 bg-ink-black/10"></div>
+                            </div>
+                            <span id="calibRoll"
+                                class="text-primary font-bold tracking-widest font-display text-sm md:text-lg w-16 text-right">0.0°</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex gap-3 md:gap-4">
+                    <button id="resetCalibrationButton" class="flex-1 h-12 md:h-14 relative group/btn overflow-hidden">
+                        <div
+                            class="absolute inset-0 bg-white border border-ink-black transform -skew-x-[20deg] transition-transform group-hover/btn:scale-[1.02] shadow-[2px_2px_0px_0px_rgba(0,0,0,0.8)] md:shadow-[4px_4px_0px_0px_rgba(0,0,0,0.8)]">
+                        </div>
+                        <div
+                            class="absolute inset-0 flex flex-col items-center justify-center transform -skew-x-[20deg]">
+                            <span
+                                class="font-display font-black text-ink-black text-lg md:text-xl tracking-wider italic transform skew-x-[20deg]">RESET</span>
+                            <span
+                                class="font-japanese text-[10px] text-tech-gray font-bold tracking-widest transform skew-x-[20deg]">リセット</span>
+                        </div>
+                    </button>
+                    <button id="startCalibrationButton" class="flex-1 h-12 md:h-14 relative group/btn overflow-hidden">
+                        <div
+                            class="absolute inset-0 bg-primary transform -skew-x-[20deg] transition-transform group-hover/btn:scale-[1.02] shadow-[2px_2px_0px_0px_rgba(13,13,13,0.8)] md:shadow-[4px_4px_0px_0px_rgba(13,13,13,0.8)]">
+                        </div>
+                        <div
+                            class="absolute inset-0 bg-white/20 transform -skew-x-[20deg] translate-x-full group-hover/btn:translate-x-[-200%] transition-transform duration-700">
+                        </div>
+                        <div
+                            class="absolute inset-0 flex flex-col items-center justify-center transform -skew-x-[20deg]">
+                            <span
+                                class="font-display font-black text-white text-base md:text-lg tracking-wider italic transform skew-x-[20deg]">START
+                                GAME</span>
+                            <span
+                                class="font-japanese text-[10px] text-white/90 font-bold tracking-widest transform skew-x-[20deg]">ゲーム開始</span>
+                        </div>
+                    </button>
+                </div>
+
+                <div class="absolute bottom-1 right-2 text-[8px] font-mono text-gray-300">SEC_LEVEL_02</div>
+            </div>
+        </main>
+
+        <div
+            class="absolute bottom-0 left-0 w-full h-10 md:h-12 bg-white border-t border-ink-black flex items-center justify-between px-4 md:px-8 z-20">
+            <div class="flex items-center gap-4">
+                <div
+                    class="w-16 md:w-32 h-1 md:h-2 bg-gradient-to-r from-primary to-transparent opacity-50 animate-pulse">
+                </div>
+                <span class="font-display text-[8px] md:text-[10px] text-tech-gray tracking-widest">SENSORS
+                    ACTIVE</span>
+            </div>
+            <div class="flex gap-1">
+                <div class="w-1 h-3 md:h-4 bg-ink-black"></div>
+                <div class="w-1 h-3 md:h-4 bg-ink-black opacity-50"></div>
+                <div class="w-1 h-3 md:h-4 bg-ink-black opacity-25"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Start Overlay (Moved to top level for clickability and visibility before CRT on) -->
+    <div id="startOverlay"
+        class="screen absolute inset-0 z-[70] flex items-center justify-center bg-black hidden pointer-events-auto">
+        <div class="text-center relative z-10">
+            <h1 class="font-display text-4xl text-white mb-6 tracking-widest uppercase">System Ready</h1>
+            <p class="font-mono text-xs text-tech-gray mb-8 tracking-wider">INITIATE COMBAT SEQUENCE</p>
+            <!-- Syncing stats for start overlay (Optional, keeping hidden inputs or just ignoring if not needed by design) -->
+            <div class="hidden">
+                <span id="playerHPStart"></span>
+                <span id="killCountStart"></span>
+                <span id="timeLeftStart"></span>
+            </div>
+            <button id="sceneStartButton"
+                class="mt-32 parallelogram bg-primary text-white px-8 py-4 font-display font-bold text-xl tracking-widest hover:bg-red-600 transition-all hover:scale-105 shadow-[0_0_15px_rgba(255,0,0,0.5)]">
+                START WAVE
+            </button>
+        </div>
+        <!-- Background grid for start screen -->
+        <div class="absolute inset-0 pointer-events-none opacity-20">
+            <div class="w-full h-full bg-dot-grid bg-[length:32px_32px]"></div>
+        </div>
+    </div>
+
+    <!-- WRAPPER FOR CRT ANIMATION - INITIALLY HIDDEN (Screen Off) -->
+    <div id="crt-main-display" class="crt-screen-container opacity-0">
+        <div class="absolute inset-0 z-0 bg-black">
+
+            <!-- Real Camera Feed Container with Horror Effects -->
+            <div class="w-full h-full relative overflow-hidden horror-breathing">
+                <!-- Video Element -->
+                <div class="w-full h-full distortion-glitch">
+                    <!-- Using ID 'cameraVideo' for compatibility with Renderer.js -->
+                    <video id="cameraVideo" class="w-full h-full object-cover transform scale-x-[-1] md:scale-x-100"
+                        autoplay playsinline muted></video>
+                    <!-- Fallback Image -->
+                    <img id="fallback-img" alt="AR Camera Feed Fallback" class="hidden w-full h-full object-cover"
+                        src="https://lh3.googleusercontent.com/aida-public/AB6AXuCulhqCuUdbt1k3MSx7HfEX4huoqK6KbaAIhRZDtDeOscpYZZUsi30xJtYgiaikiNbrs8Ue6DtUDqrCADDMQ9hwVF1AN_wx2GzGPBDiJGFeA5hYjGCgjifLidY55s10vs9aFKOoq4BPwQyvj8PyFzVVA2if2xr3uyF224uGAcmnHV1N21R4Dwq0CvgAkDPxvUVH07E3FztAJj-VaR5s2lqS1Xiv27bKSPYTrFg-vBVZ2Hoy9U4y1Fjj1Z-mB2jqvDJalCOHExWMACE" />
+                </div>
+            </div>
+
+            <div
+                class="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/60 pointer-events-none">
+            </div>
+            <div
+                class="absolute inset-0 pointer-events-none opacity-10 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0IiBoZWlnaHQ9IjQiPgo8cmVjdCB3aWR0aD0iNCIgaGVpZ2h0PSI0IiBmaWxsPSIjZmZmIi8+CjxyZWN0IHdpZHRoPSI0IiBoZWlnaHQ9IjIiIGZpbGw9IiMwMDAiLz4KPC9zdmc+')]">
+            </div>
+        </div>
+
+        <!-- 3D Canvas (Overlay on video, under UI) -->
+        <canvas id="gameCanvas" class="absolute inset-0 z-0 pointer-events-none"></canvas>
+
+        <!-- UI Container used by UIManager -->
+        <div id="uiContainer">
+
+
+            <!-- Gameplay Screen (Updated with User's HUD) -->
+            <div id="gameplayScreen" class="screen hidden w-full h-full absolute inset-0 z-40">
+                <!-- Game Effects Overlay (z-50 in user's doc, but inside gameplayScreen) -->
+                <!-- Game Effects Overlay (z-50 in user's doc, but inside gameplayScreen) -->
+                <div class="screen-effects absolute inset-0 pointer-events-none z-50">
+                    <div class="horror-flash"></div>
+                    <!-- Global effects are now in #global-tv-effects -->
+                    <!-- Damage Vignette (Mapped to ID) -->
+                    <div id="damage-vignette"
+                        class="absolute inset-0 bg-radial-gradient from-transparent to-red-900/60 opacity-0 pointer-events-none transition-opacity duration-100">
+                    </div>
+                    <div id="flash-overlay"
+                        class="absolute inset-0 bg-red-600 mix-blend-overlay opacity-0 pointer-events-none"></div>
+                </div>
+
+                <!-- Main HUD UI -->
+                <div class="relative z-10 w-full h-full flex flex-col justify-between pointer-events-none">
+                    <!-- Header / Top HUD -->
+                    <header class="w-full relative z-[150] pointer-events-auto">
+                        <div
+                            class="absolute top-0 left-0 w-full h-16 bg-gradient-to-b from-black/80 to-transparent pointer-events-none">
+                        </div>
+                        <div class="flex justify-between items-start pt-6 px-6 w-full">
+                            <!-- Top Left: Scan Status -->
+                            <div class="flex flex-col gap-1 items-start">
+                                <div
+                                    class="flex items-center gap-2 bg-black/40 backdrop-blur-sm px-2 py-0.5 border-l border-primary/80">
+                                    <span
+                                        class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse shadow-[0_0_5px_#ff0000]"></span>
+                                    <span
+                                        class="font-display font-bold text-[10px] tracking-widest text-white/90">SCANNING</span>
+                                </div>
+                                <div class="text-[8px] text-white/50 font-mono tracking-wider ml-1">34.69°N, 139.69°E
+                                </div>
+                            </div>
+
+                            <!-- Top Center: Score/Timer -->
+                            <div
+                                class="absolute top-24 left-1/2 transform -translate-x-1/2 flex items-center justify-center">
+                                <div
+                                    class="flex items-center bg-black/60 backdrop-blur-md border-t border-b border-primary/30 px-6 py-1 gap-8 relative overflow-hidden clip-path-notch">
+                                    <!-- Decorative borders -->
+                                    <div
+                                        class="absolute left-0 top-0 bottom-0 w-[1px] bg-gradient-to-b from-transparent via-primary to-transparent opacity-50">
+                                    </div>
+                                    <div
+                                        class="absolute right-0 top-0 bottom-0 w-[1px] bg-gradient-to-b from-transparent via-primary to-transparent opacity-50">
+                                    </div>
+
+                                    <div class="flex flex-col items-center">
+                                        <span
+                                            class="font-display text-[9px] text-primary tracking-[0.2em] font-bold uppercase mb-0.5 shadow-black drop-shadow-sm">Elapsed
+                                            Time</span>
+                                        <span id="elapsedTimeDisplay"
+                                            class="font-mono text-2xl text-white font-medium leading-none tracking-widest drop-shadow-[0_0_5px_rgba(255,255,255,0.5)]">00:00</span>
+                                    </div>
+
+                                    <div class="h-6 w-px bg-white/10 relative">
+                                        <div
+                                            class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3 h-px bg-primary/50">
+                                        </div>
+                                    </div>
+
+                                    <div class="flex flex-col items-center">
+                                        <span
+                                            class="font-display text-[9px] text-primary tracking-[0.2em] font-bold uppercase mb-0.5 shadow-black drop-shadow-sm">Defeated</span>
+                                        <span id="defeatedDisplay"
+                                            class="font-mono text-2xl text-white font-medium leading-none tracking-widest drop-shadow-[0_0_5px_rgba(255,255,255,0.5)]">0</span>
+                                    </div>
+                                </div>
+                                <div
+                                    class="absolute -bottom-1 w-32 h-[1px] bg-gradient-to-r from-transparent via-primary/60 to-transparent">
+                                </div>
+                            </div>
+
+                            <!-- Top Right: Connectivity -->
+                            <div class="flex flex-col items-end gap-1">
+                                <div class="flex items-center gap-1.5 opacity-80">
+                                    <span
+                                        class="material-symbols-outlined text-white text-sm animate-pulse-fast">wifi</span>
+                                    <span
+                                        class="font-mono text-[10px] text-white font-bold tracking-wider">L:42ms</span>
+                                </div>
+                                <div class="flex gap-0.5">
+                                    <div class="w-1 h-2 bg-primary"></div>
+                                    <div class="w-1 h-2 bg-primary"></div>
+                                    <div class="w-1 h-2 bg-primary"></div>
+                                    <div class="w-1 h-2 bg-white/30"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </header>
+
+                    <!-- Enemy Indicators Container (Full Screen) -->
+                    <div id="enemyIndicators" class="absolute inset-0 w-full h-full pointer-events-none z-0"></div>
+
+                    <!-- Center: Hologram Text (Onmyo Style) - Initially hidden -->
+                    <div id="hologramText" class="hologram-fuda-text">
+                        急急如律令
+                    </div>
+
+                    <!-- Center: Reticle / Crosshair -->
+
+                    <div
+                        class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none opacity-90 z-10">
+                        <!-- Enemy Indicators Container REMOVED from here -->
+
+                        <!-- Rotating outer ring -->
+                        <div
+                            class="w-64 h-64 border border-white/20 rounded-full flex items-center justify-center relative animate-spin-slower">
+                            <div class="absolute top-0 w-1 h-2 bg-white"></div>
+                            <div class="absolute bottom-0 w-1 h-2 bg-white"></div>
+                            <div class="absolute left-0 w-2 h-1 bg-white"></div>
+                            <div class="absolute right-0 w-2 h-1 bg-white"></div>
+                        </div>
+
+                        <!-- Inner fixed ring brackets -->
+                        <div
+                            class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-32 h-32 border-l border-r border-primary/60 rounded-full flex items-center justify-center">
+                        </div>
+
+                        <!-- Center Dot -->
+                        <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+                            <div class="w-12 h-12 relative">
+                                <div
+                                    class="absolute top-0 left-1/2 transform -translate-x-1/2 w-0.5 h-full bg-white/80">
+                                </div>
+                                <div
+                                    class="absolute top-1/2 left-0 transform -translate-y-1/2 w-full h-0.5 bg-white/80">
+                                </div>
+                                <div
+                                    class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-1.5 h-1.5 bg-primary rounded-full shadow-[0_0_10px_#FF0000]">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Corner Brackets -->
+                        <div class="absolute top-0 left-0 w-full h-full">
+                            <div
+                                class="absolute top-[-20px] left-[-20px] w-8 h-8 border-t-2 border-l-2 border-white/50">
+                            </div>
+                            <div
+                                class="absolute top-[-20px] right-[-20px] w-8 h-8 border-t-2 border-r-2 border-white/50">
+                            </div>
+                            <div
+                                class="absolute bottom-[-20px] left-[-20px] w-8 h-8 border-b-2 border-l-2 border-white/50">
+                            </div>
+                            <div
+                                class="absolute bottom-[-20px] right-[-20px] w-8 h-8 border-b-2 border-r-2 border-white/50">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Bottom Controls & Status -->
+                    <div class="w-full p-6 pb-8 flex flex-col justify-end pointer-events-auto mt-auto relative h-full">
+
+
+                        <!-- Countdown Overlay -->
+                        <div id="countdownOverlay"
+                            class="absolute inset-0 z-60 flex items-center justify-center pointer-events-none hidden">
+                            <div id="countdownValue"
+                                class="font-display text-9xl text-white drop-shadow-[0_0_20px_rgba(255,0,0,0.8)] animate-pulse">
+                            </div>
+                        </div>
+
+                        <!-- audio debug panel removed -->
+
+                        <!-- Right: Vertical HP Bar -->
+                        <div class="absolute bottom-12 right-6 flex flex-col items-end gap-1 pointer-events-none z-20">
+                            <div class="flex items-center gap-2 mb-1">
+                                <span class="w-1.5 h-1.5 bg-primary animate-pulse"></span>
+                                <span
+                                    class="font-display font-black text-xl text-primary tracking-[0.2em] drop-shadow-[0_0_5px_rgba(255,0,0,0.8)]">HP</span>
+                            </div>
+
+                            <div
+                                class="relative w-8 h-64 border border-white/20 bg-black/60 backdrop-blur-md overflow-hidden group">
+                                <!-- Grid background effect -->
+                                <div class="absolute inset-0 opacity-20"
+                                    style="background-image: linear-gradient(to bottom, transparent 4px, #525252 5px); background-size: 100% 5px;">
+                                </div>
+
+                                <!-- Health Fill -->
+                                <div id="verticalHpFill"
+                                    class="absolute bottom-0 w-full bg-primary transition-all duration-500 ease-out shadow-[0_0_20px_rgba(255,0,0,0.4)]"
+                                    style="height: 100%;">
+                                    <div class="w-full h-0.5 bg-white shadow-[0_0_8px_#fff]"></div>
+                                </div>
+
+                                <!-- Decorative side line -->
+                                <div class="absolute top-0 right-0 w-1 h-full bg-black/30 border-l border-white/10">
+                                </div>
+
+                                <!-- Scanline effect overlay -->
+                                <div
+                                    class="absolute inset-0 bg-gradient-to-b from-transparent via-primary/5 to-transparent h-1/4 w-full animate-scanline opacity-30">
+                                </div>
+                            </div>
+
+                            <div class="flex flex-col items-end gap-0.5 mt-1">
+                                <span id="verticalHpNum"
+                                    class="font-display font-black text-2xl text-white tracking-tighter drop-shadow-md">--</span>
+                                <span class="font-display text-[10px] text-white/60 tracking-widest font-bold">/ <span
+                                        id="verticalHpMax">--</span></span>
+                            </div>
+                        </div>
+
+                        <!-- Bottom Left: Action Button -->
+                        <div class="flex w-full justify-start items-end gap-4 mt-auto pr-32 pb-4">
+                            <button id="cancelButton"
+                                class="parallelogram bg-black/60 border border-white/40 text-white h-12 w-32 flex items-center justify-center backdrop-blur-md active:bg-white active:text-black transition-colors hover:border-primary/80 hover:text-primary">
+                                <span
+                                    class="font-display font-bold tracking-widest text-sm skew-x-[15deg] uppercase">Cancel</span>
+                            </button>
+                        </div>
+
+                        <!-- Footer Line -->
+                        <div
+                            class="absolute bottom-4 left-6 right-6 h-px bg-white/20 flex justify-between items-center">
+                            <div class="w-16 h-1 bg-white/60"></div>
+                            <div class="flex gap-1">
+                                <div class="w-1 h-1 bg-primary"></div>
+                                <div class="w-1 h-1 bg-white/40"></div>
+                                <div class="w-1 h-1 bg-white/40"></div>
+                            </div>
+                            <div class="text-[8px] font-mono text-white/40">ZANBARAI_AR_V2.1</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Title Screen 2 (New) -->
+                <div id="titleScreen2"
+                    class="screen absolute inset-0 z-50 flex flex-col items-center justify-center bg-white text-ink-black font-sans hidden overflow-hidden">
+
+                    <div class="absolute inset-0 z-0 pointer-events-none opacity-[0.08]">
+                        <div class="w-full h-full bg-dot-grid bg-[length:24px_24px]"></div>
+                    </div>
+
+                    <!-- Header elements -->
+                    <div class="absolute top-0 left-0 p-8 z-30">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 bg-ink-black flex items-center justify-center">
+                                <span class="material-symbols-outlined text-white">token</span>
+                            </div>
+                            <div class="flex flex-col">
+                                <span class="font-display text-xs tracking-widest font-bold">ZANBARAI</span>
+                                <span class="font-japanese text-[10px] tracking-widest opacity-60">陰陽師クロニクル</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="absolute top-0 right-0 p-8 z-30 text-right hidden md:block">
+                        <div class="flex items-center justify-end gap-2 mb-1">
+                            <div class="w-2 h-2 bg-primary rounded-full animate-pulse"></div>
+                            <span class="font-display text-sm font-bold tracking-[0.2em] text-primary">SYSTEM:
+                                STANDBY</span>
+                        </div>
+                        <div class="text-[10px] font-mono text-tech-gray">SYS.VER.2.4.0</div>
+                    </div>
+
+                    <!-- Main Content -->
+                    <main class="relative z-10 w-full flex flex-col items-center justify-center p-6 md:p-12">
+                        <div class="mb-6 md:mb-12 relative w-full max-w-lg mx-auto flex justify-center">
+                            <div
+                                class="relative z-10 flex flex-col items-center bg-white px-8 border border-ink-black py-4 text-center">
+                                <h1
+                                    class="font-display text-3xl md:text-5xl font-black tracking-tighter text-ink-black uppercase">
+                                    MAIN <span class="text-primary italic">MENU</span>
+                                </h1>
+                                <p class="font-japanese text-sm tracking-[0.5em] mt-1 font-bold text-tech-gray">メインメニュー
+                                </p>
+                            </div>
+                        </div>
+
+                        <div
+                            class="w-full max-w-md relative bg-white border-[3px] border-ink-black p-5 md:p-10 shadow-2xl flex flex-col gap-4">
+                            <!-- Corner Accents -->
+                            <div
+                                class="absolute top-0 left-0 w-4 h-4 border-l-4 border-t-4 border-primary -ml-[3px] -mt-[3px]">
+                            </div>
+                            <div
+                                class="absolute top-0 right-0 w-4 h-4 border-r-4 border-t-4 border-primary -mr-[3px] -mt-[3px]">
+                            </div>
+                            <div
+                                class="absolute bottom-0 left-0 w-4 h-4 border-l-4 border-b-4 border-primary -ml-[3px] -mb-[3px]">
+                            </div>
+                            <div
+                                class="absolute bottom-0 right-0 w-4 h-4 border-r-4 border-b-4 border-primary -mr-[3px] -mb-[3px]">
+                            </div>
+
+                            <!-- Game Start -->
+                            <button id="titleStartButton" class="w-full h-14 relative group/btn overflow-hidden">
+                                <div
+                                    class="absolute inset-0 bg-primary transform -skew-x-[20deg] transition-transform group-hover/btn:scale-[1.02] shadow-lg">
+                                </div>
+                                <div
+                                    class="absolute inset-0 bg-white/20 transform -skew-x-[20deg] translate-x-full group-hover/btn:translate-x-[-200%] transition-transform duration-700">
+                                </div>
+                                <div
+                                    class="absolute inset-0 flex flex-col items-center justify-center transform -skew-x-[20deg] border border-white/20">
+                                    <span
+                                        class="font-display font-black text-white text-lg italic tracking-widest transform skew-x-[20deg]">GAME
+                                        START</span>
+                                    <span
+                                        class="font-japanese text-[10px] text-white/80 tracking-widest transform skew-x-[20deg] mt-0.5">ゲーム開始</span>
+                                </div>
+                            </button>
+
+                            <!-- Reconnect -->
+                            <button id="titleReconnectButton"
+                                class="w-full h-12 relative group/btn overflow-hidden mt-2">
+                                <div
+                                    class="absolute inset-0 bg-white border border-ink-black transform -skew-x-[20deg] transition-transform group-hover/btn:scale-[1.02]">
+                                </div>
+                                <div
+                                    class="absolute inset-0 flex flex-col items-center justify-center transform -skew-x-[20deg]">
+                                    <span
+                                        class="font-display font-bold text-ink-black text-sm italic tracking-widest transform skew-x-[20deg]">RECONNECT</span>
+                                    <span
+                                        class="font-japanese text-[9px] text-tech-gray tracking-widest transform skew-x-[20deg]">再接続</span>
+                                </div>
+                            </button>
+
+                            <!-- Recalibrate -->
+                            <button id="titleRecalibrateButton" class="w-full h-12 relative group/btn overflow-hidden">
+                                <div
+                                    class="absolute inset-0 bg-white border border-ink-black transform -skew-x-[20deg] transition-transform group-hover/btn:scale-[1.02]">
+                                </div>
+                                <div
+                                    class="absolute inset-0 flex flex-col items-center justify-center transform -skew-x-[20deg]">
+                                    <span
+                                        class="font-display font-bold text-ink-black text-sm italic tracking-widest transform skew-x-[20deg]">RECALIBRATE</span>
+                                    <span
+                                        class="font-japanese text-[9px] text-tech-gray tracking-widest transform skew-x-[20deg]">再キャリブレーション</span>
+                                </div>
+                            </button>
+
+                            <div class="absolute bottom-2 right-2 text-[8px] font-mono text-gray-300">SEC_LEVEL_01</div>
+                        </div>
+                    </main>
+                </div>
+
+                <!-- Debug Toggle (Keeping it) -->
+                <button id="toggleDebugButton"
+                    class="absolute top-4 right-4 z-50 text-xs text-white/20 border border-white/10 px-2 py-1 opacity-50 hover:opacity-100">DEBUG</button>
+            </div>
+
+            <!-- Mission Result Screens -->
+            <div id="resultScreen" class="screen absolute inset-0 z-50 hidden">
+                <!-- Success -->
+                <main id="missionCompletedScreen"
+                    class="screen absolute inset-0 z-50 bg-white hidden flex flex-col items-center justify-center overflow-hidden">
+                    <div
+                        class="relative w-full max-w-[420px] h-[840px] max-h-[95vh] bg-white shadow-2xl overflow-hidden flex flex-col border border-gray-200">
+                        <div class="absolute inset-0 z-0 bg-dot-grid opacity-40 pointer-events-none"></div>
+                        <header class="relative z-20 flex justify-between items-start p-6 pt-8">
+                            <div class="relative w-14 h-14 flex items-center justify-center">
+                                <svg class="absolute inset-0 w-full h-full animate-spin-slow" viewBox="0 0 100 100">
+                                    <circle cx="50" cy="50" fill="none" r="48" stroke="#e5e5e5" stroke-dasharray="4 4"
+                                        stroke-width="1"></circle>
+                                    <path d="M50 2 a 48 48 0 0 1 48 48" fill="none" stroke="#525252"
+                                        stroke-linecap="round" stroke-width="2"></path>
+                                </svg>
+                                <div class="flex flex-col items-center">
+                                    <span class="text-[8px] font-display font-bold text-tech-gray">NET</span>
+                                    <span class="text-[10px] font-display font-bold text-primary">OK</span>
+                                </div>
+                            </div>
+                            <div class="flex flex-col items-end gap-1">
+                                <div
+                                    class="flex items-center gap-2 border border-primary bg-red-50 px-2 py-1 transform skew-x-[-12deg]">
+                                    <span
+                                        class="w-1.5 h-1.5 bg-primary rounded-full animate-pulse transform skew-x-[12deg]"></span>
+                                    <span
+                                        class="font-display text-[10px] font-bold text-primary tracking-widest transform skew-x-[12deg]">SECURE</span>
+                                </div>
+                                <span class="font-mono text-[9px] text-tech-gray">HASH: 99-XA-02</span>
+                            </div>
+                        </header>
+                        <div class="relative z-10 flex-grow flex flex-col items-center pt-8">
+                            <div class="relative w-full flex items-center justify-center h-64 mb-4">
+                                <div class="relative z-10 text-center">
+                                    <h1 class="font-japanese font-black text-7xl text-primary tracking-tighter leading-none glitch-text drop-shadow-2xl"
+                                        data-text="任務完了">任務完了</h1>
+                                    <div
+                                        class="mt-4 inline-block border-t border-b border-primary/50 py-1 px-4 bg-black/80 backdrop-blur-sm">
+                                        <p class="font-display font-bold text-xs tracking-[0.4em] text-white uppercase">
+                                            Mission Complete</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="w-full px-6 relative z-20">
+                                <div class="bg-white border border-gray-200 shadow-xl p-6 relative overflow-hidden">
+                                    <div class="flex flex-col gap-6 relative z-10">
+                                        <div class="flex items-center justify-between group">
+                                            <div class="flex flex-col">
+                                                <span
+                                                    class="text-[10px] text-tech-gray font-display tracking-widest mb-0.5 uppercase">Total
+                                                    Score</span>
+                                                <div class="h-1 w-12 bg-primary"></div>
+                                            </div>
+                                            <div class="flex items-baseline gap-1">
+                                                <span id="completedScore"
+                                                    class="text-5xl font-display font-black text-ink-black tracking-tight">0</span>
+                                            </div>
+                                        </div>
+                                        <div class="w-full h-px bg-gray-100"></div>
+                                        <div class="flex justify-between items-start">
+                                            <div class="flex flex-col">
+                                                <span
+                                                    class="text-[10px] text-tech-gray font-display tracking-widest mb-1 uppercase">Elapsed
+                                                    Time</span>
+                                                <span id="completedTime"
+                                                    class="text-xl font-display font-bold text-ink-black">00:00:00</span>
+                                            </div>
+                                            <div class="flex flex-col items-end">
+                                                <span
+                                                    class="text-[10px] text-tech-gray font-display tracking-widest mb-1 text-right uppercase">Defeated</span>
+                                                <div class="flex flex-col items-end gap-1">
+                                                    <div id="completedKills"
+                                                        class="bg-ink-black text-white px-3 py-1 text-xs font-bold font-display skew-x-[-10deg]">
+                                                        0 KILLS</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="p-6 pb-10 w-full z-30 mt-auto bg-gradient-to-t from-white via-white to-transparent">
+                            <button id="returnToTitleButtonSuccess" class="w-full h-16 relative group outline-none">
+                                <div
+                                    class="absolute inset-0 bg-primary transform -skew-x-12 transition-all duration-300 shadow-[4px_4px_0px_0px_rgba(13,13,13,1)] group-hover:translate-x-1 group-hover:translate-y-1 group-hover:shadow-none">
+                                </div>
+                                <div class="absolute inset-0 flex items-center justify-center transform -skew-x-12">
+                                    <span
+                                        class="font-display font-black text-white text-lg tracking-[0.2em] group-hover:animate-pulse">RETURN
+                                        TO BASE</span>
+                                    <span
+                                        class="material-symbols-outlined text-white ml-2 text-xl group-hover:translate-x-1 transition-transform">east</span>
+                                </div>
+                            </button>
+                            <div class="flex justify-between items-center mt-4 px-2 opacity-60">
+                                <span class="text-[8px] font-mono text-tech-gray">ZANBARAI_SYS // V.2.0.4</span>
+                                <div class="flex gap-1">
+                                    <div class="w-1 h-1 bg-tech-gray rounded-full"></div>
+                                    <div class="w-1 h-1 bg-tech-gray rounded-full"></div>
+                                    <div class="w-1 h-1 bg-primary rounded-full animate-pulse"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </main>
+
+            </div>
+
+            <!-- Failure -->
+            <main id="missionFailScreen"
+                class="screen absolute inset-0 z-50 hidden flex flex-col items-center justify-center bg-black text-white">
+                <div
+                    class="relative w-full max-w-[420px] h-[840px] max-h-[95vh] bg-dark-bg shadow-2xl overflow-hidden flex flex-col border border-gray-900">
+                    <div
+                        class="absolute top-[25%] left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] bg-primary rounded-full blur-[90px] opacity-20 pointer-events-none z-0">
+                    </div>
+                    <header class="relative z-20 flex justify-between items-start p-6 pt-8">
+                        <div class="relative w-14 h-14 flex items-center justify-center">
+                            <svg class="absolute inset-0 w-full h-full animate-spin-slow" viewBox="0 0 100 100">
+                                <circle cx="50" cy="50" fill="none" r="48" stroke="#444" stroke-dasharray="4 4"
+                                    stroke-width="1"></circle>
+                                <path d="M50 2 a 48 48 0 0 1 48 48" fill="none" stroke="#777" stroke-linecap="round"
+                                    stroke-width="2"></path>
+                            </svg>
+                            <div class="flex flex-col items-center">
+                                <span class="text-[8px] font-display font-bold text-tech-gray">NET</span>
+                                <span
+                                    class="text-[10px] font-display font-bold text-primary drop-shadow-[0_0_5px_rgba(255,0,51,0.8)]">ERR</span>
+                            </div>
+                        </div>
+                        <div class="flex flex-col items-end gap-1">
+                            <div
+                                class="flex items-center gap-2 border border-primary bg-primary/10 px-2 py-1 transform skew-x-[-12deg] shadow-[0_0_10px_rgba(255,0,51,0.3)]">
+                                <span
+                                    class="w-1.5 h-1.5 bg-primary rounded-full animate-pulse transform skew-x-[12deg]"></span>
+                                <span
+                                    class="font-display text-[10px] font-bold text-primary tracking-widest transform skew-x-[12deg] drop-shadow-[0_0_3px_rgba(255,0,51,1)]">CRITICAL</span>
+                            </div>
+                            <span class="font-mono text-[9px] text-red-500/50">HASH: 99-XA-02 // FAIL</span>
+                        </div>
+                    </header>
+                    <div class="relative z-10 flex-grow flex flex-col items-center pt-8">
+                        <div class="relative w-full flex items-center justify-center h-64 mb-4">
+                            <div class="relative z-10 text-center">
+                                <h1 class="font-japanese font-black text-7xl text-primary tracking-tighter leading-none glitch-text drop-shadow-[0_0_15px_rgba(255,0,51,0.6)]"
+                                    data-text="任務失敗">任務失敗</h1>
+                                <div
+                                    class="mt-4 inline-block border-t border-b border-primary/50 py-1 px-4 bg-black/80 backdrop-blur-sm">
+                                    <p
+                                        class="font-display font-bold text-xs tracking-[0.4em] text-red-100 uppercase drop-shadow-md">
+                                        MISSION FAILED</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="w-full px-6 relative z-20">
+                            <div
+                                class="bg-panel-bg/90 backdrop-blur-md border border-primary/40 p-6 relative overflow-hidden animate-border-pulse">
+                                <div class="flex flex-col gap-6 relative z-10">
+                                    <div class="flex items-center justify-between group">
+                                        <div class="flex flex-col">
+                                            <span
+                                                class="text-[10px] text-red-300/50 font-display tracking-widest mb-0.5 uppercase">Total
+                                                Score</span>
+                                            <div class="h-1 w-12 bg-primary shadow-[0_0_8px_rgba(255,0,51,0.8)]"></div>
+                                        </div>
+                                        <div class="flex items-baseline gap-1">
+                                            <span id="failScore"
+                                                class="text-5xl font-display font-black text-white tracking-tight">0</span>
+                                        </div>
+                                    </div>
+                                    <div class="w-full h-px bg-red-500/20"></div>
+                                    <div class="flex justify-between items-start">
+                                        <div class="flex flex-col">
+                                            <span
+                                                class="text-[10px] text-red-300/50 font-display tracking-widest mb-1 uppercase">Elapsed
+                                                Time</span>
+                                            <span id="failTime"
+                                                class="text-xl font-display font-bold text-gray-200">00:00:00</span>
+                                        </div>
+                                        <div class="flex flex-col items-end">
+                                            <span
+                                                class="text-[10px] text-red-300/50 font-display tracking-widest mb-1 text-right uppercase">Defeated</span>
+                                            <div class="flex flex-col items-end gap-1">
+                                                <div id="failKills"
+                                                    class="bg-primary text-white px-3 py-1 text-xs font-bold font-display skew-x-[-10deg] shadow-[0_0_10px_rgba(255,0,51,0.4)]">
+                                                    0 KILLS</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="p-6 pb-10 w-full z-30 mt-auto bg-gradient-to-t from-dark-bg via-dark-bg to-transparent">
+                        <button id="returnToTitleButtonFail" class="w-full h-16 relative group outline-none">
+                            <div
+                                class="absolute inset-0 bg-primary transform -skew-x-12 transition-all duration-300 shadow-[4px_4px_0px_0px_rgba(150,0,0,0.3)] group-hover:translate-x-1 group-hover:translate-y-1 group-hover:shadow-[0_0_20px_rgba(255,0,51,0.6)]">
+                            </div>
+                            <div class="absolute inset-0 flex items-center justify-center transform -skew-x-12">
+                                <span
+                                    class="font-display font-black text-white text-lg tracking-[0.1em] group-hover:animate-pulse drop-shadow-md">RETURN
+                                    TO BASE <span class="text-sm ml-2 font-japanese font-bold">(帰還)</span></span>
+                                <span
+                                    class="material-symbols-outlined text-white ml-2 text-xl group-hover:rotate-180 transition-transform duration-700">refresh</span>
+                            </div>
+                        </button>
+                        <div class="flex justify-between items-center mt-4 px-2 opacity-60">
+                            <span class="text-[8px] font-mono text-red-500/60">ZANBARAI_SYS // V.2.0.4 //
+                                ERR_CODE_0x0</span>
+                            <div class="flex gap-1">
+                                <div class="w-1 h-1 bg-red-900 rounded-full"></div>
+                                <div class="w-1 h-1 bg-red-900 rounded-full"></div>
+                                <div
+                                    class="w-1 h-1 bg-primary rounded-full animate-pulse shadow-[0_0_5px_rgba(255,0,51,0.8)]">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+
+        </div> <!-- End CRT Container Wrapper -->
+    </div>
+
+
+    <!-- Global TV Effects (Applied to all screens) -->
+    <div id="global-tv-effects" class="fixed inset-0 pointer-events-none z-[80]">
+        <div class="scanlines absolute inset-0 opacity-50"></div>
+        <div class="grid-overlay absolute inset-0 opacity-50"></div>
+        <div class="absolute inset-0 opacity-[0.08]"
+            style="background-image: url('data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noiseFilter%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.85%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noiseFilter)%22/%3E%3C/svg%3E');">
+        </div>
+        <div class="random-glitch-lines"></div>
+        <div class="absolute inset-0 bg-radial-gradient from-transparent to-black/40"></div>
+    </div>
+
+    <!-- Debug Overlay -->
+    <div id="debugOverlay"
+        class="hidden fixed top-0 left-0 w-64 h-full bg-black/80 text-green-400 font-mono text-xs p-2 z-[100] overflow-auto">
+        <h3 class="border-b border-green-800 mb-2">デバッグ情報</h3>
         <div id="debugContent">
             <p>BLE状態: <span id="debugBleState">--</span></p>
             <p>受信Hz: <span id="debugHz">--</span></p>
             <p>欠落数: <span id="debugDrops">--</span> (<span id="debugDropRate">--</span>%)</p>
             <p>a_mag: <span id="debugAmag">--</span> g</p>
-            <p>Pitch: <span id="debugPitch">--</span>° / Yaw: <span id="debugYaw">--</span>° / Roll: <span id="debugRoll">--</span>°</p>
+            <p>Pitch: <span id="debugPitch">--</span>° / Yaw: <span id="debugYaw">--</span>° / Roll: <span
+                    id="debugRoll">--</span>°</p>
             <p>斬撃状態: <span id="debugSwingState">--</span></p>
             <p>クールダウン: <span id="debugCooldown">--</span>ms</p>
             <p>円判定: <span id="debugCircle">--</span></p>
             <p>触覚送信: <span id="debugHaptics">--</span></p>
             <p>エラー: <span id="debugError">--</span></p>
         </div>
-        <div id="debugLog">
+        <div id="debugLog" class="mt-4 border-t border-green-800 pt-2">
             <h4>ログ</h4>
             <div id="logContent"></div>
         </div>
     </div>
 
-    <!-- Three.js -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    
-    <!-- ゲームモジュール -->
+    <!-- Three.js Library -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
     <script type="module" src="js/main.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const loadingScreen = document.getElementById('loadingScreen');
+            const splashScreen = document.getElementById('splashScreen');
+            const progressBar = document.getElementById('progress-bar');
+            const progressText = document.getElementById('loading-percent');
+            const startButton = document.getElementById('loadingStartButton');
+
+            // Loading Logic
+            let progress = 0;
+            const minDuration = 3000; // 3 seconds minimum
+            const intervalTime = 50; // Update every 50ms
+            const steps = minDuration / intervalTime;
+            const increment = 100 / steps;
+
+            // Random glitch effect on text
+            const glitchElements = document.querySelectorAll('.glitch-text');
+            setInterval(() => {
+                glitchElements.forEach(el => {
+                    if (Math.random() > 0.95) {
+                        el.style.animationPlayState = 'running';
+                        setTimeout(() => {
+                            el.style.animationPlayState = 'paused';
+                        }, 200);
+                    }
+                });
+            }, 1000);
+
+                    const completeLoading = () => {
+                // Transition
+                if (loadingScreen) {
+                    loadingScreen.classList.add('opacity-0');
+                    setTimeout(() => {
+                        loadingScreen.classList.remove('active');
+                        loadingScreen.style.display = 'none'; // Ensure it's gone
+                                // Mark loading as complete globally
+                                window.__loadingComplete = true;
+
+                                // Prefer UIManager-managed splash if available (replicates Title Screen 2 reveal)
+                                try {
+                                    if (window.game && window.game.uiManager && typeof window.game.uiManager.showSplashScreen === 'function') {
+                                        window.game.uiManager.showSplashScreen();
+                                    } else {
+                                        // Fallback: show splash and enable global TV overlay
+                                        if (splashScreen) {
+                                            splashScreen.classList.add('active');
+                                            const splashContent = document.getElementById('splashContent');
+                                            const globalTv = document.getElementById('global-tv-effects');
+                                            if (splashContent) { splashContent.style.opacity = '1'; splashContent.style.transition = 'opacity 0.6s ease-out'; }
+                                            if (globalTv) { globalTv.classList.add('tv-effect-on'); globalTv.style.display = ''; globalTv.style.opacity = ''; }
+                                        }
+                                    }
+                                } catch (e) {
+                                    // ignore
+                                }
+                    }, 1000); // Wait for opacity transition
+                }
+            };
+
+            const loadingInterval = setInterval(() => {
+                progress += increment;
+
+                // Add some randomness/easing
+                let currentDisplay = Math.min(Math.floor(progress), 100);
+
+                if (progressBar) progressBar.style.width = `${currentDisplay}%`;
+                if (progressText) progressText.innerText = `${currentDisplay}%`;
+
+                // Show start button near the end
+                if (progress > 80 && startButton) {
+                    startButton.classList.remove('opacity-0', 'pointer-events-none');
+                }
+
+                if (progress >= 100) {
+                    clearInterval(loadingInterval);
+                    // Slight delay at 100% before transition
+                    setTimeout(completeLoading, 500);
+                }
+            }, intervalTime);
+
+            // Allow skipping if button is clicked
+            if (startButton) {
+                startButton.addEventListener('click', () => {
+                    clearInterval(loadingInterval);
+                    completeLoading();
+                });
+            }
+        });
+    </script>
 </body>
+
 </html>

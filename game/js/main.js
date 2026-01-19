@@ -12,6 +12,8 @@ import { GameWorld } from './GameWorld.js';
 import { CombatSystem } from './CombatSystem.js';
 import { Renderer } from './Renderer.js';
 import { DebugOverlay } from './DebugOverlay.js';
+import { UIManager } from './UIManager.js';
+import { soundManager } from './SoundManager.js';
 
 class AROnmyoujiGame {
     constructor() {
@@ -22,473 +24,694 @@ class AROnmyoujiGame {
         this.motionInterpreter = new MotionInterpreter();
         this.gameWorld = new GameWorld();
         this.combatSystem = new CombatSystem(this.gameWorld, this.motionInterpreter);
-        this.renderer = new Renderer('gameCanvas');
         this.debugOverlay = new DebugOverlay();
-        
+        this.renderer = new Renderer('gameCanvas', this.debugOverlay);
+        this.uiManager = new UIManager();
+        this.soundManager = soundManager;
+
+        // Calibration display baseline (for reset behavior)
+        this.calibrationDisplayBaseline = null;
+        // UI初期化
+        this.uiManager.init();
+
+        // AppState の変化を監視して UI のインラインスタイルや再配置を補正する
+        this.appState.onStateChanged = this.onAppStateChanged.bind(this);
+
         // カメラストリーム
         this.cameraStream = null;
         this.videoElement = document.getElementById('cameraVideo');
-        
+
         // 直近フレーム
         this.latestFrame = null;
-        
+
         // ゲームループ
         this.lastUpdateTime = 0;
         this.FIXED_DELTA_TIME = 1000 / 60; // 60 FPS
         this.isRunning = false;
-        
-        // UI要素
-        this.initUIElements();
-        
+
+        // ダブルヒット防止用
+        this.lastEnemyHitTime = new Map();
+        this.MIN_HIT_INTERVAL_MS = 100;
+
         // イベントハンドラ設定
         this.setupEventHandlers();
-        
-        // デバッグ長押し用
-        this.debugPressTimer = null;
-        
+
         console.log('[Game] 初期化完了');
         this.debugOverlay.logInfo('ゲーム初期化完了');
     }
-    
+
     /**
-     * UI要素の取得
+     * AppState 変更時の補助処理
+     * スプラッシュが UIManager によりインラインで固定されている場合に
+     * 明示的に非表示にし、権限画面を確実に表示する。
      */
-    initUIElements() {
-        this.ui = {
-            // Splash
-            startButton: document.getElementById('startButton'),
-            
-            // Permission
-            requestPermissionButton: document.getElementById('requestPermissionButton'),
-            cameraStatus: document.getElementById('cameraStatus'),
-            motionStatus: document.getElementById('motionStatus'),
-            permissionError: document.getElementById('permissionError'),
-            
-            // BLE Connect
-            connectBleButton: document.getElementById('connectBleButton'),
-            bleStatus: document.getElementById('bleStatus'),
-            bleError: document.getElementById('bleError'),
-            
-            // Calibrate
-            calibPitch: document.getElementById('calibPitch'),
-            calibYaw: document.getElementById('calibYaw'),
-            calibRoll: document.getElementById('calibRoll'),
-            confirmCalibrationButton: document.getElementById('confirmCalibrationButton'),
-            
-            // Gameplay HUD
-            playerHP: document.getElementById('playerHP'),
-            killCount: document.getElementById('killCount'),
-            timeLeft: document.getElementById('timeLeft'),
-            hudPowerMode: document.getElementById('hudPowerMode'),
-            powerModeTime: document.getElementById('powerModeTime'),
-            
-            // Result
-            resultTitle: document.getElementById('resultTitle'),
-            resultKills: document.getElementById('resultKills'),
-            resultTime: document.getElementById('resultTime'),
-            retryButton: document.getElementById('retryButton'),
-            reconnectButton: document.getElementById('reconnectButton'),
-            recalibrateButton: document.getElementById('recalibrateButton'),
-            
-            // Debug
-            toggleDebugButton: document.getElementById('toggleDebugButton')
-        };
+    onAppStateChanged(newState) {
+        try {
+            // スプラッシュは UIManager 経由で確実に消す
+            if (this.uiManager && typeof this.uiManager.hideSplashScreen === 'function') {
+                this.uiManager.hideSplashScreen();
+            }
+
+            // さらに万全のため、スプラッシュ要素のインライン表示を明示的に消す
+            const splashEl = document.getElementById('splashScreen');
+            if (splashEl) {
+                splashEl.classList.remove('active');
+                splashEl.classList.add('hidden');
+                try { splashEl.style.display = 'none'; } catch (e) { }
+                try { splashEl.style.pointerEvents = 'none'; } catch (e) { }
+            }
+
+            // 権限画面に遷移する場合は display を確実に設定しておく
+            if (newState === this.appState.states.S1_PERMISSION) {
+                const perm = document.getElementById('permissionScreen');
+                if (perm) {
+                    perm.classList.remove('hidden');
+                    perm.classList.add('active');
+                    try { perm.style.display = 'flex'; } catch (e) { }
+                    try { perm.style.pointerEvents = 'auto'; } catch (e) { }
+                }
+            }
+        } catch (e) {
+            console.warn('[AppStateHandler] onAppStateChanged error', e);
+        }
     }
-    
+
     /**
      * イベントハンドラ設定
      */
     setupEventHandlers() {
-        // Splash
-        this.ui.startButton.addEventListener('click', () => this.onStartGame());
-        
-        // Permission
-        this.ui.requestPermissionButton.addEventListener('click', () => this.requestPermissions());
-        
-        // BLE Connect
-        this.ui.connectBleButton.addEventListener('click', () => this.connectBLE());
-        
-        // Calibrate
-        this.ui.confirmCalibrationButton.addEventListener('click', () => this.confirmCalibration());
-        
-        // Result
-        this.ui.retryButton.addEventListener('click', () => this.onRetry());
-        this.ui.reconnectButton.addEventListener('click', () => this.onReconnect());
-        this.ui.recalibrateButton.addEventListener('click', () => this.onRecalibrate());
-        
-        // Debug toggle（3秒長押し）
-        this.ui.toggleDebugButton.addEventListener('pointerdown', () => {
-            this.debugPressTimer = setTimeout(() => {
-                this.debugOverlay.toggle();
-            }, 3000);
+        // UIイベント
+        this.uiManager.bindEvents({
+            onStartGame: () => this.onStartGame(),
+            onStartInScene: () => this.onStartInScene(),
+            onRequestPermission: () => this.requestPermissions(),
+            onConnectBLE: () => this.connectBLE(),
+            onConfirmCalibration: () => this.confirmCalibration(),
+            onResetCalibration: () => this.onResetCalibration(),
+            onReturnToTitle: () => this.onReturnToTitle(), // New
+            onTitleStartGame: () => this.onTitleStartGame(), // New
+            onRetry: () => this.onRetry(),
+            onReconnect: () => this.onReconnect(),
+            onRecalibrate: () => this.onRecalibrate(),
+            onToggleDebug: () => this.debugOverlay.toggle()
         });
-        this.ui.toggleDebugButton.addEventListener('pointerup', () => {
-            if (this.debugPressTimer) {
-                clearTimeout(this.debugPressTimer);
-                this.debugPressTimer = null;
-            }
-        });
-        
+
         // BLE コールバック
         this.bleAdapter.setOnDataCallback((data) => this.onBLEData(data));
         this.bleAdapter.setOnDisconnectCallback(() => this.onBLEDisconnect());
-        
+
+        // Renderer コールバック
+        this.renderer.onSlashHitEnemy = (data) => this.onRendererSlashHit(data);
+
         // Motion Interpreter コールバック
         this.motionInterpreter.onSwingDetected = (swing) => this.onSwing(swing);
         this.motionInterpreter.onCircleDetected = (circle) => this.onCircle(circle);
         this.motionInterpreter.onPowerModeActivated = (power) => this.onPowerMode(power);
-        
+        this.motionInterpreter.onSwingTracerUpdate = (trajectory) => this.onSwingTracerUpdate(trajectory);
+        this.motionInterpreter.onSwingStarted = () => this.onSwingStarted();
+
         // GameWorld コールバック
         this.gameWorld.onEnemySpawned = (enemy) => this.onEnemySpawned(enemy);
         this.gameWorld.onEnemyKilled = (data) => this.onEnemyKilled(data);
         this.gameWorld.onPlayerDamaged = (data) => this.onPlayerDamaged(data);
         this.gameWorld.onGameOver = (data) => this.onGameOver(data);
         this.gameWorld.onGameClear = (data) => this.onGameClear(data);
-        
+
         // CombatSystem コールバック
         this.combatSystem.onHapticEvent = (event) => this.onHapticEvent(event);
-        
-        // DeviceOrientation（端末姿勢）は権限取得後に登録する
+
+        // DeviceOrientation
         this.deviceOrientationHandler = (e) => this.renderer.updateDeviceOrientation(e);
     }
-    
-    /**
-     * ゲーム開始
-     */
-    onStartGame() {
-        this.debugOverlay.logInfo('ゲーム開始ボタン押下');
-        this.appState.startGame();
-    }
-    
-    /**
-     * 権限要求
-     */
-    async requestPermissions() {
-        this.debugOverlay.logInfo('権限要求開始');
-        
-        try {
-            // カメラ権限
-            this.cameraStream = await navigator.mediaDevices.getUserMedia({
-                video: { facingMode: 'environment' }
-            });
-            this.videoElement.srcObject = this.cameraStream;
-            this.ui.cameraStatus.textContent = '📷 カメラ: 許可';
-            this.debugOverlay.logInfo('カメラ権限: 許可');
-            
-            // モーション権限（iOS対応）
-            if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
-                const permission = await DeviceOrientationEvent.requestPermission();
-                if (permission === 'granted') {
-                    this.ui.motionStatus.textContent = '📱 モーション: 許可';
-                    this.debugOverlay.logInfo('モーション権限: 許可');
-                    
-                    // 権限取得後にDeviceOrientationイベントリスナーを登録
-                    window.addEventListener('deviceorientation', this.deviceOrientationHandler);
-                } else {
-                    throw new Error('モーション権限が拒否されました');
-                }
-            } else {
-                // 非iOS環境ではデフォルトで許可とみなす
-                this.ui.motionStatus.textContent = '📱 モーション: 許可';
-                this.debugOverlay.logInfo('モーション権限: 自動許可（非iOS）');
-                
-                // 非iOS環境でも登録
-                window.addEventListener('deviceorientation', this.deviceOrientationHandler);
-            }
-            
-            // 次の状態へ
-            this.appState.permissionGranted();
-            
-        } catch (error) {
-            this.ui.permissionError.textContent = `エラー: ${error.message}`;
-            this.debugOverlay.logError(`権限エラー: ${error.message}`);
-        }
-    }
-    
-    /**
-     * BLE接続
-     */
-    async connectBLE() {
-        this.debugOverlay.logInfo('BLE接続開始');
-        this.ui.bleStatus.textContent = '接続中...';
-        
-        try {
-            await this.bleAdapter.connect();
-            this.ui.bleStatus.textContent = '接続成功';
-            this.debugOverlay.logInfo('BLE接続成功');
-            
-            // 次の状態へ
-            this.appState.bleConnected();
-            
-        } catch (error) {
-            this.ui.bleError.textContent = `接続エラー: ${error.message}`;
-            this.debugOverlay.logError(`BLE接続エラー: ${error.message}`);
-        }
-    }
-    
-    /**
-     * キャリブレーション確定
-     */
+
     confirmCalibration() {
         if (!this.latestFrame) {
             this.debugOverlay.logWarn('キャリブレーション: フレームデータなし');
             return;
         }
-        
+
         const { pitch_deg, yaw_deg, roll_deg } = this.latestFrame;
         this.motionInterpreter.calibrate(pitch_deg, yaw_deg, roll_deg);
-        this.debugOverlay.logInfo(`キャリブレーション完了: pitch=${pitch_deg.toFixed(1)}, yaw=${yaw_deg.toFixed(1)}, roll=${roll_deg.toFixed(1)}`);
-        
-        // ゲームプレイ開始
+        this.debugOverlay.logInfo(`キャリブレーション完了: ${pitch_deg.toFixed(1)}, ${yaw_deg.toFixed(1)}, ${roll_deg.toFixed(1)}`);
+
+        // 校正完了 -> ゲーム画面へ遷移するが、ゲームはまだ開始しない
         this.appState.calibrationComplete();
-        this.startGameplay();
+        // ここでスタートボタンを表示確実にONにする
+        this.uiManager.toggleSceneStartButton(true);
     }
-    
+
+    /**
+     * ゲーム画面内のスタートボタンから呼ばれる処理。
+     * カウントダウンをUIに表示してから `startGameplay()` を呼ぶ。
+     */
+    onStartInScene() {
+        this.debugOverlay.logInfo('シーン内スタートボタン押下');
+
+        // スタートボタンを隠す
+        this.uiManager.toggleSceneStartButton(false);
+
+        try {
+            // unlock first to ensure user gesture grants playback
+            this.soundManager.unlock();
+            this.soundManager.initAudioContext();
+            // kick off load if not already loaded
+            const needLoad = ((this.soundManager.buffers && this.soundManager.buffers.size === 0) &&
+                (this.soundManager.sounds && this.soundManager.sounds.size === 0));
+            if (needLoad) {
+                this.soundManager.load({
+                    polygon_burst: 'assets/sfx/polygon_burst.mp3',
+                    explosion: 'assets/sfx/explosion.mp3',
+                    attack_swipe: 'assets/sfx/atttack.mp3'
+                }).then(() => this.debugOverlay.logInfo('SFXロード完了')).catch(e => console.warn('sound load failed', e));
+            }
+        } catch (e) {
+            console.warn('sound init/load failed', e);
+        }
+
+        // Play CRT Boot Sequence, then Countdown, then Start
+        this.uiManager.playBootSequence(() => {
+            // カウントダウン表示後にゲームを開始
+            // 表示基準は開始時点で不要にする
+            this.calibrationDisplayBaseline = null;
+            this.uiManager.showCountdown(3, () => {
+                this.startGameplay();
+            });
+        });
+    }
+
+
+
+    /**
+     * ゲーム開始 (GameWorld開始)
+     */
+    onStartGame() {
+        // ... (unchanged)
+        this.debugOverlay.logInfo('ゲーム開始ボタン押下');
+        try {
+            // unlock を最優先で呼ぶ（ユーザージェスチャに紐付ける）
+            this.soundManager.unlock();
+            this.soundManager.initAudioContext();
+            this.soundManager.load({
+                polygon_burst: 'assets/sfx/polygon_burst.mp3',
+                explosion: 'assets/sfx/explosion.mp3',
+                attack_swipe: 'assets/sfx/atttack.mp3'
+            }).then(() => this.debugOverlay.logInfo('SFXロード完了')).catch(e => console.warn('sound load failed', e));
+        } catch (e) {
+            console.warn('sound init/load failed', e);
+        }
+        this.appState.startGame();
+    }
+
+    /**
+     * 権限要求
+     */
+    async requestPermissions() {
+        this.debugOverlay.logInfo('権限要求開始');
+        this.uiManager.addPermissionLog('権限要求開始...');
+
+        try {
+            // モーション権限
+            if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+                this.uiManager.addPermissionLog('📱 iOS環境: requestPermission実行...');
+
+                try {
+                    const permission = await DeviceOrientationEvent.requestPermission();
+                    this.uiManager.addPermissionLog(`📱 requestPermission結果: ${permission}`);
+
+                    if (permission === 'granted') {
+                        this.uiManager.updatePermissionStatus('motion', 'granted');
+                        this.uiManager.addPermissionLog('✓ モーション権限許可');
+                        window.addEventListener('deviceorientation', this.deviceOrientationHandler);
+                    } else if (permission === 'denied') {
+                        this.uiManager.updatePermissionStatus('motion', 'denied');
+                        throw new Error('モーション権限が拒否されました');
+                    } else {
+                        this.uiManager.updatePermissionStatus('motion', 'prompt');
+                    }
+                } catch (permissionError) {
+                    this.uiManager.showPermissionError(permissionError.message);
+                    throw permissionError;
+                }
+            } else {
+                this.uiManager.updatePermissionStatus('motion', 'granted');
+                this.uiManager.addPermissionLog('✓ 非iOS環境: 自動許可');
+                window.addEventListener('deviceorientation', this.deviceOrientationHandler);
+            }
+
+            // カメラ権限
+            this.uiManager.addPermissionLog('📷 カメラ権限要求中...');
+
+            this.cameraStream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: 'environment' }
+            });
+            this.videoElement.srcObject = this.cameraStream;
+            this.videoElement.muted = true;
+
+            // Check if we are using environment camera and remove mirror effect
+            try {
+                const track = this.cameraStream.getVideoTracks()[0];
+                const settings = track.getSettings();
+                if (settings.facingMode === 'environment') {
+                    this.videoElement.classList.remove('scale-x-[-1]');
+                    this.debugOverlay.logInfo('背面カメラ検出: ミラーリング解除');
+                }
+            } catch (e) {
+                console.warn('Camera settings check failed', e);
+            }
+
+            const tryPlay = async () => {
+                try {
+                    await this.videoElement.play();
+                    this.debugOverlay.logInfo('カメラ映像再生開始');
+                    return true;
+                } catch (err) {
+                    console.warn('video.play failed', err);
+                    return false;
+                }
+            };
+
+            let played = await tryPlay();
+            if (!played) {
+                const onLoaded = async () => {
+                    await tryPlay();
+                    this.videoElement.removeEventListener('loadedmetadata', onLoaded);
+                };
+                this.videoElement.addEventListener('loadedmetadata', onLoaded);
+                setTimeout(() => this.videoElement.removeEventListener('loadedmetadata', onLoaded), 5000);
+            }
+
+            this.uiManager.updatePermissionStatus('camera', 'granted');
+            this.uiManager.addPermissionLog('✓ カメラ権限取得成功');
+            this.uiManager.addPermissionLog('✓ 全権限取得完了');
+
+            this.appState.permissionGranted();
+
+        } catch (error) {
+            console.error(error);
+            this.uiManager.showPermissionError(error.message);
+            this.uiManager.addPermissionLog(`✗ エラー: ${error.message}`);
+        }
+    }
+
+    /**
+     * BLE接続
+     */
+    async connectBLE() {
+        this.debugOverlay.logInfo('BLE接続開始');
+        this.uiManager.updateBLEStatus('接続中...');
+
+        try {
+            await this.bleAdapter.connect();
+            this.uiManager.updateBLEStatus('接続成功');
+            this.debugOverlay.logInfo('BLE接続成功');
+            this.appState.bleConnected();
+        } catch (error) {
+            this.uiManager.showBLEError(error.message);
+            this.debugOverlay.logError(`BLE接続エラー: ${error.message}`);
+        }
+    }
+
     /**
      * ゲームプレイ開始
      */
     startGameplay() {
+        // 念のためスタートボタンを隠す
+        this.uiManager.toggleSceneStartButton(false);
+
+        // Ensure audio context is initialized and SFX loading started
+        try {
+            this.soundManager.initAudioContext();
+            const needLoad = ((this.soundManager.buffers && this.soundManager.buffers.size === 0) &&
+                (this.soundManager.sounds && this.soundManager.sounds.size === 0));
+            if (needLoad) {
+                this.soundManager.load({
+                    polygon_burst: 'assets/sfx/polygon_burst.mp3',
+                    explosion: 'assets/sfx/explosion.mp3',
+                    attack_swipe: 'assets/sfx/atttack.mp3'
+                }).then(() => this.debugOverlay.logInfo('SFXロード完了')).catch(e => console.warn('sound load failed', e));
+            }
+        } catch (e) {
+            console.warn('sound init/load in startGameplay failed', e);
+        }
+
         this.gameWorld.startGame();
         this.isRunning = true;
         this.lastUpdateTime = performance.now();
         this.gameLoop();
         this.debugOverlay.logInfo('ゲームプレイ開始');
     }
-    
+
     /**
      * BLEデータ受信
      */
     onBLEData(data) {
         const frame = this.parser.parseFrame(data);
         if (!frame) return;
-        
+
         this.latestFrame = frame;
-        
-        // キャリブレーション画面でのリアルタイム表示
+
         if (this.appState.getCurrentState() === 'calibrate') {
-            this.ui.calibPitch.textContent = frame.pitch_deg.toFixed(1);
-            this.ui.calibYaw.textContent = frame.yaw_deg.toFixed(1);
-            this.ui.calibRoll.textContent = frame.roll_deg.toFixed(1);
+            // If a display baseline was set by reset, show angles relative to that baseline
+            if (this.calibrationDisplayBaseline) {
+                const dp = this.unwrapAngleDeg(frame.pitch_deg - this.calibrationDisplayBaseline.pitch);
+                const dy = this.unwrapAngleDeg(frame.yaw_deg - this.calibrationDisplayBaseline.yaw);
+                const dr = this.unwrapAngleDeg(frame.roll_deg - this.calibrationDisplayBaseline.roll);
+                this.uiManager.updateCalibrationValues(dp, dy, dr);
+            } else {
+                this.uiManager.updateCalibrationValues(frame.pitch_deg, frame.yaw_deg, frame.roll_deg);
+            }
         }
-        
-        // ゲームプレイ中の処理
+
         if (this.appState.isGameplay()) {
             this.motionInterpreter.update(frame);
         }
-        
-        // デバッグ更新
+
         this.updateDebugInfo();
     }
-    
+
     /**
      * BLE切断
      */
     onBLEDisconnect() {
         this.debugOverlay.logWarn('BLE切断検出');
-        // 必要に応じて再接続画面へ遷移
     }
-    
-    /**
-     * 斬撃検出
-     */
+
+    unwrapAngleDeg(angle) {
+        while (angle > 180) angle -= 360;
+        while (angle < -180) angle += 360;
+        return angle;
+    }
+
+    onSwingStarted() {
+        this.renderer.startSwingTracer();
+    }
+
     onSwing(swing) {
-        this.debugOverlay.logInfo(`斬撃検出: intensity=${swing.intensity.toFixed(2)}`);
-        this.combatSystem.handleSwing(swing);
+        this.debugOverlay.logInfo(`斬撃: intensity=${swing.intensity.toFixed(2)}`);
+        this.renderer.endSwingTracer();
+        // 攻撃（スイング）音を再生
+        try {
+            const rate = Math.min(1.6, 0.9 + swing.intensity * 0.25);
+            this.soundManager.play('attack_swipe', { volume: 0.7, playbackRate: rate });
+        } catch (e) { }
+        if (swing.trajectory && swing.trajectory.length >= 2) {
+            const startPyr = swing.trajectory[0];
+            const endPyr = swing.trajectory[swing.trajectory.length - 1];
+            this.renderer.addSlashArcProjectile(startPyr, endPyr, swing.intensity);
+        }
     }
-    
-    /**
-     * 円ジェスチャ検出
-     */
+
+    onSwingTracerUpdate(trajectory) {
+        this.renderer.updateSwingTracer(trajectory);
+    }
+
+    onRendererSlashHit(data) {
+        const enemy = data.enemy;
+        const intensity = data.intensity;
+        const isCritical = intensity >= this.combatSystem.CRITICAL_INTENSITY_THRESHOLD;
+        const now = performance.now();
+
+        const lastHitTime = this.lastEnemyHitTime.get(enemy.id);
+        if (lastHitTime && (now - lastHitTime) < this.MIN_HIT_INTERVAL_MS) {
+            return;
+        }
+
+        const existingEnemy = this.gameWorld.getEnemies().find(e => e.id === enemy.id);
+        if (!existingEnemy) return;
+
+        const damage = this.motionInterpreter.isPowerMode ? this.combatSystem.powerDamage : this.combatSystem.normalDamage;
+        const killed = this.gameWorld.damageEnemy(enemy.id, damage);
+
+        this.lastEnemyHitTime.set(enemy.id, now);
+
+        if (this.combatSystem.onHit) {
+            this.combatSystem.onHit({ enemy, damage, killed, isCritical });
+        }
+
+        if (killed) {
+            this.lastEnemyHitTime.delete(enemy.id);
+        }
+
+        this.combatSystem.sendHitHaptic(isCritical);
+        this.updateHUD(); // HUD更新
+    }
+
     onCircle(circle) {
-        this.debugOverlay.logInfo('円ジェスチャ検出（札発射）');
+        this.debugOverlay.logInfo('円ジェスチャ検出');
         const viewDir = this.renderer.getViewDirection();
         this.combatSystem.fireOfuda(viewDir);
     }
-    
-    /**
-     * 強化モード発動
-     */
+
     onPowerMode(power) {
         this.debugOverlay.logInfo('強化モード発動');
         this.combatSystem.sendPowerModeHaptic();
     }
-    
-    /**
-     * 敵スポーン
-     */
+
     onEnemySpawned(enemy) {
         this.renderer.addEnemy(enemy);
     }
-    
-    /**
-     * 敵撃破
-     */
+
     onEnemyKilled(data) {
         this.renderer.removeEnemy(data.enemy.id);
+        // 敵撃破サウンド
+        try { this.soundManager.play('polygon_burst', { volume: 0.9 }); } catch (e) { }
         this.updateHUD();
     }
-    
-    /**
-     * プレイヤー被弾
-     */
+
     onPlayerDamaged(data) {
-        this.debugOverlay.logWarn(`被弾: HP=${data.hp}`);
         this.combatSystem.sendDamageHaptic();
+        // 被弾時爆発音
+        try { this.soundManager.play('explosion', { volume: 0.8 }); } catch (e) { }
+        if (data.enemy) {
+            this.uiManager.triggerDamageEffect();
+            this.renderer.removeEnemy(data.enemy.id, { playerDamage: true });
+
+            // remove indicator
+            // Note: UIManager.updateEnemyIndicators calls will clean up next frame usually,
+            // but we can rely on updateHUD calling updateEnemyIndicators if needed.
+        }
         this.updateHUD();
     }
-    
-    /**
-     * ゲームオーバー
-     */
+
     onGameOver(data) {
-        this.debugOverlay.logInfo(`ゲームオーバー: 撃破数=${data.killCount}`);
         this.isRunning = false;
-        this.showResult('ゲームオーバー', data.killCount, this.gameWorld.gameTime / 1000);
-    }
-    
-    /**
-     * ゲームクリア
-     */
-    onGameClear(data) {
-        this.debugOverlay.logInfo(`ゲームクリア: 撃破数=${data.killCount}`);
-        this.isRunning = false;
-        this.showResult('クリア！', data.killCount, data.time / 1000);
-    }
-    
-    /**
-     * 触覚イベント
-     */
-    async onHapticEvent(event) {
-        if (event.data.pulses) {
-            // 複数パルス
-            await this.bleAdapter.sendHapticPulses(event.data.pulses, event.data.interval);
-        } else {
-            // 単一パルス
-            await this.bleAdapter.sendHapticCommand(event.data.strength, event.data.duration);
-        }
-        
-        this.debugOverlay.update({ hapticEvent: event.type });
-    }
-    
-    /**
-     * リザルト表示
-     */
-    showResult(title, kills, time) {
-        this.ui.resultTitle.textContent = title;
-        this.ui.resultKills.textContent = kills;
-        this.ui.resultTime.textContent = time.toFixed(1);
+        this.uiManager.showResult('ゲームオーバー', data.killCount, this.gameWorld.gameTime / 1000);
         this.appState.endGame();
     }
-    
-    /**
-     * リトライ
-     */
+
+    onGameClear(data) {
+        this.isRunning = false;
+        this.uiManager.showResult('クリア！', data.killCount, data.time / 1000);
+        this.appState.endGame();
+    }
+
+    async onHapticEvent(event) {
+        if (event.data.pulses) {
+            await this.bleAdapter.sendHapticPulses(event.data.pulses, event.data.interval);
+        } else {
+            await this.bleAdapter.sendHapticCommand(event.data.strength, event.data.duration);
+        }
+        this.debugOverlay.update({ hapticEvent: event.type });
+    }
+
+    onReturnToTitle() {
+        // Result -> Title Screen 2
+        this.debugOverlay.logInfo('タイトル2へ移動');
+
+        // Stop game loop and clear gameplay visuals
+        try {
+            // Stop the loop
+            this.isRunning = false;
+
+            // Ensure TV effects persist on title
+            try {
+                const globalTv = document.getElementById('global-tv-effects');
+                if (globalTv) {
+                    globalTv.classList.add('tv-effect-on');
+                    // force visible
+                    globalTv.style.display = '';
+                    globalTv.style.opacity = '';
+                }
+            } catch (e) { }
+
+            // Fully dispose renderer and related resources to remove all Three.js effects
+            try {
+                if (this.renderer && typeof this.renderer.dispose === 'function') {
+                    this.renderer.dispose();
+                }
+            } catch (e) { console.warn('renderer dispose failed', e); }
+
+            // Recreate a fresh renderer instance so future games start from a clean slate
+            try {
+                this.renderer = new Renderer('gameCanvas', this.debugOverlay);
+                // rebind callback
+                this.renderer.onSlashHitEnemy = (data) => this.onRendererSlashHit(data);
+                // keep canvas hidden while on title
+                if (this.renderer.canvas) {
+                    this.renderer.canvas.classList.add('hidden');
+                    this.renderer.canvas.style.pointerEvents = 'none';
+                }
+                const vid = document.getElementById('cameraVideo');
+                if (vid) vid.style.display = 'none';
+            } catch (e) { console.warn('renderer recreate failed', e); }
+
+            // Clear in-memory enemies and indicators
+            try { if (this.gameWorld && this.gameWorld.enemyManager) this.gameWorld.enemyManager.reset(); } catch (e) { }
+            try { this.uiManager.clearEnemyIndicators(); } catch (e) { }
+
+            // Hide gameplay HUD overlays if present
+            try { this.uiManager.toggleSceneStartButton(false); } catch (e) { }
+        } catch (e) {
+            console.warn('onReturnToTitle cleanup error', e);
+        }
+
+        // Finally, show Title Screen 2
+        this.uiManager.showTitleScreen2();
+    }
+
+    onTitleStartGame() {
+        // Title Screen 2 -> Game Start Sequence
+        this.debugOverlay.logInfo('タイトル2からゲーム開始');
+        this.uiManager.hideTitleScreen2();
+
+        // Use existing start sequence logic
+        this.onStartInScene();
+    }
+
+    gameLoop() {
+        if (!this.isRunning) return;
+
+        const now = performance.now();
+        // Calculate actual delta time in ms
+        const actualDelta = now - this.lastUpdateTime;
+        this.lastUpdateTime = now;
+
+        // Cap delta to prevent massive jumps (e.g., max 100ms = 10fps min)
+        // This prevents "spiral of death" or physics explosions on resume.
+        const safeDelta = Math.min(actualDelta, 100);
+
+        this.gameWorld.update(safeDelta);
+        const viewDir = this.renderer.getViewDirection();
+        this.combatSystem.update(safeDelta, viewDir);
+
+        this.updateHUD(viewDir);
+        this.renderer.updateEnemies(this.gameWorld.getEnemies());
+
+        // Renderer expects seconds usually? No, passed FIXED_DELTA_TIME which is ms (16.66).
+        // Let's verify usage in Renderer.render
+        this.renderer.render(safeDelta, this.gameWorld.getEnemies());
+        requestAnimationFrame(() => this.gameLoop());
+    }
+
+    // ... (updateHUD, updateDebugInfo unchanged)
+
     onRetry() {
-        this.debugOverlay.logInfo('リトライ');
+        // Legacy support if needed, but we use onReturnToTitle mostly now
+        this.renderer.dispose();
+        this.debugOverlay.clearLogs();
         this.appState.retry();
         this.startGameplay();
     }
-    
-    /**
-     * 再接続
-     */
+
     onReconnect() {
-        this.debugOverlay.logInfo('再接続');
+        this.uiManager.hideTitleScreen2(); // Ensure Title 2 is hidden
         this.bleAdapter.disconnect();
         this.appState.reconnect();
     }
-    
-    /**
-     * 再キャリブレーション
-     */
+
     onRecalibrate() {
-        this.debugOverlay.logInfo('再キャリブレーション');
+        this.uiManager.hideTitleScreen2(); // Ensure Title 2 is hidden
+        // 再キャリブレーション：既存の校正フラグをクリアしてキャリブレーション画面へ
+        try {
+            if (this.motionInterpreter) this.motionInterpreter.isCalibrated = false;
+        } catch (e) { }
+        // 画面表示用基準をクリアしてキャリブレーション画面へ
+        this.calibrationDisplayBaseline = null;
         this.appState.recalibrate();
+        this.debugOverlay.logInfo('再キャリブレーションモードへ移行');
     }
-    
-    /**
-     * ゲームループ
-     */
-    gameLoop() {
-        if (!this.isRunning) return;
-        
-        const now = performance.now();
-        const deltaTime = now - this.lastUpdateTime;
-        
-        // 固定Δtで更新
-        if (deltaTime >= this.FIXED_DELTA_TIME) {
-            this.lastUpdateTime = now;
-            
-            // ゲーム更新
-            this.gameWorld.update(this.FIXED_DELTA_TIME);
-            
-            // 戦闘システム更新
-            const viewDir = this.renderer.getViewDirection();
-            this.combatSystem.update(this.FIXED_DELTA_TIME, viewDir);
-            
-            // レンダラー更新
-            this.renderer.updateEnemies(this.gameWorld.getEnemies());
-            
-            // HUD更新
-            this.updateHUD();
+
+    onResetCalibration() {
+        // Reset: set display baseline to current device orientation so displayed euler
+        // angles become relative to device pose at reset time.
+        if (!this.latestFrame) {
+            this.debugOverlay.logWarn('リセット: フレームデータなし');
+            return;
         }
-        
-        // 描画
-        this.renderer.render();
-        
-        // 次のフレーム
-        requestAnimationFrame(() => this.gameLoop());
-    }
-    
-    /**
-     * HUD更新
-     */
-    updateHUD() {
-        const playerState = this.gameWorld.getPlayerState();
-        const stats = this.gameWorld.getGameStats();
-        const powerMode = this.motionInterpreter.getPowerModeState();
-        
-        this.ui.playerHP.textContent = playerState.hp;
-        this.ui.killCount.textContent = stats.killCount;
-        this.ui.timeLeft.textContent = Math.ceil(stats.remainingTime);
-        
-        // 強化モード
-        if (powerMode.active) {
-            this.ui.hudPowerMode.classList.remove('hidden');
-            this.ui.powerModeTime.textContent = Math.ceil(powerMode.remaining / 1000);
-        } else {
-            this.ui.hudPowerMode.classList.add('hidden');
-        }
-    }
-    
-    /**
-     * デバッグ情報更新
-     */
-    updateDebugInfo() {
-        if (!this.latestFrame) return;
-        
-        const stats = this.parser.getStats();
-        const swingState = this.motionInterpreter.getSwingState();
-        const circleDebug = this.motionInterpreter.getCircleDebugInfo();
-        
-        this.debugOverlay.update({
-            bleConnected: this.bleAdapter.getConnectionState(),
-            receiveHz: stats.receiveHz,
-            droppedFrames: stats.droppedFrames,
-            dropRate: stats.dropRate,
-            a_mag: this.latestFrame.a_mag,
+
+        this.calibrationDisplayBaseline = {
             pitch: this.latestFrame.pitch_deg,
             yaw: this.latestFrame.yaw_deg,
-            roll: this.latestFrame.roll_deg,
-            swingState: swingState.state,
-            cooldownRemaining: swingState.cooldownRemaining,
-            circleDebug: circleDebug
+            roll: this.latestFrame.roll_deg
+        };
+
+        // Ensure interpreter is not fully calibrated yet
+        try { if (this.motionInterpreter) this.motionInterpreter.isCalibrated = false; } catch (e) { }
+
+        // Ensure we are in calibrate screen
+        this.appState.recalibrate();
+
+        // Update UI immediately to show zeros (or very small residuals)
+        this.uiManager.updateCalibrationValues(0, 0, 0);
+        this.debugOverlay.logInfo('キャリブレーション表示基準をリセットしました');
+    }
+
+    updateHUD(viewDir) {
+        // Stats
+        this.uiManager.updateHUD(
+            this.gameWorld.getGameStats(),
+            this.gameWorld.getPlayerState()
+        );
+
+        // Power Mode
+        const powerState = this.motionInterpreter.getPowerModeState();
+        this.uiManager.updatePowerMode(powerState.active, powerState.remaining);
+
+        // Enemy Indicators
+        if (viewDir) {
+            this.uiManager.updateEnemyIndicators(
+                this.gameWorld.getEnemies(),
+                viewDir,
+                {
+                    halfHorz: this.renderer.getHalfFovHorizontalDegrees(),
+                    halfVert: this.renderer.getHalfFovDegrees()
+                },
+                (pos) => this.renderer.projectToNdc(pos),
+                (enemy) => this.gameWorld.getEnemyDirection(enemy) // !!! getEnemyDirection returns DIRECTION, not Position. 
+            );
+        }
+    }
+
+    // Debug info update
+    updateDebugInfo() {
+        if (this.latestFrame) {
+            this.debugOverlay.update({
+                angle: `P:${this.latestFrame.pitch_deg.toFixed(0)} Y:${this.latestFrame.yaw_deg.toFixed(0)} R:${this.latestFrame.roll_deg.toFixed(0)}`,
+                accel: `A:${this.latestFrame.a_mag.toFixed(2)}`
+            });
+        }
+
+        const swingState = this.motionInterpreter.getSwingState();
+        this.debugOverlay.update({
+            swing: `${swingState.state} (Int:${swingState.lastIntensity.toFixed(2)})`
         });
+
+        const circleInfo = this.motionInterpreter.getCircleDebugInfo();
+        if (circleInfo.valid) {
+            this.debugOverlay.update({
+                circle: `L:${circleInfo.length.toFixed(1)} C:${circleInfo.closure.toFixed(1)} R:${circleInfo.rotation.toFixed(1)}`
+            });
+        }
     }
 }
 
-// アプリケーション起動
-window.addEventListener('DOMContentLoaded', () => {
-    const game = new AROnmyoujiGame();
-    console.log('[Main] アプリケーション起動');
+// 起動
+window.addEventListener('load', () => {
+    window.game = new AROnmyoujiGame();
+    // If loading completed earlier, show splash via UIManager
+    try {
+        if (window.__loadingComplete && window.game && window.game.uiManager && typeof window.game.uiManager.showSplashScreen === 'function') {
+            window.game.uiManager.showSplashScreen();
+        }
+    } catch (e) { }
 });

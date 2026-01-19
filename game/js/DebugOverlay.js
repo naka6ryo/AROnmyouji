@@ -9,6 +9,14 @@ export class DebugOverlay {
         this.overlayElement = document.getElementById('debugOverlay');
         this.logContentElement = document.getElementById('logContent');
         
+        // 要素が存在することを確認
+        if (!this.overlayElement) {
+            console.error('[DebugOverlay] debugOverlay要素が見つかりません');
+        }
+        if (!this.logContentElement) {
+            console.error('[DebugOverlay] logContent要素が見つかりません');
+        }
+        
         // デバッグ表示項目
         this.debugElements = {
             bleState: document.getElementById('debugBleState'),
@@ -36,6 +44,8 @@ export class DebugOverlay {
         // 触覚送信カウント
         this.hapticsSentCount = 0;
         this.lastHapticEvent = '--';
+        
+        console.log('[DebugOverlay] 初期化完了, visible=' + this.isVisible);
     }
     
     /**
@@ -43,10 +53,19 @@ export class DebugOverlay {
      */
     toggle() {
         this.isVisible = !this.isVisible;
+        console.log('[DebugOverlay] toggle() 呼ばれた: isVisible=' + this.isVisible);
+        
+        if (!this.overlayElement) {
+            console.error('[DebugOverlay] toggle失敗: overlayElement が null');
+            return;
+        }
+        
         if (this.isVisible) {
             this.overlayElement.classList.remove('hidden');
+            console.log('[DebugOverlay] 表示: hidden クラスを削除');
         } else {
             this.overlayElement.classList.add('hidden');
+            console.log('[DebugOverlay] 非表示: hidden クラスを追加');
         }
     }
     
@@ -156,8 +175,13 @@ export class DebugOverlay {
      * ログ表示を更新
      */
     updateLogDisplay() {
-        // 最新10件のみ表示
-        const recentLogs = this.logs.slice(-10);
+        if (!this.logContentElement) {
+            console.error('[DebugOverlay] updateLogDisplay失敗: logContentElement が null');
+            return;
+        }
+        
+        // すべてのログを表示（最新10件から全件に変更）
+        const recentLogs = this.logs;
         
         this.logContentElement.innerHTML = recentLogs
             .map(log => {

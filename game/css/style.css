@@ -5,8 +5,15 @@
     box-sizing: border-box;
 }
 
+html,
 body {
-    font-family: 'Hiragino Kaku Gothic Pro', 'Meiryo', sans-serif;
+    width: 100%;
+    height: 100%;
+}
+
+body {
+    --primary: #FF0000;
+    font-family: 'Noto Sans JP', 'Orbitron', 'Hiragino Kaku Gothic Pro', 'Meiryo', sans-serif;
     overflow: hidden;
     width: 100vw;
     height: 100vh;
@@ -17,21 +24,22 @@ body {
 /* カメラビデオ背景 */
 #cameraVideo {
     position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
     object-fit: cover;
     z-index: 1;
+    /* 白黒化 + コントラスト強め + 少し暗くして雰囲気を出す */
+    filter: grayscale(100%) contrast(1.2) brightness(0.7);
 }
 
 /* 3Dキャンバス */
 #gameCanvas {
     position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    /* UI より下に配置してボタンをクリック可能にする */
     z-index: 2;
 }
 
@@ -46,7 +54,7 @@ body {
     pointer-events: none;
 }
 
-#uiContainer > * {
+#uiContainer>* {
     pointer-events: auto;
 }
 
@@ -64,6 +72,111 @@ body {
     background: rgba(0, 0, 0, 0.8);
     color: #fff;
     padding: 20px;
+}
+
+/* Make splash and title screens flush fullscreen without the default .screen padding */
+#splashScreen,
+#titleScreen2 {
+    padding: 0 !important;
+    background: transparent !important;
+    display: block !important;
+}
+
+/* Allow programmatic hiding when the 'hidden' class is applied */
+#splashScreen.hidden,
+#titleScreen2.hidden {
+    display: none !important;
+    pointer-events: none !important;
+    opacity: 0 !important;
+}
+
+/* Ensure splash content and its image fill the full area with no inline-gap */
+#splashContent,
+#splashContent>img {
+    width: 100% !important;
+    height: 100% !important;
+    display: block !important;
+    object-fit: cover !important;
+}
+
+/* Ensure title images are fixed to viewport and ignore parent padding/layout */
+#title02Img,
+#title02CrtImg {
+    position: fixed !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    object-fit: cover !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    display: block !important;
+}
+
+/* Exception: completely disable any margin/padding inside splash/title screens
+   so that utility classes or child elements cannot introduce visible gaps. */
+#splashScreen,
+#titleScreen2,
+#splashScreen *,
+#titleScreen2 * {
+    margin: 0 !important;
+    padding: 0 !important;
+    box-sizing: border-box !important;
+}
+
+/* Also ensure any common utility padding classes inside those screens are nulled */
+#splashScreen .p-6,
+#splashScreen .p-4,
+#splashScreen .p-8,
+#titleScreen2 .p-6,
+#titleScreen2 .p-4,
+#titleScreen2 .p-8,
+#titleScreen2 main,
+#splashScreen main {
+    padding: 0 !important;
+}
+
+/* Additionally neutralize common Tailwind padding/gap utility classes inside splash/title screens */
+#splashScreen [class*="p-"],
+#titleScreen2 [class*="p-"] {
+    padding: 0 !important;
+}
+
+#splashScreen [class*="px-"],
+#titleScreen2 [class*="px-"] {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+}
+
+#splashScreen [class*="py-"],
+#titleScreen2 [class*="py-"] {
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+}
+
+#splashScreen [class*="pt-"],
+#titleScreen2 [class*="pt-"] {
+    padding-top: 0 !important;
+}
+
+#splashScreen [class*="pb-"],
+#titleScreen2 [class*="pb-"] {
+    padding-bottom: 0 !important;
+}
+
+#splashScreen [class*="pl-"],
+#titleScreen2 [class*="pl-"] {
+    padding-left: 0 !important;
+}
+
+#splashScreen [class*="pr-"],
+#titleScreen2 [class*="pr-"] {
+    padding-right: 0 !important;
+}
+
+#splashScreen [class*="gap-"],
+#titleScreen2 [class*="gap-"] {
+    gap: 0 !important;
 }
 
 .screen.active {
@@ -87,7 +200,9 @@ body {
 }
 
 /* ボタンスタイル */
-.btn-primary, .btn-secondary, .btn-debug {
+.btn-primary,
+.btn-secondary,
+.btn-debug {
     padding: 15px 40px;
     font-size: 1.2rem;
     border: none;
@@ -155,7 +270,7 @@ body {
     pointer-events: none;
 }
 
-#gameplayScreen > * {
+#gameplayScreen>* {
     pointer-events: auto;
 }
 
@@ -166,6 +281,42 @@ body {
     display: flex;
     flex-direction: column;
     pointer-events: none;
+}
+
+#enemyIndicators {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 4;
+}
+
+.enemy-indicator {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    transform: translate(-50%, -50%);
+}
+
+.enemy-indicator .arrow {
+    width: 0;
+    height: 0;
+    border-left: 12px solid transparent;
+    border-right: 12px solid transparent;
+    border-bottom: 24px solid #ffd166;
+    filter: drop-shadow(0 0 8px #ffd166);
+    transition: transform 0.08s linear, border-bottom-color 0.2s, filter 0.2s;
+}
+
+.enemy-indicator .label {
+    color: #ffd166;
+    font-weight: bold;
+    font-size: 0.85rem;
+    text-shadow: 0 0 6px rgba(0, 0, 0, 0.8);
+    letter-spacing: 1px;
+    white-space: nowrap;
+    display: none;
 }
 
 #hudTop {
@@ -189,6 +340,36 @@ body {
     color: rgba(255, 255, 255, 0.8);
     text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
     pointer-events: none;
+}
+
+#enemyIndicator {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    pointer-events: none;
+}
+
+#enemyIndicator .arrow {
+    width: 0;
+    height: 0;
+    border-left: 12px solid transparent;
+    border-right: 12px solid transparent;
+    border-bottom: 24px solid #ffd166;
+    filter: drop-shadow(0 0 8px rgba(255, 209, 102, 0.85));
+    transition: transform 0.08s linear;
+}
+
+#enemyIndicator .label {
+    color: #ffd166;
+    font-weight: bold;
+    font-size: 0.9rem;
+    text-shadow: 0 0 6px rgba(0, 0, 0, 0.8);
+    letter-spacing: 1px;
 }
 
 #hudBottom {
@@ -230,7 +411,7 @@ body {
     right: 10px;
     width: 400px;
     max-height: 80vh;
-    background: rgba(0, 0, 0, 0.85);
+    background: rgba(0, 0, 0, 0.4);
     color: #0f0;
     padding: 15px;
     border-radius: 8px;
@@ -265,7 +446,7 @@ body {
 }
 
 #logContent {
-    max-height: 200px;
+    max-height: 400px;
     overflow-y: auto;
     font-size: 0.8rem;
 }
@@ -298,24 +479,658 @@ body {
     background: #0c0;
 }
 
+/* スタートオーバーレイ（中央表示） */
+.start-overlay {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: min(90%, 520px);
+    background: linear-gradient(180deg, rgba(5, 5, 10, 0.95), rgba(0, 0, 0, 0.85));
+    border-radius: 14px;
+    padding: 28px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    text-align: center;
+    z-index: 60;
+    pointer-events: auto;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+}
+
+.start-overlay h1 {
+    font-size: 2.4rem;
+    letter-spacing: 2px;
+}
+
+.start-stats {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+}
+
+.glitch-text {
+    position: relative;
+}
+
+.glitch-text::before,
+.glitch-text::after {
+    content: attr(data-text);
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.glitch-text::before {
+    left: 2px;
+    text-shadow: -1px 0 var(--primary);
+    clip: rect(44px, 450px, 56px, 0);
+    animation: glitch-anim 5s infinite linear alternate-reverse;
+}
+
+.glitch-text::after {
+    left: -2px;
+    text-shadow: -1px 0 #525252;
+    clip: rect(44px, 450px, 56px, 0);
+    animation: glitch-anim2 5s infinite linear alternate-reverse;
+}
+
+.parallelogram {
+    clip-path: polygon(15% 0, 100% 0, 85% 100%, 0% 100%);
+}
+
+.crosshair-line {
+    position: absolute;
+    background: rgba(255, 255, 255, 0.8);
+}
+
+.brush-edge {
+    clip-path: polygon(0 0, 100% 5%, 0 10%, 100% 15%, 0 20%, 100% 25%, 0 30%, 100% 35%, 0 40%, 100% 45%, 0 50%, 100% 55%, 0 60%, 100% 65%, 0 70%, 100% 75%, 0 80%, 100% 85%, 0 90%, 100% 95%, 0 100%);
+}
+
+/* Slightly stronger reticle glow and borders to match attached */
+.outer-ring {
+    border-color: rgba(255, 255, 255, 0.18);
+    box-shadow: 0 0 30px rgba(255, 255, 255, 0.04);
+}
+
+.inner-ring {
+    border-color: rgba(255, 255, 255, 0.12);
+}
+
+/* Make camera video distortion more visible and frequent */
+#cameraVideo.distortion-glitch {
+    animation: distort-shock 4s infinite cubic-bezier(0.2, 0.7, 1.0, 0.2);
+    filter: grayscale(100%) contrast(1.25) brightness(0.75);
+}
+
+#cameraVideo.horror-breathing {
+    animation: breathe-uneasy 6s ease-in-out infinite;
+}
+
+/* Top center HUD tweaks for contrast and borders */
+.top-center-hud {
+    border-top: 1px solid rgba(255, 0, 0, 0.08);
+    border-bottom: 1px solid rgba(255, 0, 0, 0.06);
+}
+
+.top-center-hud .value {
+    text-shadow: 0 0 6px rgba(0, 0, 0, 0.6);
+}
+
+/* Ensure scanline animation exists */
+@keyframes scanline {
+    0% {
+        background-position: 0 -8px;
+    }
+
+    100% {
+        background-position: 0 8px;
+    }
+}
+
+.start-hp,
+.start-kills,
+.start-timer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    color: #fff;
+}
+
+.start-hp .hp-label {
+    font-size: 0.85rem;
+    margin-bottom: 6px;
+    color: #ffdede;
+}
+
+/* HPバー共通 */
+#hpBarContainer,
+#hpBarContainerStart {
+    width: 160px;
+    height: 14px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+#hpBarFill,
+#hpBarFillStart {
+    height: 100%;
+    width: 100%;
+    /* 初期は満タン */
+    background: linear-gradient(90deg, #ff6b6b 0%, #ff8a5b 60%);
+    transition: width 0.25s ease-out, background 0.25s ease-out;
+}
+
+#playerHP,
+#playerHPStart {
+    font-weight: bold;
+    margin-top: 6px;
+    font-size: 1rem;
+}
+
+/* Top header */
+.top-header {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    right: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    pointer-events: none;
+    z-index: 70;
+}
+
+.top-header .scan-status {
+    background: rgba(0, 0, 0, 0.6);
+    color: #fff;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    font-size: 12px;
+}
+
+.top-header .connectivity {
+    color: #fff;
+    background: rgba(0, 0, 0, 0.4);
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-family: monospace;
+    font-size: 12px;
+}
+
+/* Top center HUD */
+.top-center-hud {
+    position: absolute;
+    top: 72px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    background: rgba(0, 0, 0, 0.55);
+    padding: 8px 16px;
+    border-radius: 10px;
+    z-index: 70;
+    pointer-events: none;
+}
+
+.top-center-hud .label {
+    font-size: 10px;
+    color: #ffddcc;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+}
+
+.top-center-hud .value {
+    font-family: 'Courier New', monospace;
+    font-size: 20px;
+    color: #fff;
+}
+
+.top-center-hud .divider {
+    width: 1px;
+    height: 36px;
+    background: rgba(255, 255, 255, 0.06);
+}
+
+/* Reticle */
+#reticleWrapper {
+    width: 220px;
+    height: 220px;
+    position: relative;
+    pointer-events: none;
+}
+
+.outer-ring {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 0 0 20px rgba(255, 255, 255, 0.03);
+}
+
+.inner-ring {
+    position: absolute;
+    inset: 30%;
+    border-radius: 50%;
+    border-left: 2px solid rgba(255, 255, 255, 0.16);
+    border-right: 2px solid rgba(255, 255, 255, 0.16);
+}
+
+.center-dot {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 14px;
+    height: 14px;
+    background: #ff6b6b;
+    border-radius: 50%;
+    box-shadow: 0 0 10px rgba(255, 107, 107, 0.9);
+}
+
+/* Vertical HP bar */
+.vertical-hp {
+    position: absolute;
+    right: 18px;
+    bottom: 40px;
+    width: 48px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    pointer-events: none;
+    z-index: 70;
+}
+
+.vertical-hp .hp-label-vertical {
+    color: var(--primary);
+    font-weight: 900;
+    letter-spacing: 0.12em;
+    transform: translateX(6px);
+}
+
+.vertical-hp .hp-track {
+    width: 32px;
+    height: 300px;
+    background: rgba(0, 0, 0, 0.6);
+    border: 2px solid rgba(255, 255, 255, 0.06);
+    border-radius: 6px;
+    overflow: hidden;
+    position: relative;
+}
+
+.vertical-hp .grid-bg {
+    position: absolute;
+    inset: 0;
+    opacity: 0.18;
+    background-image: linear-gradient(to bottom, transparent 6px, #525252 7px);
+    background-size: 100% 7px;
+}
+
+.vertical-hp .hp-fill {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 100%;
+    background: linear-gradient(180deg, #ff0000, #b22222);
+    transition: height 0.2s ease;
+    box-shadow: 0 0 28px rgba(255, 0, 0, 0.45);
+}
+
+.vertical-hp .hp-fill .top-highlight {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0));
+    opacity: 1;
+}
+
+.vertical-hp .side-line {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 4px;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.35);
+    border-left: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.vertical-hp .scanline-overlay {
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(to bottom, transparent 0, transparent 6px, rgba(255, 255, 255, 0.06) 6px, rgba(255, 255, 255, 0.06) 7px);
+    opacity: 0.36;
+    mix-blend-mode: overlay;
+}
+
+.vertical-hp .hp-numbers {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    color: #fff;
+    font-weight: 900;
+}
+
+/* Bottom-left action */
+.bottom-left-action {
+    position: absolute;
+    left: 24px;
+    bottom: 36px;
+    z-index: 70;
+    pointer-events: auto;
+}
+
+.bottom-left-action .btn-secondary {
+    padding: 12px 20px;
+    font-size: 1rem;
+}
+
 /* レスポンシブ対応 */
 @media (max-width: 768px) {
     .screen h1 {
         font-size: 2rem;
     }
-    
+
     .screen h2 {
         font-size: 1.5rem;
     }
-    
-    .btn-primary, .btn-secondary {
+
+    .btn-primary,
+    .btn-secondary {
         padding: 12px 30px;
         font-size: 1rem;
     }
-    
+
     #debugOverlay {
         width: 90%;
         right: 5%;
         font-size: 0.8rem;
     }
+}
+
+/* TV Effects Overlay Layer (from attached HUD) */
+.tv-effects-overlay {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 2;
+}
+
+.tv-effects-overlay .scanlines {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to bottom, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0) 50%, rgba(0, 0, 0, 0.25) 50%, rgba(0, 0, 0, 0.25));
+    background-size: 100% 4px;
+    opacity: 0.5;
+    mix-blend-mode: overlay;
+}
+
+.tv-effects-overlay .grid-overlay {
+    position: absolute;
+    inset: 0;
+    background-size: 40px 40px;
+    background-image: linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px), linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+}
+
+.tv-effects-overlay .static-noise {
+    position: absolute;
+    inset: 0;
+    opacity: 0.08;
+    background-image: url('data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noiseFilter%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.85%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noiseFilter)%22/%3E%3C/svg%3E');
+    mix-blend-mode: overlay;
+}
+
+.tv-effects-overlay .random-glitch-lines {
+    position: absolute;
+    inset: 0;
+    background-image: repeating-linear-gradient(90deg, transparent 0, transparent 2px, rgba(255, 255, 255, 0.15) 2px, rgba(255, 255, 255, 0.15) 4px), repeating-linear-gradient(0deg, transparent 0, transparent 2px, rgba(255, 255, 255, 0.15) 2px, rgba(255, 255, 255, 0.15) 4px);
+    opacity: 0;
+    mix-blend-mode: overlay;
+    animation: glitch-grid-anim 4s infinite linear alternate-reverse;
+}
+
+.tv-effects-overlay .horror-flash {
+    position: absolute;
+    inset: 0;
+    background: rgba(255, 0, 0, 0.1);
+    mix-blend-mode: overlay;
+    opacity: 0;
+    pointer-events: none;
+    animation: horror-flash-anim 7s infinite;
+}
+
+.tv-effects-overlay .vignette-overlay {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle, transparent 40%, rgba(0, 0, 0, 0.45) 80%, rgba(0, 0, 0, 0.85) 100%);
+    pointer-events: none;
+}
+
+@keyframes glitch-grid-anim {
+    0% {
+        opacity: 0;
+        clip-path: inset(0 0 100% 0);
+        transform: translateX(0);
+    }
+
+    5% {
+        opacity: 0.3;
+        clip-path: inset(10% 0 85% 0);
+        transform: translateX(-5px);
+    }
+
+    10% {
+        opacity: 0;
+        clip-path: inset(100% 0 0 0);
+    }
+
+    35% {
+        opacity: 0.2;
+        clip-path: inset(40% 0 45% 0);
+        transform: translateX(5px);
+    }
+
+    36% {
+        opacity: 0;
+    }
+
+    60% {
+        opacity: 0.4;
+        clip-path: inset(70% 0 20% 0);
+        transform: translateX(-2px);
+    }
+
+    61% {
+        opacity: 0;
+    }
+
+    85% {
+        opacity: 0.2;
+        clip-path: inset(20% 0 75% 0);
+        transform: translateX(3px);
+    }
+
+    86% {
+        opacity: 0;
+    }
+
+    100% {
+        opacity: 0;
+        clip-path: inset(0 0 100% 0);
+    }
+}
+
+@keyframes horror-flash-anim {
+
+    0%,
+    89% {
+        opacity: 0;
+    }
+
+    90% {
+        opacity: 0.5;
+        background: red;
+    }
+
+    91% {
+        opacity: 0;
+    }
+
+    92% {
+        opacity: 0.3;
+        background: #00ffff;
+    }
+
+    93% {
+        opacity: 0;
+    }
+}
+
+/* ensure UI above overlays */
+#uiContainer {
+    z-index: 3;
+}
+
+/* -------- ダメージ演出スタイル（flash/vignette/shake） -------- */
+#flash-overlay {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: #fff;
+    opacity: 0;
+    pointer-events: none;
+    z-index: 100;
+    transition: opacity 0.08s ease-out;
+    mix-blend-mode: hard-light;
+}
+
+#damage-vignette {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    background: radial-gradient(circle, transparent 40%, rgba(120, 0, 0, 0.6) 80%, rgba(50, 0, 0, 0.9) 100%);
+    box-shadow: inset 0 0 150px rgba(255, 0, 0, 0.5);
+    opacity: 0;
+    pointer-events: none;
+    z-index: 90;
+    transition: opacity 0.5s ease-out;
+    mix-blend-mode: multiply;
+}
+
+@keyframes chaotic-shake {
+    0% {
+        transform: translate(0, 0) rotate(0deg);
+    }
+
+    10% {
+        transform: translate(-8px, -8px) rotate(-1.5deg);
+    }
+
+    20% {
+        transform: translate(8px, 8px) rotate(1.5deg);
+    }
+
+    30% {
+        transform: translate(-8px, 8px) rotate(-1.5deg);
+    }
+
+    40% {
+        transform: translate(8px, -8px) rotate(1.5deg);
+    }
+
+    50% {
+        transform: translate(-4px, 0) rotate(-0.8deg);
+    }
+
+    60% {
+        transform: translate(4px, 0) rotate(0.8deg);
+    }
+
+    100% {
+        transform: translate(0, 0) rotate(0deg);
+    }
+}
+
+.shake-screen {
+    animation: chaotic-shake 0.45s cubic-bezier(.36, .07, .19, .97) both;
+}
+
+/* 小さなユーティリティ: flash をすぐ戻すためのクラス */
+.flash-quick-hide {
+    transition: opacity 0.15s ease-in;
+}
+
+/* Distortion shock keyframes: short, higher-amplitude bursts using SVG turbulence */
+@keyframes distort-shock {
+
+    0%,
+    82% {
+        transform: scale(1) skew(0deg);
+        filter: none;
+        opacity: 0.92;
+    }
+
+    83% {
+        transform: scale(1.02) skew(2deg);
+        filter: url('#turbulence');
+        opacity: 0.96;
+    }
+
+    85% {
+        transform: scale(0.98) skew(-1deg) translateX(-4px);
+        filter: url('#turbulence');
+        opacity: 1;
+    }
+
+    87% {
+        transform: scale(1.06) skew(-5deg) translateX(6px);
+        filter: url('#turbulence');
+        opacity: 1;
+    }
+
+    90% {
+        transform: scale(1.01) skew(1deg);
+        filter: hue-rotate(15deg) saturate(1.2);
+        opacity: 0.95;
+    }
+
+    96% {
+        transform: scale(1) skew(0deg);
+        filter: none;
+        opacity: 0.92;
+    }
+
+    100% {
+        transform: scale(1) skew(0deg);
+        filter: none;
+        opacity: 0.92;
+    }
+}
+
+
+#sceneStartButton {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 50;
+    pointer-events: auto;
+    font-size: 2rem;
+    padding: 20px 60px;
 }

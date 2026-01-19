@@ -30,20 +30,22 @@
             theme: {
                 extend: {
                     colors: {
-                        primary: "#FF0000", // The vibrant red
-                        "ink-black": "#0d0d0d",
-                        "tech-gray": "#525252",
+                        primary: "#FF0033", // Modified to match user request (Vibrant Neon Red)
+                        "ink-black": "#000000",
+                        "tech-gray": "#9ca3af",
                         "light-gray": "#e5e5e5",
                         "meter-bg": "#f3f4f6",
                         "background-light": "#FFFFFF",
                         "background-dark": "#0A0A0A",
+                        "dark-bg": "#050505", // Deep black
+                        "panel-bg": "#0f0505", // Slight red tint black
                     },
                     backgroundImage: {
                         'radial-gradient': 'radial-gradient(var(--tw-gradient-stops))',
                         'dot-grid': 'radial-gradient(#000000 1.5px, transparent 1.5px)',
                     },
                     fontFamily: {
-                        display: ["'Syncopate'", "'Orbitron'", "sans-serif"], /* Updated to prioritize Syncopate for loading screen / design match */
+                        display: ["'Orbitron'", "sans-serif"],
                         japanese: ["'Shippori Mincho'", "serif"],
                         sans: ["'Noto Sans JP'", "sans-serif"],
                         mono: ["'JetBrains Mono'", "'ui-monospace'", "'SFMono-Regular'", "'Menlo'", "'Monaco'", "'Consolas'", "monospace"],
@@ -58,6 +60,7 @@
                         'pulse-fast': 'pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite',
                         'glitch': 'glitch 2s infinite',
                         'scanline': 'scanline 8s linear infinite',
+                        'border-pulse': 'borderPulse 3s ease-in-out infinite',
                     },
                     keyframes: {
                         glitch: {
@@ -71,6 +74,10 @@
                         scanline: {
                             '0%': { transform: 'translateY(-100%)' },
                             '100%': { transform: 'translateY(100%)' }
+                        },
+                        borderPulse: {
+                            '0%, 100%': { borderColor: 'rgba(255, 0, 51, 0.4)', boxShadow: '0 0 10px rgba(255, 0, 51, 0.1)' },
+                            '50%': { borderColor: 'rgba(255, 0, 51, 0.9)', boxShadow: '0 0 25px rgba(255, 0, 51, 0.3)' },
                         }
                     }
                 },
@@ -78,7 +85,98 @@
         };
     </script>
     <style>
-        /* User Design Loading Styles */
+        /* New Mission Failed UI Styles */
+        .glitch-text {
+            position: relative
+        }
+
+        .glitch-text::before,
+        .glitch-text::after {
+            content: attr(data-text);
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0.8
+        }
+
+        .glitch-text::before {
+            left: 2px;
+            text-shadow: -2px 0 #0FF;
+            clip: rect(44px, 450px, 56px, 0);
+            animation: glitch-anim 3s infinite linear alternate-reverse
+        }
+
+        .glitch-text::after {
+            left: -2px;
+            text-shadow: 2px 0 #F03;
+            clip: rect(44px, 450px, 56px, 0);
+            animation: glitch-anim2 2.5s infinite linear alternate-reverse
+        }
+
+        @keyframes glitch-anim {
+            0% {
+                clip: rect(32px, 9999px, 12px, 0);
+            }
+
+            20% {
+                clip: rect(12px, 9999px, 5px, 0);
+            }
+
+            40% {
+                clip: rect(11px, 9999px, 86px, 0);
+            }
+
+            60% {
+                clip: rect(2px, 9999px, 14px, 0);
+            }
+
+            80% {
+                clip: rect(43px, 9999px, 78px, 0);
+            }
+
+            100% {
+                clip: rect(56px, 9999px, 98px, 0);
+            }
+        }
+
+        @keyframes glitch-anim2 {
+            0% {
+                clip: rect(65px, 9999px, 43px, 0);
+            }
+
+            20% {
+                clip: rect(4px, 9999px, 80px, 0);
+            }
+
+            40% {
+                clip: rect(25px, 9999px, 12px, 0);
+            }
+
+            60% {
+                clip: rect(89px, 9999px, 55px, 0);
+            }
+
+            80% {
+                clip: rect(12px, 9999px, 6px, 0);
+            }
+
+            100% {
+                clip: rect(12px, 9999px, 5px, 0);
+            }
+        }
+
+        .bg-scanlines {
+            background: linear-gradient(to bottom, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0) 50%, rgba(0, 0, 0, 0.3) 50%, rgba(0, 0, 0, 0.3));
+            background-size: 100% 4px
+        }
+
+        .bg-noise {
+            background-image: url(https://lh3.googleusercontent.com/aida-public/AB6AXuCDkljJUYG9kgLNDEAO5qYa73nentuBO06Avk-xbpvo1TF3BuyuXY72Ow5m-tydMMqyV5lJkOKD9Jx_Lm-Oy2DEEGmluT6KAS4Z3QaeqhPVfx2Ord0uc9cC5L0JwdYfh9pzU1nuOsdKj5ZvYIO4ZyYaYURlHrxANYqFDBIiODicLHdMOynlG4fAU1rOYASPdHmGymR35nSi3lX4HdR8cipbgbte5VmgBELXbxBrIZftuiiDsy3XQ1w7zBKl0GLAh4whuOWeWVk8OWg)
+        }
+
+        /* User Design Loading Styles (Legacy/Other) */
         @keyframes glitch-user {
             0% {
                 transform: translate(0);
@@ -1915,12 +2013,15 @@
             <!-- Failure -->
             <main id="missionFailScreen"
                 class="screen absolute inset-0 z-50 hidden flex flex-col items-center justify-center bg-black text-white">
+                <!-- Added overflow-y-auto to support smaller screens -->
                 <div
-                    class="relative w-full max-w-[420px] h-[840px] max-h-[95vh] bg-dark-bg shadow-2xl overflow-hidden flex flex-col border border-gray-900">
+                    class="relative w-full max-w-[420px] h-[840px] max-h-[95vh] bg-dark-bg shadow-2xl overflow-hidden flex flex-col border border-gray-900 group">
                     <div
-                        class="absolute top-[25%] left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] bg-primary rounded-full blur-[90px] opacity-20 pointer-events-none z-0">
+                        class="absolute top-[25%] left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] bg-[#FF0033] rounded-full blur-[90px] opacity-20 pointer-events-none z-0">
                     </div>
-                    <header class="relative z-20 flex justify-between items-start p-6 pt-8">
+                    <div class="absolute inset-0 z-0 bg-scanlines opacity-40 pointer-events-none"></div>
+                    <div class="absolute inset-0 z-0 bg-noise opacity-60 pointer-events-none mix-blend-overlay"></div>
+                    <header class="relative z-20 flex justify-between items-start p-6 pt-8 shrink-0">
                         <div class="relative w-14 h-14 flex items-center justify-center">
                             <svg class="absolute inset-0 w-full h-full animate-spin-slow" viewBox="0 0 100 100">
                                 <circle cx="50" cy="50" fill="none" r="48" stroke="#444" stroke-dasharray="4 4"
@@ -1931,43 +2032,52 @@
                             <div class="flex flex-col items-center">
                                 <span class="text-[8px] font-display font-bold text-tech-gray">NET</span>
                                 <span
-                                    class="text-[10px] font-display font-bold text-primary drop-shadow-[0_0_5px_rgba(255,0,51,0.8)]">ERR</span>
+                                    class="text-[10px] font-display font-bold text-[#FF0033] drop-shadow-[0_0_5px_rgba(255,0,51,0.8)]">ERR</span>
                             </div>
                         </div>
                         <div class="flex flex-col items-end gap-1">
                             <div
-                                class="flex items-center gap-2 border border-primary bg-primary/10 px-2 py-1 transform skew-x-[-12deg] shadow-[0_0_10px_rgba(255,0,51,0.3)]">
+                                class="flex items-center gap-2 border border-[#FF0033] bg-[#FF0033]/10 px-2 py-1 transform skew-x-[-12deg] shadow-[0_0_10px_rgba(255,0,51,0.3)]">
                                 <span
-                                    class="w-1.5 h-1.5 bg-primary rounded-full animate-pulse transform skew-x-[12deg]"></span>
+                                    class="w-1.5 h-1.5 bg-[#FF0033] rounded-full animate-pulse transform skew-x-[12deg]"></span>
                                 <span
-                                    class="font-display text-[10px] font-bold text-primary tracking-widest transform skew-x-[12deg] drop-shadow-[0_0_3px_rgba(255,0,51,1)]">CRITICAL</span>
+                                    class="font-display text-[10px] font-bold text-[#FF0033] tracking-widest transform skew-x-[12deg] drop-shadow-[0_0_3px_rgba(255,0,51,1)]">CRITICAL</span>
                             </div>
                             <span class="font-mono text-[9px] text-red-500/50">HASH: 99-XA-02 // FAIL</span>
                         </div>
                     </header>
-                    <div class="relative z-10 flex-grow flex flex-col items-center pt-8">
-                        <div class="relative w-full flex items-center justify-center h-64 mb-4">
+                    <div class="relative z-10 flex-grow flex flex-col items-center pt-2 overflow-y-auto no-scrollbar">
+                        <div class="relative w-full flex items-center justify-center h-auto mt-0 mb-0 shrink-0">
                             <div class="relative z-10 text-center">
-                                <h1 class="font-japanese font-black text-7xl text-primary tracking-tighter leading-none glitch-text drop-shadow-[0_0_15px_rgba(255,0,51,0.6)]"
-                                    data-text="任務失敗">任務失敗</h1>
+                                <h1 class="font-japanese font-black text-[#FF0033] tracking-tighter leading-none glitch-text drop-shadow-[0_0_15px_rgba(255,0,51,0.6)]"
+                                    style="font-size: 5rem;" data-text="任務失敗">任務失敗</h1>
                                 <div
-                                    class="mt-4 inline-block border-t border-b border-primary/50 py-1 px-4 bg-black/80 backdrop-blur-sm">
-                                    <p
-                                        class="font-display font-bold text-xs tracking-[0.4em] text-red-100 uppercase drop-shadow-md">
+                                    class="mt-4 inline-block border-t border-b border-[#FF0033]/50 py-1 px-4 bg-black/80 backdrop-blur-sm">
+                                    <p class="font-display font-bold tracking-[0.4em] text-red-100 uppercase drop-shadow-md"
+                                        style="font-size: 0.65rem;">
                                         MISSION FAILED</p>
                                 </div>
                             </div>
                         </div>
-                        <div class="w-full px-6 relative z-20">
+                        <div class="flex-grow"></div>
+                        <div class="w-full px-6 relative z-20 shrink-0 mb-0">
                             <div
-                                class="bg-panel-bg/90 backdrop-blur-md border border-primary/40 p-6 relative overflow-hidden animate-border-pulse">
-                                <div class="flex flex-col gap-6 relative z-10">
+                                class="bg-panel-bg/90 backdrop-blur-md border border-[#FF0033]/40 p-4 relative overflow-hidden animate-border-pulse">
+                                <div class="absolute top-0 right-0 w-8 h-8">
+                                    <div
+                                        class="absolute top-0 right-0 w-full h-full border-t-4 border-r-4 border-[#FF0033] drop-shadow-[0_0_8px_rgba(255,0,51,0.8)]">
+                                    </div>
+                                </div>
+                                <div class="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-red-500/30">
+                                </div>
+                                <div class="flex flex-col gap-3 relative z-10">
                                     <div class="flex items-center justify-between group">
                                         <div class="flex flex-col">
                                             <span
                                                 class="text-[10px] text-red-300/50 font-display tracking-widest mb-0.5 uppercase">Total
                                                 Score</span>
-                                            <div class="h-1 w-12 bg-primary shadow-[0_0_8px_rgba(255,0,51,0.8)]"></div>
+                                            <div class="h-1 w-12 bg-[#FF0033] shadow-[0_0_8px_rgba(255,0,51,0.8)]">
+                                            </div>
                                         </div>
                                         <div class="flex items-baseline gap-1">
                                             <span id="failScore"
@@ -1988,7 +2098,7 @@
                                                 class="text-[10px] text-red-300/50 font-display tracking-widest mb-1 text-right uppercase">Defeated</span>
                                             <div class="flex flex-col items-end gap-1">
                                                 <div id="failKills"
-                                                    class="bg-primary text-white px-3 py-1 text-xs font-bold font-display skew-x-[-10deg] shadow-[0_0_10px_rgba(255,0,51,0.4)]">
+                                                    class="bg-[#FF0033] text-white px-3 py-1 text-xs font-bold font-display skew-x-[-10deg] shadow-[0_0_10px_rgba(255,0,51,0.4)]">
                                                     0 KILLS</div>
                                             </div>
                                         </div>
@@ -1996,19 +2106,28 @@
                                 </div>
                             </div>
                         </div>
+                        <div class="flex-grow"></div>
                     </div>
-                    <div class="p-6 pb-10 w-full z-30 mt-auto bg-gradient-to-t from-dark-bg via-dark-bg to-transparent">
-                        <button id="returnToTitleButtonFail" class="w-full h-16 relative group outline-none">
+                    <div
+                        class="p-6 pb-6 w-full z-50 mt-auto bg-gradient-to-t from-dark-bg via-dark-bg to-transparent shrink-0">
+                        <button id="returnToTitleButtonFail"
+                            class="w-full h-16 relative group outline-none cursor-pointer pointer-events-auto">
                             <div
-                                class="absolute inset-0 bg-primary transform -skew-x-12 transition-all duration-300 shadow-[4px_4px_0px_0px_rgba(150,0,0,0.3)] group-hover:translate-x-1 group-hover:translate-y-1 group-hover:shadow-[0_0_20px_rgba(255,0,51,0.6)]">
+                                class="absolute inset-0 bg-[#FF0033] transform -skew-x-12 transition-all duration-300 shadow-[4px_4px_0px_0px_rgba(150,0,0,0.3)] group-hover:translate-x-1 group-hover:translate-y-1 group-hover:shadow-[0_0_20px_rgba(255,0,51,0.6)]">
                             </div>
                             <div class="absolute inset-0 flex items-center justify-center transform -skew-x-12">
-                                <span
-                                    class="font-display font-black text-white text-lg tracking-[0.1em] group-hover:animate-pulse drop-shadow-md">RETURN
-                                    TO BASE <span class="text-sm ml-2 font-japanese font-bold">(帰還)</span></span>
+                                <div class="flex flex-col items-center justify-center mr-2">
+                                    <span
+                                        class="font-display font-black text-white text-lg tracking-[0.1em] group-hover:animate-pulse drop-shadow-md leading-none">RETURN
+                                        TO BASE</span>
+                                    <span
+                                        class="text-[0.65rem] font-japanese font-bold text-white/70 leading-none mt-0.5">(帰還)</span>
+                                </div>
                                 <span
                                     class="material-symbols-outlined text-white ml-2 text-xl group-hover:rotate-180 transition-transform duration-700">refresh</span>
                             </div>
+                            <div class="absolute top-0 left-4 w-px h-2 bg-white/60 transform -skew-x-12"></div>
+                            <div class="absolute bottom-0 right-4 w-px h-2 bg-white/60 transform -skew-x-12"></div>
                         </button>
                         <div class="flex justify-between items-center mt-4 px-2 opacity-60">
                             <span class="text-[8px] font-mono text-red-500/60">ZANBARAI_SYS // V.2.0.4 //
@@ -2017,7 +2136,7 @@
                                 <div class="w-1 h-1 bg-red-900 rounded-full"></div>
                                 <div class="w-1 h-1 bg-red-900 rounded-full"></div>
                                 <div
-                                    class="w-1 h-1 bg-primary rounded-full animate-pulse shadow-[0_0_5px_rgba(255,0,51,0.8)]">
+                                    class="w-1 h-1 bg-[#FF0033] rounded-full animate-pulse shadow-[0_0_5px_rgba(255,0,51,0.8)]">
                                 </div>
                             </div>
                         </div>
@@ -2101,33 +2220,33 @@
                 });
             }, 1000);
 
-                    const completeLoading = () => {
+            const completeLoading = () => {
                 // Transition
                 if (loadingScreen) {
                     loadingScreen.classList.add('opacity-0');
                     setTimeout(() => {
                         loadingScreen.classList.remove('active');
                         loadingScreen.style.display = 'none'; // Ensure it's gone
-                                // Mark loading as complete globally
-                                window.__loadingComplete = true;
+                        // Mark loading as complete globally
+                        window.__loadingComplete = true;
 
-                                // Prefer UIManager-managed splash if available (replicates Title Screen 2 reveal)
-                                try {
-                                    if (window.game && window.game.uiManager && typeof window.game.uiManager.showSplashScreen === 'function') {
-                                        window.game.uiManager.showSplashScreen();
-                                    } else {
-                                        // Fallback: show splash and enable global TV overlay
-                                        if (splashScreen) {
-                                            splashScreen.classList.add('active');
-                                            const splashContent = document.getElementById('splashContent');
-                                            const globalTv = document.getElementById('global-tv-effects');
-                                            if (splashContent) { splashContent.style.opacity = '1'; splashContent.style.transition = 'opacity 0.6s ease-out'; }
-                                            if (globalTv) { globalTv.classList.add('tv-effect-on'); globalTv.style.display = ''; globalTv.style.opacity = ''; }
-                                        }
-                                    }
-                                } catch (e) {
-                                    // ignore
+                        // Prefer UIManager-managed splash if available (replicates Title Screen 2 reveal)
+                        try {
+                            if (window.game && window.game.uiManager && typeof window.game.uiManager.showSplashScreen === 'function') {
+                                window.game.uiManager.showSplashScreen();
+                            } else {
+                                // Fallback: show splash and enable global TV overlay
+                                if (splashScreen) {
+                                    splashScreen.classList.add('active');
+                                    const splashContent = document.getElementById('splashContent');
+                                    const globalTv = document.getElementById('global-tv-effects');
+                                    if (splashContent) { splashContent.style.opacity = '1'; splashContent.style.transition = 'opacity 0.6s ease-out'; }
+                                    if (globalTv) { globalTv.classList.add('tv-effect-on'); globalTv.style.display = ''; globalTv.style.opacity = ''; }
                                 }
+                            }
+                        } catch (e) {
+                            // ignore
+                        }
                     }, 1000); // Wait for opacity transition
                 }
             };

@@ -638,6 +638,8 @@ export class UIManager {
     showTitleScreen2() {
         // Hide other screens
         if (this.elements.resultScreen) this.elements.resultScreen.classList.add('hidden');
+        if (this.elements.missionCompletedScreen) this.elements.missionCompletedScreen.classList.add('hidden');
+        if (this.elements.missionFailScreen) this.elements.missionFailScreen.classList.add('hidden');
         // Do NOT hide the entire CRT container (it contains Title2). Only hide camera and canvas below.
         const videoEl = document.getElementById('cameraVideo');
         const canvasEl = document.getElementById('gameCanvas');
@@ -1144,6 +1146,10 @@ export class UIManager {
         if (!showCamera) {
             if (videoEl) videoEl.style.display = 'none';
             if (canvasEl) canvasEl.style.display = 'none';
+        } else {
+            // Ensure camera/canvas are visible if starting game
+            if (videoEl) videoEl.style.display = '';
+            if (canvasEl) canvasEl.style.display = '';
         }
 
         // Ensure display is visible (remove hidden)

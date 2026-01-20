@@ -110,6 +110,7 @@ class AROnmyoujiGame {
             onResetCalibration: () => this.onResetCalibration(),
             onReturnToTitle: () => this.onReturnToTitle(), // New
             onTitleStartGame: () => this.onTitleStartGame(), // New
+            onCancel: () => this.onCancel(), // Added Cancel Button Handler
             onRetry: () => this.onRetry(),
             onReconnect: () => this.onReconnect(),
             onRecalibrate: () => this.onRecalibrate(),
@@ -199,7 +200,18 @@ class AROnmyoujiGame {
         });
     }
 
-
+    /**
+     * キャンセルボタン（任務完了扱い）
+     */
+    onCancel() {
+        this.debugOverlay.logInfo('キャンセルボタン押下: 任務完了扱い');
+        // Treat as game clear
+        const data = {
+            killCount: this.gameWorld.getGameStats().killCount,
+            time: this.gameWorld.gameTime
+        };
+        this.onGameClear(data);
+    }
 
     /**
      * ゲーム開始 (GameWorld開始)

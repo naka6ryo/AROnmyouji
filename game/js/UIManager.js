@@ -49,6 +49,7 @@ export class UIManager {
             titleRecalibrateButton: document.getElementById('titleRecalibrateButton'),
 
             // Gameplay HUD
+            gameplayScreen: document.getElementById('gameplayScreen'),
             playerHP: document.getElementById('playerHP'),
             hpBarFill: document.getElementById('hpBarFill'),
             // Start overlay copies
@@ -74,6 +75,7 @@ export class UIManager {
             verticalHpFill: document.getElementById('verticalHpFill'),
             verticalHpNum: document.getElementById('verticalHpNum'),
             verticalHpMax: document.getElementById('verticalHpMax'),
+
 
             // Effects
             flashOverlay: document.getElementById('flash-overlay'),
@@ -144,6 +146,8 @@ export class UIManager {
         // Bind both success and failure return buttons if present
         this.bindClick(this.elements.returnToTitleButtonSuccess, handlers.onReturnToTitle);
         this.bindClick(this.elements.returnToTitleButtonFail, handlers.onReturnToTitle);
+
+
 
         // Debug
         this.bindClick(this.elements.toggleDebugButton, handlers.onToggleDebug);
@@ -441,16 +445,67 @@ export class UIManager {
         const overlay = this.elements.countdownOverlay;
         const valueEl = this.elements.countdownValue;
         if (!overlay || !valueEl) {
+            console.warn('[UIManager] Countdown elements not found');
             if (onComplete) onComplete();
             return;
         }
 
-        // Ensure visible using inline styles to avoid Tailwind/class conflicts
+        console.log('[UIManager] Starting countdown:', countFrom);
+
+        // IMPERATIVE: Remove 'hidden' class first because CSS has !important
+        overlay.classList.remove('hidden');
+
+        // Force layout styles inline
         overlay.style.display = 'flex';
+        overlay.style.visibility = 'visible';
         overlay.style.pointerEvents = 'auto';
+        // z-index managed by CSS/HTML now (z-75) to be under TV effects
+
+
+        // Ensure parent gameplay screen is visible if it exists
+        if (this.elements.gameplayScreen) {
+            this.elements.gameplayScreen.classList.remove('hidden');
+        }
+
+        // Reset styles (in case it was red before)
+        valueEl.style.color = '';
+        valueEl.style.fontSize = ''; // Reset font size
+        valueEl.classList.remove('text-red-600', 'drop-shadow-[0_0_30px_rgba(255,0,0,1)]');
+        // Ensure default white text styles are present if needed, though HTML has them.
 
         let current = countFrom;
-        valueEl.textContent = String(current);
+
+        // Helper to convert Arabic numerals to 漢数字 and trigger animation
+        const numMap = {0: '零', 1: '一', 2: '二', 3: '三', 4: '四', 5: '五', 6: '六', 7: '七', 8: '八', 9: '九', 10: '十'};
+        const toKanji = (n) => {
+            const num = parseInt(String(n), 10);
+            return (numMap[num] !== undefined) ? numMap[num] : String(n);
+        };
+
+        // Helper to trigger animation
+        const updateText = (text) => {
+            // If text is numeric, convert to 漢数字 for display
+            const isNumeric = (/^\d+$/.test(String(text)));
+            const display = isNumeric ? toKanji(text) : text;
+
+            // Apply content and ensure outline hologram style (white stroke) is used
+            valueEl.textContent = display;
+            valueEl.classList.remove('hologram-tick');
+            valueEl.classList.remove('animate-pulse'); // Remove default Pulse
+
+            if (!valueEl.classList.contains('hologram-effect')) {
+                valueEl.classList.add('hologram-effect');
+            }
+            // Ensure font remains consistent
+            valueEl.style.fontFamily = "'Shippori Mincho', serif";
+            // Clear any inline fill so CSS transparent fill + stroke applies
+            valueEl.style.color = '';
+
+            void valueEl.offsetWidth; // Force reflow
+            valueEl.classList.add('hologram-tick');
+        };
+
+        updateText(String(current));
 
         // clear any existing countdown timer
         if (this._countdownTimer) {
@@ -459,16 +514,45 @@ export class UIManager {
         }
 
         const tick = () => {
+            console.log('[UIManager] Countdown tick:', current);
             current -= 1;
             if (current <= 0) {
-                overlay.style.display = 'none';
-                overlay.style.pointerEvents = 'none';
-                valueEl.textContent = '';
-                this._countdownTimer = null;
-                if (onComplete) onComplete();
+                // Show "状況開始"
+                console.log('[UIManager] Showing SITUATION START');
+                updateText('状況開始');
+
+                // Color override for "situation start" is redundant if we use hologram-effect (transparent with stroke)
+                // But we can adjust the stroke color for emphasis?
+                // The CSS defines red stroke, so it matches the red requirement.
+                // We just ensure font size is large.
+                valueEl.style.fontSize = '4rem';
+                // Remove the old red color set since hologram overrides it with transparent + stroke
+                valueEl.style.color = '';
+                valueEl.classList.remove('drop-shadow-[0_0_30px_rgba(255,0,0,1)]'); // This was for the old red text
+
+                // Hold for 1 second then finish
+                this._countdownTimer = setTimeout(() => {
+                    console.log('[UIManager] Countdown finished');
+                    overlay.style.display = 'none';
+                    overlay.classList.add('hidden'); // Add hidden back
+                    overlay.style.pointerEvents = 'none';
+                    valueEl.textContent = '';
+                    // Reset styles after hide
+                    valueEl.style.color = '';
+                    valueEl.style.fontSize = '';
+                    valueEl.classList.remove('drop-shadow-[0_0_30px_rgba(255,0,0,1)]');
+
+                    valueEl.classList.remove('hologram-tick'); // Clean up
+                    // Keep hologram-effect for next time or remove it?
+                    // Better to reset clean.
+                    valueEl.classList.remove('hologram-effect');
+
+                    this._countdownTimer = null;
+                    if (onComplete) onComplete();
+                }, 1000);
                 return;
             }
-            valueEl.textContent = String(current);
+            updateText(String(current));
             this._countdownTimer = setTimeout(tick, 1000);
         };
 
@@ -600,6 +684,7 @@ export class UIManager {
         if (this.elements.resultScreen) this.elements.resultScreen.classList.add('hidden');
         if (this.elements.missionCompletedScreen) this.elements.missionCompletedScreen.classList.add('hidden');
         if (this.elements.missionFailScreen) this.elements.missionFailScreen.classList.add('hidden');
+        if (this.elements.gameplayScreen) this.elements.gameplayScreen.classList.add('hidden');
 
         const isSuccess = /クリア|Clear|任務完了/.test(title);
 
@@ -638,6 +723,9 @@ export class UIManager {
     showTitleScreen2() {
         // Hide other screens
         if (this.elements.resultScreen) this.elements.resultScreen.classList.add('hidden');
+        if (this.elements.missionCompletedScreen) this.elements.missionCompletedScreen.classList.add('hidden');
+        if (this.elements.missionFailScreen) this.elements.missionFailScreen.classList.add('hidden');
+        if (this.elements.gameplayScreen) this.elements.gameplayScreen.classList.add('hidden');
         // Do NOT hide the entire CRT container (it contains Title2). Only hide camera and canvas below.
         const videoEl = document.getElementById('cameraVideo');
         const canvasEl = document.getElementById('gameCanvas');
@@ -1144,6 +1232,10 @@ export class UIManager {
         if (!showCamera) {
             if (videoEl) videoEl.style.display = 'none';
             if (canvasEl) canvasEl.style.display = 'none';
+        } else {
+            // Ensure camera/canvas are visible if starting game
+            if (videoEl) videoEl.style.display = '';
+            if (canvasEl) canvasEl.style.display = '';
         }
 
         // Ensure display is visible (remove hidden)

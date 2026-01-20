@@ -625,12 +625,15 @@
             transform-origin: center;
         }
 
+        /* legacy helper: prefer height-based centered images */
         .image-width-based {
-            width: 100%;
-            height: auto;
-            position: absolute;
-            top: 50%;
-            transform: translateY(-50%);
+            position: fixed;
+            left: 50%;
+            top: 0;
+            height: 100vh;
+            width: auto;
+            max-width: 100vw;
+            transform: translateX(-50%);
         }
     </style>
     <style>
@@ -653,46 +656,51 @@
         }
 
         @keyframes crt-img-anim {
+            /* Keep horizontal centering by preserving translateX(-50%) in every keyframe
+               The animation changes scale/opacity/filter but must not drop the translateX offset. */
             0% {
-                transform: scale(0, 0.005);
+                transform: translateX(-50%) scale(0, 0.005);
                 filter: brightness(30) contrast(5);
                 opacity: 0;
             }
 
             5% {
+                transform: translateX(-50%) scale(0.02, 0.02);
                 opacity: 1;
             }
 
             15% {
-                transform: scale(1, 0.005);
+                transform: translateX(-50%) scale(1, 0.005);
                 filter: brightness(30) contrast(5);
                 opacity: 1;
             }
 
             40% {
-                transform: scale(1, 1);
+                transform: translateX(-50%) scale(1, 1);
                 filter: brightness(5) contrast(2);
                 opacity: 1;
             }
 
             50% {
-                transform: scale(1, 1);
+                transform: translateX(-50%) scale(1, 1);
                 filter: brightness(0.5) contrast(0.8);
                 opacity: 0.7;
             }
 
             60% {
+                transform: translateX(-50%) scale(1, 1);
                 filter: brightness(2) contrast(1.2);
                 opacity: 1;
             }
 
             80% {
+                transform: translateX(-50%) scale(1, 1);
                 filter: brightness(1.5) contrast(1.1);
                 opacity: 1;
             }
 
             100% {
-                transform: scale(1, 1);
+                transform: translateX(-50%) scale(1, 1);
                 filter: brightness(1) contrast(1);
                 opacity: 1;
             }
@@ -1122,7 +1130,7 @@
                     <h1 class="font-display text-3xl md:text-4xl font-black tracking-tighter text-ink-black uppercase">
                         Permission <span class="text-primary italic">Check</span>
                     </h1>
-                    <p class="font-japanese text-sm tracking-[0.5em] mt-1 font-bold text-tech-gray">権限の確認</p>
+                    <p class="font-japanese text-[8px] tracking-[0.06em] whitespace-nowrap mt-1 font-bold text-tech-gray">権限の確認</p>
                 </div>
             </div>
 
@@ -1147,7 +1155,7 @@
                         </div>
                     </div>
                     <span id="cameraStatus"
-                        class="font-display text-xs md:text-sm text-primary font-bold tracking-wider md:tracking-widest animate-pulse">[
+                        class="font-display !text-[10px] md:!text-[10px] text-primary font-bold tracking-wider md:tracking-widest animate-pulse">[
                         UNVERIFIED ]</span>
                 </div>
 
@@ -1161,7 +1169,7 @@
                         </div>
                     </div>
                     <span id="motionStatus"
-                        class="font-display text-xs md:text-sm text-primary font-bold tracking-wider md:tracking-widest animate-pulse">[
+                        class="font-display !text-[10px] md:!text-[10px] text-primary font-bold tracking-wider md:tracking-widest animate-pulse">[
                         UNVERIFIED ]</span>
                 </div>
 
@@ -1250,7 +1258,7 @@
                     <h1 class="font-display text-3xl md:text-4xl font-black tracking-tighter text-ink-black uppercase">
                         CONTROLLER <span class="text-primary italic">CONNECT</span>
                     </h1>
-                    <p class="font-japanese text-sm tracking-[0.5em] mt-1 font-bold text-tech-gray">コントローラの接続
+                    <p class="font-japanese text-[8px] tracking-[0.06em] whitespace-nowrap mt-1 font-bold text-tech-gray">コントローラの接続
                     </p>
                 </div>
             </div>
@@ -1275,7 +1283,7 @@
                             <span class="font-japanese text-xs text-tech-gray">グローブコントローラ</span>
                         </div>
                         <span id="bleStatus"
-                            class="font-display text-xs md:text-sm text-primary font-bold tracking-widest animate-pulse mt-2 md:mt-0 whitespace-nowrap">[
+                            class="font-display !text-[10px] md:!text-[10px] text-primary font-bold tracking-widest animate-pulse mt-2 md:mt-0 whitespace-nowrap">[
                             DISCONNECTED ]</span>
                     </div>
                 </div>
@@ -1361,7 +1369,7 @@
                     <h1 class="font-display text-2xl md:text-4xl font-black tracking-tighter text-ink-black uppercase">
                         CALIBRATION
                     </h1>
-                    <p class="font-japanese text-xs md:text-sm tracking-[0.5em] mt-1 font-bold text-tech-gray">
+                    <p class="font-japanese text-[8px] md:text-[8px] tracking-[0.06em] whitespace-nowrap mt-1 font-bold text-tech-gray">
                         キャリブレーション</p>
                 </div>
             </div>
@@ -1378,7 +1386,7 @@
                 </div>
 
                 <div class="text-center mb-4 md:mb-8">
-                    <p class="font-sans font-bold text-ink-black text-xs md:text-base leading-relaxed tracking-wide">
+                    <p class="font-sans font-bold !text-[18px] md:!text-[18px] leading-relaxed tracking-[0.02em] text-ink-black">
                         端末を正面に向け、グローブも<br class="md:hidden">正面へ構えてください
                     </p>
                     <p

@@ -797,16 +797,21 @@ export class UIManager {
                 bgImg.className = 'title-02-bg';
                 titleEl.insertBefore(bgImg, titleEl.firstChild);
             }
+            // Remove utility classes if present to avoid tailwind width/fit overrides
+            try { bgImg.classList.remove('w-full','h-full','object-cover'); } catch (e) {}
             bgImg.src = 'assets/picture/Title02.jpg';
             // Make UI title image fixed to viewport so it's unaffected by parent padding
+            // Scale to match viewport height while preserving aspect ratio
             bgImg.style.position = 'fixed';
-            bgImg.style.left = '0';
+            bgImg.style.left = '50%';
             bgImg.style.top = '0';
-            bgImg.style.width = '100vw';
             bgImg.style.height = '100vh';
-            bgImg.style.objectFit = 'cover';
+            bgImg.style.width = 'auto';
+            bgImg.style.maxWidth = '100vw';
+            bgImg.style.transform = 'translateX(-50%)';
             bgImg.style.zIndex = '60';
             bgImg.style.pointerEvents = 'none';
+            try { bgImg.style.setProperty('object-fit','contain','important'); } catch(e){}
             // keep UI image hidden until CRT reveals image
             bgImg.style.opacity = '0';
             bgImg.style.transition = '';
@@ -823,17 +828,20 @@ export class UIManager {
                         // insert as first child so it sits above video/canvas but under overlays
                         crtDisplay.insertBefore(crtImg, crtDisplay.firstChild);
                     }
+                    try { crtImg.classList.remove('w-full','h-full','object-cover'); } catch (e) {}
                     crtImg.src = 'assets/picture/Title02.jpg';
                     // Ensure CRT-side image also occupies full viewport (fixed) so no parent padding shows
+                    // Scale CRT-side image to match viewport height, preserve aspect ratio
                     crtImg.style.position = 'fixed';
-                    crtImg.style.left = '0';
+                    crtImg.style.left = '50%';
                     crtImg.style.top = '0';
-                    crtImg.style.width = '100vw';
                     crtImg.style.height = '100vh';
-                    // allow the image to stretch to container to enable vertical squash effect
-                    crtImg.style.objectFit = 'fill';
+                    crtImg.style.width = 'auto';
+                    crtImg.style.maxWidth = '100vw';
+                    crtImg.style.transform = 'translateX(-50%)';
                     crtImg.style.zIndex = '59';
                     crtImg.style.pointerEvents = 'none';
+                    try { crtImg.style.setProperty('object-fit','contain','important'); } catch(e){}
                     // Ensure it's fully visible so CRT turn-on affects its brightness/contrast
                     crtImg.style.opacity = '1';
                     crtImg.style.filter = '';
@@ -968,25 +976,38 @@ export class UIManager {
             if (!uiImg) {
                 uiImg = document.createElement('img');
                 uiImg.id = 'splashUiImg';
-                uiImg.className = 'image-width-based';
                 uiImg.alt = 'Splash';
                 if (splashContent) splashContent.insertBefore(uiImg, splashContent.firstChild);
                 else splashEl.insertBefore(uiImg, splashEl.firstChild);
             }
             uiImg.src = 'assets/picture/Title.jpg';
+            try { uiImg.classList.remove('w-full','h-full','object-cover'); } catch (e) {}
+            // Scale UI-side splash image by viewport height, preserve aspect ratio
+            uiImg.style.position = 'fixed';
+            uiImg.style.left = '50%';
+            uiImg.style.top = '0';
+            uiImg.style.height = '100vh';
+            uiImg.style.width = 'auto';
+            uiImg.style.maxWidth = '100vw';
+            uiImg.style.transform = 'translateX(-50%)';
+            try { uiImg.style.setProperty('object-fit','contain','important'); } catch(e){}
             uiImg.style.opacity = '0';
             uiImg.style.transition = 'opacity 0.4s ease-out';
             uiImg.style.zIndex = '50';
             uiImg.style.pointerEvents = 'none';
         } else {
-            // Ensure original image fills viewport and stays visible after the animation
+            // Ensure original image is displayed height-first and centered
             try {
+                // Remove utility classes that force width/height/object-fit before applying inline styles
+                try { existingImg.classList.remove('w-full','h-full','object-cover'); } catch (e) {}
                 existingImg.style.position = 'fixed';
-                existingImg.style.left = '0';
+                existingImg.style.left = '50%';
                 existingImg.style.top = '0';
-                existingImg.style.width = '100vw';
                 existingImg.style.height = '100vh';
-                existingImg.style.objectFit = 'cover';
+                existingImg.style.width = 'auto';
+                existingImg.style.maxWidth = '100vw';
+                existingImg.style.transform = 'translateX(-50%)';
+                try { existingImg.style.setProperty('object-fit','contain','important'); } catch(e){}
                 existingImg.style.zIndex = '50';
                 existingImg.style.pointerEvents = 'none';
                 existingImg.style.opacity = '0';
@@ -1005,15 +1026,19 @@ export class UIManager {
                     crtImg.alt = 'Splash CRT';
                     crtDisplay.insertBefore(crtImg, crtDisplay.firstChild);
                 }
+                try { crtImg.classList.remove('w-full','h-full','object-cover'); } catch (e) {}
                 crtImg.src = 'assets/picture/Title.jpg';
+                // CRT-side splash image: height-first, preserve aspect ratio, centered
                 crtImg.style.position = 'fixed';
-                crtImg.style.left = '0';
+                crtImg.style.left = '50%';
                 crtImg.style.top = '0';
-                crtImg.style.width = '100vw';
                 crtImg.style.height = '100vh';
-                crtImg.style.objectFit = 'fill';
+                crtImg.style.width = 'auto';
+                crtImg.style.maxWidth = '100vw';
+                crtImg.style.transform = 'translateX(-50%)';
                 crtImg.style.zIndex = '59';
                 crtImg.style.pointerEvents = 'none';
+                try { crtImg.style.setProperty('object-fit','contain','important'); } catch(e){}
                 crtImg.style.opacity = '1';
                 try { crtImg.classList.remove('crt-img-animated'); void crtImg.offsetWidth; crtImg.classList.add('crt-img-animated'); } catch (e) { }
             }
@@ -1033,8 +1058,33 @@ export class UIManager {
                 splashEl.classList.add('active');
                 splashEl.style.display = 'block';
                 splashEl.style.pointerEvents = 'auto';
-                const startBtn = document.getElementById('startButton');
-                if (startBtn) startBtn.style.zIndex = '70';
+                    const startBtn = document.getElementById('startButton');
+                    if (startBtn) {
+                        // Ensure start button is positioned above background and clickable
+                        startBtn.style.position = 'fixed';
+                        // Use pixel-based sizing computed from viewport to avoid percentage resolving to 0
+                        try {
+                            const vw = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
+                            const vh = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0);
+                            const leftPx = Math.floor(vw * 0.04);
+                            const bottomPx = Math.floor(vh * 0.04);
+                            const widthPx = Math.min(250, Math.max(64, Math.floor(vw * 0.35)));
+                            const heightPx = Math.min(100, Math.max(40, Math.floor(vh * 0.10)));
+                            startBtn.style.left = leftPx + 'px';
+                            startBtn.style.right = 'auto';
+                            startBtn.style.bottom = bottomPx + 'px';
+                            startBtn.style.width = widthPx + 'px';
+                            startBtn.style.height = heightPx + 'px';
+                        } catch (e) {
+                            // Fallback to safe defaults
+                            startBtn.style.left = '4%';
+                            startBtn.style.bottom = '4%';
+                            startBtn.style.width = '250px';
+                            startBtn.style.height = '60px';
+                        }
+                        startBtn.style.zIndex = '95';
+                        startBtn.style.pointerEvents = 'auto';
+                    }
             } catch (e) { }
         }, revealDelayMs);
 
@@ -1053,7 +1103,38 @@ export class UIManager {
                 splashEl.style.display = 'block';
                 splashEl.style.pointerEvents = 'auto';
                 const startBtn = document.getElementById('startButton');
-                if (startBtn) startBtn.style.zIndex = '70';
+                if (startBtn) {
+                    try {
+                        const vw = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
+                        const vh = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0);
+                        const leftPx = Math.floor(vw * 0.04);
+                        const bottomPx = Math.floor(vh * 0.04);
+                        const widthPx = Math.min(250, Math.max(64, Math.floor(vw * 0.35)));
+                        const heightPx = Math.min(100, Math.max(40, Math.floor(vh * 0.10)));
+                        startBtn.style.position = 'fixed';
+                        startBtn.style.left = leftPx + 'px';
+                        startBtn.style.right = 'auto';
+                        startBtn.style.bottom = bottomPx + 'px';
+                        startBtn.style.width = widthPx + 'px';
+                        startBtn.style.height = heightPx + 'px';
+                        startBtn.style.zIndex = '95';
+                        startBtn.style.pointerEvents = 'auto';
+                        // Reparent to body so it's above other containers and not affected by parent transforms
+                        try {
+                            if (!startBtn._origParent) {
+                                startBtn._origParent = startBtn.parentNode;
+                                startBtn._origNext = startBtn.nextSibling;
+                                document.body.appendChild(startBtn);
+                            }
+                        } catch (e) { }
+                    } catch (e) {
+                        startBtn.style.left = '4%';
+                        startBtn.style.right = '';
+                        startBtn.style.bottom = '4%';
+                        startBtn.style.zIndex = '95';
+                        startBtn.style.pointerEvents = 'auto';
+                    }
+                }
             } catch (e) { }
 
             // Remove temporary CRT-side image
@@ -1101,6 +1182,8 @@ export class UIManager {
                         img.style.top = '';
                         img.style.width = '';
                         img.style.height = '';
+                        img.style.maxWidth = '';
+                        img.style.transform = '';
                         img.style.objectFit = '';
                         img.style.zIndex = '';
                         img.style.pointerEvents = '';
@@ -1124,6 +1207,26 @@ export class UIManager {
                 }
             } catch (e) { }
         }
+
+        // Restore startButton to original parent if we reparented it earlier
+        try {
+            const startBtn = document.getElementById('startButton');
+            if (startBtn && startBtn._origParent) {
+                if (startBtn._origNext) startBtn._origParent.insertBefore(startBtn, startBtn._origNext);
+                else startBtn._origParent.appendChild(startBtn);
+                delete startBtn._origParent;
+                delete startBtn._origNext;
+                // clear inline styles we set
+                startBtn.style.position = '';
+                startBtn.style.left = '';
+                startBtn.style.right = '';
+                startBtn.style.bottom = '';
+                startBtn.style.width = '';
+                startBtn.style.height = '';
+                startBtn.style.zIndex = '';
+                startBtn.style.pointerEvents = '';
+            }
+        } catch (e) { }
 
         // Ensure global TV overlay isn't left in an active visual state
         try {

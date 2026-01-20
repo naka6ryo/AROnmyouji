@@ -2083,231 +2083,94 @@
 
 
         </div> <!-- End CRT Container Wrapper -->
-            <!-- Mission Result Screens -->
-            <div id="resultScreen" class="screen absolute inset-0 z-50 hidden">
-                <!-- Success -->
-                <main id="missionCompletedScreen"
-                    class="screen absolute inset-0 z-50 hidden flex flex-col items-center justify-center bg-white text-ink-black">
-                    <!-- Added overflow-y-auto to support smaller screens -->
-                    <div
-                        class="relative w-full max-w-[420px] h-[840px] max-h-[95vh] bg-white shadow-2xl overflow-hidden flex flex-col border border-gray-200 group">
-                        <div
-                            class="absolute top-[25%] left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] bg-primary rounded-full blur-[90px] opacity-10 pointer-events-none z-0">
-                        </div>
-                        <div class="absolute inset-0 z-0 bg-dot-grid opacity-20 pointer-events-none"></div>
-                        <header class="relative z-20 flex justify-between items-start p-6 pt-8 shrink-0">
-                            <div class="relative w-14 h-14 flex items-center justify-center">
-                                <svg class="absolute inset-0 w-full h-full animate-spin-slow" viewBox="0 0 100 100">
-                                    <circle cx="50" cy="50" fill="none" r="48" stroke="#e5e5e5" stroke-dasharray="4 4"
-                                        stroke-width="1"></circle>
-                                    <path d="M50 2 a 48 48 0 0 1 48 48" fill="none" stroke="#525252"
-                                        stroke-linecap="round" stroke-width="2"></path>
-                                </svg>
-                                <div class="flex flex-col items-center">
-                                    <span class="text-[8px] font-display font-bold text-tech-gray">NET</span>
-                                    <span class="text-[10px] font-display font-bold text-primary">OK</span>
-                                </div>
-                            </div>
-                            <div class="flex flex-col items-end gap-1">
-                                <div
-                                    class="flex items-center gap-2 border border-primary bg-primary/10 px-2 py-1 transform skew-x-[-12deg] shadow-[0_0_10px_rgba(255,0,51,0.2)]">
-                                    <span
-                                        class="w-1.5 h-1.5 bg-primary rounded-full animate-pulse transform skew-x-[12deg]"></span>
-                                    <span
-                                        class="font-display text-[10px] font-bold text-primary tracking-widest transform skew-x-[12deg]">SECURE</span>
-                                </div>
-                                <span class="font-mono text-[9px] text-tech-gray">HASH: 99-XA-02 // CMPL</span>
-                            </div>
-                        </header>
-                        <div
-                            class="relative z-10 flex-grow flex flex-col items-center pt-2 overflow-y-auto no-scrollbar">
-                            <div class="relative w-full flex items-center justify-center h-auto mt-0 mb-0 shrink-0">
-                                <div class="relative z-10 text-center">
-                                    <h1 class="font-japanese font-black text-primary tracking-tighter leading-none glitch-text drop-shadow-2xl"
-                                        style="font-size: 5rem;" data-text="任務完了">任務完了</h1>
-                                    <div
-                                        class="mt-4 inline-block border-t border-b border-primary/50 py-1 px-4 bg-black/80 backdrop-blur-sm">
-                                        <p class="font-display font-bold tracking-[0.4em] text-white uppercase"
-                                            style="font-size: 0.65rem;">
-                                            Mission Complete</p>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="flex-grow"></div>
-                            <div class="w-full px-6 relative z-20 shrink-0 mb-0">
-                                <div
-                                    class="bg-white/90 backdrop-blur-md border border-primary/40 p-4 relative overflow-hidden">
-                                    <div class="absolute top-0 right-0 w-8 h-8">
-                                        <div
-                                            class="absolute top-0 right-0 w-full h-full border-t-4 border-r-4 border-primary/20">
-                                        </div>
-                                    </div>
-                                    <div
-                                        class="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-primary/20">
-                                    </div>
-                                    <div class="flex flex-col gap-3 relative z-10">
-                                        <div class="flex items-center justify-between group">
-                                            <div class="flex flex-col">
-                                                <span
-                                                    class="text-[10px] text-tech-gray font-display tracking-widest mb-0.5 uppercase">Total
-                                                    Score</span>
-                                                <div class="h-1 w-12 bg-primary"></div>
-                                            </div>
-                                            <div class="flex items-baseline gap-1">
-                                                <span id="completedScore"
-                                                    class="text-5xl font-display font-black text-ink-black tracking-tight">0</span>
-                                            </div>
-                                        </div>
-                                        <div class="w-full h-px bg-gray-100"></div>
-                                        <div class="flex justify-between items-start">
-                                            <div class="flex flex-col">
-                                                <span
-                                                    class="text-[10px] text-tech-gray font-display tracking-widest mb-1 uppercase">Elapsed
-                                                    Time</span>
-                                                <span id="completedTime"
-                                                    class="text-xl font-display font-bold text-ink-black">00:00:00</span>
-                                            </div>
-                                            <div class="flex flex-col items-end">
-                                                <span
-                                                    class="text-[10px] text-tech-gray font-display tracking-widest mb-1 text-right uppercase">Defeated</span>
-                                                <div class="flex flex-col items-end gap-1">
-                                                    <div id="completedKills"
-                                                        class="bg-ink-black text-white px-3 py-1 text-xs font-bold font-display skew-x-[-10deg]">
-                                                        0 KILLS</div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="flex-grow"></div>
-                        </div>
-                        <div
-                            class="p-6 pb-6 w-full z-50 mt-auto bg-gradient-to-t from-white via-white to-transparent shrink-0">
-                            <button id="returnToTitleButtonSuccess"
-                                class="w-full h-16 relative group outline-none cursor-pointer pointer-events-auto">
-                                <div
-                                    class="absolute inset-0 bg-primary transform -skew-x-12 transition-all duration-300 shadow-[4px_4px_0px_0px_rgba(13,13,13,0.3)] group-hover:translate-x-1 group-hover:translate-y-1 group-hover:shadow-[0_0_15px_rgba(255,0,51,0.4)]">
-                                </div>
-                                <div class="absolute inset-0 flex items-center justify-center transform -skew-x-12">
-                                    <div class="flex flex-col items-center justify-center mr-2">
-                                        <span
-                                            class="font-display font-black text-white text-lg tracking-[0.1em] group-hover:animate-pulse drop-shadow-md leading-none">RETURN
-                                            TO BASE</span>
-                                        <span
-                                            class="text-[0.65rem] font-japanese font-bold text-white/70 leading-none mt-0.5">(帰還)</span>
-                                    </div>
-                                    <span
-                                        class="material-symbols-outlined text-white ml-2 text-xl group-hover:translate-x-1 transition-transform">east</span>
-                                </div>
-                                <div class="absolute top-0 left-4 w-px h-2 bg-white/60 transform -skew-x-12"></div>
-                                <div class="absolute bottom-0 right-4 w-px h-2 bg-white/60 transform -skew-x-12"></div>
-                            </button>
-                            <div class="flex justify-between items-center mt-4 px-2 opacity-60">
-                                <span class="text-[8px] font-mono text-tech-gray">ZANBARAI_SYS // V.2.0.4</span>
-                                <div class="flex gap-1">
-                                    <div class="w-1 h-1 bg-tech-gray rounded-full"></div>
-                                    <div class="w-1 h-1 bg-tech-gray rounded-full"></div>
-                                    <div class="w-1 h-1 bg-primary rounded-full animate-pulse"></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </main>
-
-            </div>
-
-            <!-- Failure -->
-            <main id="missionFailScreen"
-                class="screen absolute inset-0 z-50 hidden flex flex-col items-center justify-center bg-black text-white">
+        <!-- Mission Result Screens -->
+        <div id="resultScreen" class="screen absolute inset-0 z-50 hidden">
+            <!-- Success -->
+            <main id="missionCompletedScreen"
+                class="screen absolute inset-0 z-50 hidden flex flex-col items-center justify-center bg-white text-ink-black">
                 <!-- Added overflow-y-auto to support smaller screens -->
                 <div
-                    class="relative w-full max-w-[420px] h-[840px] max-h-[95vh] bg-dark-bg shadow-2xl overflow-hidden flex flex-col border border-gray-900 group">
+                    class="relative w-full max-w-[420px] h-[840px] max-h-[95vh] bg-white shadow-2xl overflow-hidden flex flex-col border border-gray-200 group">
                     <div
-                        class="absolute top-[25%] left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] bg-[#FF0033] rounded-full blur-[90px] opacity-20 pointer-events-none z-0">
+                        class="absolute top-[25%] left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] bg-primary rounded-full blur-[90px] opacity-10 pointer-events-none z-0">
                     </div>
-                    <div class="absolute inset-0 z-0 bg-scanlines opacity-40 pointer-events-none"></div>
-                    <div class="absolute inset-0 z-0 bg-noise opacity-60 pointer-events-none mix-blend-overlay"></div>
+                    <div class="absolute inset-0 z-0 bg-dot-grid opacity-20 pointer-events-none"></div>
                     <header class="relative z-20 flex justify-between items-start p-6 pt-8 shrink-0">
                         <div class="relative w-14 h-14 flex items-center justify-center">
                             <svg class="absolute inset-0 w-full h-full animate-spin-slow" viewBox="0 0 100 100">
-                                <circle cx="50" cy="50" fill="none" r="48" stroke="#444" stroke-dasharray="4 4"
+                                <circle cx="50" cy="50" fill="none" r="48" stroke="#e5e5e5" stroke-dasharray="4 4"
                                     stroke-width="1"></circle>
-                                <path d="M50 2 a 48 48 0 0 1 48 48" fill="none" stroke="#777" stroke-linecap="round"
+                                <path d="M50 2 a 48 48 0 0 1 48 48" fill="none" stroke="#525252" stroke-linecap="round"
                                     stroke-width="2"></path>
                             </svg>
                             <div class="flex flex-col items-center">
                                 <span class="text-[8px] font-display font-bold text-tech-gray">NET</span>
-                                <span
-                                    class="text-[10px] font-display font-bold text-[#FF0033] drop-shadow-[0_0_5px_rgba(255,0,51,0.8)]">ERR</span>
+                                <span class="text-[10px] font-display font-bold text-primary">OK</span>
                             </div>
                         </div>
                         <div class="flex flex-col items-end gap-1">
                             <div
-                                class="flex items-center gap-2 border border-[#FF0033] bg-[#FF0033]/10 px-2 py-1 transform skew-x-[-12deg] shadow-[0_0_10px_rgba(255,0,51,0.3)]">
+                                class="flex items-center gap-2 border border-primary bg-primary/10 px-2 py-1 transform skew-x-[-12deg] shadow-[0_0_10px_rgba(255,0,51,0.2)]">
                                 <span
-                                    class="w-1.5 h-1.5 bg-[#FF0033] rounded-full animate-pulse transform skew-x-[12deg]"></span>
+                                    class="w-1.5 h-1.5 bg-primary rounded-full animate-pulse transform skew-x-[12deg]"></span>
                                 <span
-                                    class="font-display text-[10px] font-bold text-[#FF0033] tracking-widest transform skew-x-[12deg] drop-shadow-[0_0_3px_rgba(255,0,51,1)]">CRITICAL</span>
+                                    class="font-display text-[10px] font-bold text-primary tracking-widest transform skew-x-[12deg]">SECURE</span>
                             </div>
-                            <span class="font-mono text-[9px] text-red-500/50">HASH: 99-XA-02 // FAIL</span>
+                            <span class="font-mono text-[9px] text-tech-gray">HASH: 99-XA-02 // CMPL</span>
                         </div>
                     </header>
                     <div class="relative z-10 flex-grow flex flex-col items-center pt-2 overflow-y-auto no-scrollbar">
                         <div class="relative w-full flex items-center justify-center h-auto mt-0 mb-0 shrink-0">
                             <div class="relative z-10 text-center">
-                                <h1 class="font-japanese font-black text-[#FF0033] tracking-tighter leading-none glitch-text drop-shadow-[0_0_15px_rgba(255,0,51,0.6)]"
-                                    style="font-size: 5rem;" data-text="任務失敗">任務失敗</h1>
+                                <h1 class="font-japanese font-black text-primary tracking-tighter leading-none glitch-text drop-shadow-2xl"
+                                    style="font-size: 5rem;" data-text="任務完了">任務完了</h1>
                                 <div
-                                    class="mt-4 inline-block border-t border-b border-[#FF0033]/50 py-1 px-4 bg-black/80 backdrop-blur-sm">
-                                    <p class="font-display font-bold tracking-[0.4em] text-red-100 uppercase drop-shadow-md"
+                                    class="mt-4 inline-block border-t border-b border-primary/50 py-1 px-4 bg-black/80 backdrop-blur-sm">
+                                    <p class="font-display font-bold tracking-[0.4em] text-white uppercase"
                                         style="font-size: 0.65rem;">
-                                        MISSION FAILED</p>
+                                        Mission Complete</p>
                                 </div>
                             </div>
                         </div>
                         <div class="flex-grow"></div>
                         <div class="w-full px-6 relative z-20 shrink-0 mb-0">
                             <div
-                                class="bg-panel-bg/90 backdrop-blur-md border border-[#FF0033]/40 p-4 relative overflow-hidden animate-border-pulse-vibrate">
+                                class="bg-white/90 backdrop-blur-md border border-primary/40 p-4 relative overflow-hidden">
                                 <div class="absolute top-0 right-0 w-8 h-8">
                                     <div
-                                        class="absolute top-0 right-0 w-full h-full border-t-4 border-r-4 border-[#FF0033] drop-shadow-[0_0_8px_rgba(255,0,51,0.8)]">
+                                        class="absolute top-0 right-0 w-full h-full border-t-4 border-r-4 border-primary/20">
                                     </div>
                                 </div>
-                                <div class="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-red-500/30">
+                                <div class="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-primary/20">
                                 </div>
                                 <div class="flex flex-col gap-3 relative z-10">
                                     <div class="flex items-center justify-between group">
                                         <div class="flex flex-col">
                                             <span
-                                                class="text-[10px] text-red-300/50 font-display tracking-widest mb-0.5 uppercase">Total
+                                                class="text-[10px] text-tech-gray font-display tracking-widest mb-0.5 uppercase">Total
                                                 Score</span>
-                                            <div class="h-1 w-12 bg-[#FF0033] shadow-[0_0_8px_rgba(255,0,51,0.8)]">
-                                            </div>
+                                            <div class="h-1 w-12 bg-primary"></div>
                                         </div>
                                         <div class="flex items-baseline gap-1">
-                                            <span id="failScore"
-                                                class="text-5xl font-display font-black text-white tracking-tight animate-vibration inline-block"
-                                                style="animation-delay: 0.1s;">0</span>
+                                            <span id="completedScore"
+                                                class="text-5xl font-display font-black text-ink-black tracking-tight">0</span>
                                         </div>
                                     </div>
-                                    <div class="w-full h-px bg-red-500/20"></div>
+                                    <div class="w-full h-px bg-gray-100"></div>
                                     <div class="flex justify-between items-start">
                                         <div class="flex flex-col">
                                             <span
-                                                class="text-[10px] text-red-300/50 font-display tracking-widest mb-1 uppercase">Elapsed
+                                                class="text-[10px] text-tech-gray font-display tracking-widest mb-1 uppercase">Elapsed
                                                 Time</span>
-                                            <span id="failTime"
-                                                class="text-xl font-display font-bold text-gray-200">00:00:00</span>
+                                            <span id="completedTime"
+                                                class="text-xl font-display font-bold text-ink-black">00:00:00</span>
                                         </div>
                                         <div class="flex flex-col items-end">
                                             <span
-                                                class="text-[10px] text-red-300/50 font-display tracking-widest mb-1 text-right uppercase">Defeated</span>
+                                                class="text-[10px] text-tech-gray font-display tracking-widest mb-1 text-right uppercase">Defeated</span>
                                             <div class="flex flex-col items-end gap-1">
-                                                <div id="failKills"
-                                                    class="bg-[#FF0033] text-white px-3 py-1 text-xs font-bold font-display skew-x-[-10deg] shadow-[0_0_10px_rgba(255,0,51,0.4)] animate-vibration"
-                                                    style="animation-delay: 0.2s;">
+                                                <div id="completedKills"
+                                                    class="bg-ink-black text-white px-3 py-1 text-xs font-bold font-display skew-x-[-10deg]">
                                                     0 KILLS</div>
                                             </div>
                                         </div>
@@ -2318,11 +2181,11 @@
                         <div class="flex-grow"></div>
                     </div>
                     <div
-                        class="p-6 pb-6 w-full z-50 mt-auto bg-gradient-to-t from-dark-bg via-dark-bg to-transparent shrink-0">
-                        <button id="returnToTitleButtonFail"
+                        class="p-6 pb-6 w-full z-50 mt-auto bg-gradient-to-t from-white via-white to-transparent shrink-0">
+                        <button id="returnToTitleButtonSuccess"
                             class="w-full h-16 relative group outline-none cursor-pointer pointer-events-auto">
                             <div
-                                class="absolute inset-0 bg-[#FF0033] transform -skew-x-12 transition-all duration-300 shadow-[4px_4px_0px_0px_rgba(150,0,0,0.3)] group-hover:translate-x-1 group-hover:translate-y-1 group-hover:shadow-[0_0_20px_rgba(255,0,51,0.6)]">
+                                class="absolute inset-0 bg-primary transform -skew-x-12 transition-all duration-300 shadow-[4px_4px_0px_0px_rgba(13,13,13,0.3)] group-hover:translate-x-1 group-hover:translate-y-1 group-hover:shadow-[0_0_15px_rgba(255,0,51,0.4)]">
                             </div>
                             <div class="absolute inset-0 flex items-center justify-center transform -skew-x-12">
                                 <div class="flex flex-col items-center justify-center mr-2">
@@ -2333,25 +2196,160 @@
                                         class="text-[0.65rem] font-japanese font-bold text-white/70 leading-none mt-0.5">(帰還)</span>
                                 </div>
                                 <span
-                                    class="material-symbols-outlined text-white ml-2 text-xl group-hover:rotate-180 transition-transform duration-700">refresh</span>
+                                    class="material-symbols-outlined text-white ml-2 text-xl group-hover:translate-x-1 transition-transform">east</span>
                             </div>
                             <div class="absolute top-0 left-4 w-px h-2 bg-white/60 transform -skew-x-12"></div>
                             <div class="absolute bottom-0 right-4 w-px h-2 bg-white/60 transform -skew-x-12"></div>
                         </button>
                         <div class="flex justify-between items-center mt-4 px-2 opacity-60">
-                            <span class="text-[8px] font-mono text-red-500/60">ZANBARAI_SYS // V.2.0.4 //
-                                ERR_CODE_0x0</span>
+                            <span class="text-[8px] font-mono text-tech-gray">ZANBARAI_SYS // V.2.0.4</span>
                             <div class="flex gap-1">
-                                <div class="w-1 h-1 bg-red-900 rounded-full"></div>
-                                <div class="w-1 h-1 bg-red-900 rounded-full"></div>
-                                <div
-                                    class="w-1 h-1 bg-[#FF0033] rounded-full animate-pulse shadow-[0_0_5px_rgba(255,0,51,0.8)]">
-                                </div>
+                                <div class="w-1 h-1 bg-tech-gray rounded-full"></div>
+                                <div class="w-1 h-1 bg-tech-gray rounded-full"></div>
+                                <div class="w-1 h-1 bg-primary rounded-full animate-pulse"></div>
                             </div>
                         </div>
                     </div>
                 </div>
             </main>
+
+        </div>
+
+        <!-- Failure -->
+        <main id="missionFailScreen"
+            class="screen absolute inset-0 z-50 hidden flex flex-col items-center justify-center bg-black text-white">
+            <!-- Added overflow-y-auto to support smaller screens -->
+            <div
+                class="relative w-full max-w-[420px] h-[840px] max-h-[95vh] bg-dark-bg shadow-2xl overflow-hidden flex flex-col border border-gray-900 group">
+                <div
+                    class="absolute top-[25%] left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] bg-[#FF0033] rounded-full blur-[90px] opacity-20 pointer-events-none z-0">
+                </div>
+                <div class="absolute inset-0 z-0 bg-scanlines opacity-40 pointer-events-none"></div>
+                <div class="absolute inset-0 z-0 bg-noise opacity-60 pointer-events-none mix-blend-overlay"></div>
+                <header class="relative z-20 flex justify-between items-start p-6 pt-8 shrink-0">
+                    <div class="relative w-14 h-14 flex items-center justify-center">
+                        <svg class="absolute inset-0 w-full h-full animate-spin-slow" viewBox="0 0 100 100">
+                            <circle cx="50" cy="50" fill="none" r="48" stroke="#444" stroke-dasharray="4 4"
+                                stroke-width="1"></circle>
+                            <path d="M50 2 a 48 48 0 0 1 48 48" fill="none" stroke="#777" stroke-linecap="round"
+                                stroke-width="2"></path>
+                        </svg>
+                        <div class="flex flex-col items-center">
+                            <span class="text-[8px] font-display font-bold text-tech-gray">NET</span>
+                            <span
+                                class="text-[10px] font-display font-bold text-[#FF0033] drop-shadow-[0_0_5px_rgba(255,0,51,0.8)]">ERR</span>
+                        </div>
+                    </div>
+                    <div class="flex flex-col items-end gap-1">
+                        <div
+                            class="flex items-center gap-2 border border-[#FF0033] bg-[#FF0033]/10 px-2 py-1 transform skew-x-[-12deg] shadow-[0_0_10px_rgba(255,0,51,0.3)]">
+                            <span
+                                class="w-1.5 h-1.5 bg-[#FF0033] rounded-full animate-pulse transform skew-x-[12deg]"></span>
+                            <span
+                                class="font-display text-[10px] font-bold text-[#FF0033] tracking-widest transform skew-x-[12deg] drop-shadow-[0_0_3px_rgba(255,0,51,1)]">CRITICAL</span>
+                        </div>
+                        <span class="font-mono text-[9px] text-red-500/50">HASH: 99-XA-02 // FAIL</span>
+                    </div>
+                </header>
+                <div class="relative z-10 flex-grow flex flex-col items-center pt-2 overflow-y-auto no-scrollbar">
+                    <div class="relative w-full flex items-center justify-center h-auto mt-0 mb-0 shrink-0">
+                        <div class="relative z-10 text-center">
+                            <h1 class="font-japanese font-black text-[#FF0033] tracking-tighter leading-none glitch-text drop-shadow-[0_0_15px_rgba(255,0,51,0.6)]"
+                                style="font-size: 5rem;" data-text="任務失敗">任務失敗</h1>
+                            <div
+                                class="mt-4 inline-block border-t border-b border-[#FF0033]/50 py-1 px-4 bg-black/80 backdrop-blur-sm">
+                                <p class="font-display font-bold tracking-[0.4em] text-red-100 uppercase drop-shadow-md"
+                                    style="font-size: 0.65rem;">
+                                    MISSION FAILED</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex-grow"></div>
+                    <div class="w-full px-6 relative z-20 shrink-0 mb-0">
+                        <div
+                            class="bg-panel-bg/90 backdrop-blur-md border border-[#FF0033]/40 p-4 relative overflow-hidden animate-border-pulse-vibrate">
+                            <div class="absolute top-0 right-0 w-8 h-8">
+                                <div
+                                    class="absolute top-0 right-0 w-full h-full border-t-4 border-r-4 border-[#FF0033] drop-shadow-[0_0_8px_rgba(255,0,51,0.8)]">
+                                </div>
+                            </div>
+                            <div class="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-red-500/30">
+                            </div>
+                            <div class="flex flex-col gap-3 relative z-10">
+                                <div class="flex items-center justify-between group">
+                                    <div class="flex flex-col">
+                                        <span
+                                            class="text-[10px] text-red-300/50 font-display tracking-widest mb-0.5 uppercase">Total
+                                            Score</span>
+                                        <div class="h-1 w-12 bg-[#FF0033] shadow-[0_0_8px_rgba(255,0,51,0.8)]">
+                                        </div>
+                                    </div>
+                                    <div class="flex items-baseline gap-1">
+                                        <span id="failScore"
+                                            class="text-5xl font-display font-black text-white tracking-tight animate-vibration inline-block"
+                                            style="animation-delay: 0.1s;">0</span>
+                                    </div>
+                                </div>
+                                <div class="w-full h-px bg-red-500/20"></div>
+                                <div class="flex justify-between items-start">
+                                    <div class="flex flex-col">
+                                        <span
+                                            class="text-[10px] text-red-300/50 font-display tracking-widest mb-1 uppercase">Elapsed
+                                            Time</span>
+                                        <span id="failTime"
+                                            class="text-xl font-display font-bold text-gray-200">00:00:00</span>
+                                    </div>
+                                    <div class="flex flex-col items-end">
+                                        <span
+                                            class="text-[10px] text-red-300/50 font-display tracking-widest mb-1 text-right uppercase">Defeated</span>
+                                        <div class="flex flex-col items-end gap-1">
+                                            <div id="failKills"
+                                                class="bg-[#FF0033] text-white px-3 py-1 text-xs font-bold font-display skew-x-[-10deg] shadow-[0_0_10px_rgba(255,0,51,0.4)] animate-vibration"
+                                                style="animation-delay: 0.2s;">
+                                                0 KILLS</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex-grow"></div>
+                </div>
+                <div
+                    class="p-6 pb-6 w-full z-50 mt-auto bg-gradient-to-t from-dark-bg via-dark-bg to-transparent shrink-0">
+                    <button id="returnToTitleButtonFail"
+                        class="w-full h-16 relative group outline-none cursor-pointer pointer-events-auto">
+                        <div
+                            class="absolute inset-0 bg-[#FF0033] transform -skew-x-12 transition-all duration-300 shadow-[4px_4px_0px_0px_rgba(150,0,0,0.3)] group-hover:translate-x-1 group-hover:translate-y-1 group-hover:shadow-[0_0_20px_rgba(255,0,51,0.6)]">
+                        </div>
+                        <div class="absolute inset-0 flex items-center justify-center transform -skew-x-12">
+                            <div class="flex flex-col items-center justify-center mr-2">
+                                <span
+                                    class="font-display font-black text-white text-lg tracking-[0.1em] group-hover:animate-pulse drop-shadow-md leading-none">RETURN
+                                    TO BASE</span>
+                                <span
+                                    class="text-[0.65rem] font-japanese font-bold text-white/70 leading-none mt-0.5">(帰還)</span>
+                            </div>
+                            <span
+                                class="material-symbols-outlined text-white ml-2 text-xl group-hover:rotate-180 transition-transform duration-700">refresh</span>
+                        </div>
+                        <div class="absolute top-0 left-4 w-px h-2 bg-white/60 transform -skew-x-12"></div>
+                        <div class="absolute bottom-0 right-4 w-px h-2 bg-white/60 transform -skew-x-12"></div>
+                    </button>
+                    <div class="flex justify-between items-center mt-4 px-2 opacity-60">
+                        <span class="text-[8px] font-mono text-red-500/60">ZANBARAI_SYS // V.2.0.4 //
+                            ERR_CODE_0x0</span>
+                        <div class="flex gap-1">
+                            <div class="w-1 h-1 bg-red-900 rounded-full"></div>
+                            <div class="w-1 h-1 bg-red-900 rounded-full"></div>
+                            <div
+                                class="w-1 h-1 bg-[#FF0033] rounded-full animate-pulse shadow-[0_0_5px_rgba(255,0,51,0.8)]">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
     </div>
 
 
@@ -2399,6 +2397,33 @@
         }
     </script>
     <script type="module" src="js/main.js"></script>
+    <script type="module">
+        // Preload important SFX during the loading screen so buttons play immediately.
+        import { soundManager } from './js/SoundManager.js';
+
+        // Mark not loaded initially
+        window.__sfxLoaded = false;
+        // Start loading common SFX assets used by UI and gameplay.
+        (async () => {
+            try {
+                await soundManager.load({
+                    button: 'assets/sfx/Button.mp3',
+                    polygon_burst: 'assets/sfx/polygon_burst.mp3',
+                    explosion: 'assets/sfx/explosion.mp3',
+                    attack_swipe: 'assets/sfx/atttack.mp3',
+                    tv_turn_off: 'assets/sfx/TV-Turn_Off01-2(Reverb).mp3',
+                    tv_turn_off_2: 'assets/sfx/TV-Turn_Off02-3(Reverb).mp3',
+                    fluorescent_crackle: 'assets/sfx/Fluorescent_Light-Noise01-1(Crackle).mp3',
+                    tv_signal_noise: 'assets/sfx/TV-Signal_Noise01-3(Retro).mp3'
+                });
+                window.__sfxLoaded = true;
+                console.info('[Preload] SFXロード完了');
+            } catch (e) {
+                window.__sfxLoaded = false;
+                console.warn('[Preload] SFXロード失敗', e);
+            }
+        })();
+    </script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const loadingScreen = document.getElementById('loadingScreen');
@@ -2467,21 +2492,64 @@
                 if (progressBar) progressBar.style.width = `${currentDisplay}%`;
                 if (progressText) progressText.innerText = `${currentDisplay}%`;
 
-                // Show start button near the end
-                if (progress > 80 && startButton) {
-                    startButton.classList.remove('opacity-0', 'pointer-events-none');
-                }
+                // Do not reveal the start button until loading finished and SFX preload completed.
 
                 if (progress >= 100) {
                     clearInterval(loadingInterval);
-                    // Slight delay at 100% before transition
-                    setTimeout(completeLoading, 500);
+                    // Ensure visuals show 100%
+                    if (progressBar) progressBar.style.width = `100%`;
+                    if (progressText) progressText.innerText = `100%`;
+
+                    // At load completion, wait for the SFX preload to actually finish
+                    // before revealing the start button. Poll `window.__sfxLoaded` and
+                    // reveal when ready so the subsequent tap is guaranteed to be
+                    // a user gesture that can unlock audio.
+                    const revealStartWhenReady = () => {
+                        try {
+                            if (window.__sfxLoaded) {
+                                if (startButton) {
+                                    startButton.classList.remove('opacity-0');
+                                    startButton.classList.remove('pointer-events-none');
+                                    startButton.setAttribute('aria-hidden', 'false');
+                                }
+                                return;
+                            }
+                        } catch (e) { }
+                        setTimeout(revealStartWhenReady, 200);
+                    };
+                    revealStartWhenReady();
+
+                    // Do NOT auto-complete; wait for user's tap to call completeLoading().
                 }
             }, intervalTime);
 
             // Allow skipping if button is clicked
             if (startButton) {
                 startButton.addEventListener('click', () => {
+                    try {
+                        // Try to play via game's SoundManager if available (preferred),
+                        // otherwise fallback to HTMLAudioElement. This runs inside a
+                        // user gesture so playback should be allowed.
+                        if (window.game && window.game.soundManager) {
+                            try { window.game.soundManager.unlock(); } catch (e) { }
+                            try { window.game.soundManager.play('button', { volume: 0.6 }); } catch (e) { }
+                            try { console.log('[index] startButton click: audioContext state', window.game.soundManager.audioContext ? window.game.soundManager.audioContext.state : 'no-audioContext'); } catch (e) {}
+                            // Ensure title loop buffer is decoded if possible (decode occurs only when audioContext exists)
+                            try {
+                                window.game.soundManager.load({ tv_signal_noise: 'assets/sfx/TV-Signal_Noise01-3(Retro).mp3' }).then(() => {
+                                    console.log('[index] tv_signal_noise load attempted after unlock');
+                                    try { if (window.game && window.game.uiManager && typeof window.game.uiManager.startTitleSignalNow === 'function') window.game.uiManager.startTitleSignalNow(); } catch (e) { console.warn('[index] startTitleSignalNow failed', e); }
+                                }).catch(e => console.warn('[index] tv_signal_noise load failed', e));
+                            } catch (e) { console.warn('[index] tv_signal_noise load threw', e); }
+                        } else {
+                            try {
+                                const a = new Audio('assets/sfx/Button.mp3');
+                                a.volume = 0.6;
+                                a.play().catch(() => { });
+                            } catch (e) { }
+                        }
+                    } catch (e) { }
+
                     clearInterval(loadingInterval);
                     completeLoading();
                 });

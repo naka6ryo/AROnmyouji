@@ -21,10 +21,13 @@ export class SoundManager {
             // ユーザー要望: モバイルでさらに大きく（概ね5倍相当）
             if (/iPhone|iPad|iPod/i.test(ua)) return 5.0; // iOS を約5倍にブースト
             if (/Android/i.test(ua)) return 4.0; // Android を約4倍にブースト
+            // デスクトップ（Windows/Mac/Linux）は増幅せず 1/4 に抑える
+            if (/Windows NT|Win32|Macintosh|Mac OS X|X11|Linux/i.test(ua)) return 0.25;
         } catch (e) {
             // フォールバック
         }
-        return 3.5;
+        // デフォルトは PC と同じ扱い（1/4）
+        return 0.25;
     }
 
     /** ユーザー操作の直後に呼んでAudioContextを作成／resumeする */
@@ -39,13 +42,9 @@ export class SoundManager {
                 // 初期ゲインは1
                 this.gainNode.gain.value = 1.0;
             }
-
-            // iOS では resume() を同期的に待たないほうがユーザージェスチャに紐づきやすい
-            if (this.audioContext.state === 'suspended') {
-                this.audioContext.resume().catch(e => {
-                    console.warn('[SoundManager] resume failed', e);
-                });
-            }
+            // 注意: resume() はユーザージェスチャ内で呼ぶ必要があるため
+            // initAudioContext() はコンテキスト作成のみを行い、resume() は行わない。
+            // 実際の再生許可解除は unlock() で行う。
         } catch (e) {
             console.warn('[SoundManager] initAudioContext failed', e);
         }
@@ -59,6 +58,12 @@ export class SoundManager {
         try {
             this.initAudioContext();
             if (!this.audioContext) return;
+            // Ensure the AudioContext is resumed inside the user gesture.
+            if (this.audioContext.state === 'suspended') {
+                this.audioContext.resume().catch(e => {
+                    console.warn('[SoundManager] resume failed in unlock', e);
+                });
+            }
 
             // Create a very short silent oscillator connected to a gain node with 0 volume.
             const osc = this.audioContext.createOscillator();
@@ -91,8 +96,8 @@ export class SoundManager {
                 const resp = await fetch(url, { cache: 'no-cache' });
                 if (!resp.ok) throw new Error('fetch failed');
                 const arr = await resp.arrayBuffer();
-                if (window.AudioContext || window.webkitAudioContext) {
-                    await this.initAudioContext();
+                // If an AudioContext already exists (unlocked by user), try WebAudio decode.
+                if (this.audioContext) {
                         try {
                             const decoded = await this.audioContext.decodeAudioData(arr.slice(0));
                             // 正規化のためピーク値を測定
@@ -112,6 +117,7 @@ export class SoundManager {
                                 console.warn('[SoundManager] compute gain failed', key, gerr);
                             }
                             this.buffers.set(key, decoded);
+                            console.log('[SoundManager] decoded and stored buffer for', key);
                             continue; // decoded OK
                         } catch (err) {
                             console.warn('[SoundManager] decodeAudioData failed', key, err);
@@ -127,6 +133,7 @@ export class SoundManager {
                 audio.preload = 'auto';
                 audio.load();
                 this.sounds.set(key, audio);
+                console.log('[SoundManager] html audio element stored for', key);
             } catch (e) {
                 console.warn('[SoundManager] load failed (audio element)', key, url, e);
             }

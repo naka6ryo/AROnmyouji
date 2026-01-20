@@ -635,6 +635,46 @@
             max-width: 100vw;
             transform: translateX(-50%);
         }
+
+        /* TV Turn Off Animation (Reverse of Turn On) */
+        @keyframes tv-turn-off {
+            0% {
+                transform: scale(1, 1);
+                filter: brightness(1) contrast(1);
+                opacity: 1;
+            }
+
+            40% {
+                transform: scale(1, 0.005);
+                filter: brightness(2) contrast(1.5);
+                /* Bright horizontal line */
+                opacity: 1;
+            }
+
+            60% {
+                transform: scale(1, 0.005);
+                /* Hold line width briefly */
+                opacity: 1;
+            }
+
+            80% {
+                transform: scale(0, 0.005);
+                /* Shrink width to center */
+                filter: brightness(10) contrast(2);
+                /* Flash */
+                opacity: 1;
+            }
+
+            100% {
+                transform: scale(0, 0);
+                opacity: 0;
+            }
+        }
+
+        .tv-turn-off-active {
+            animation: tv-turn-off 0.5s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+            transform-origin: center;
+        }
     </style>
     <style>
         /* CRT Turn On Animation */
@@ -656,6 +696,7 @@
         }
 
         @keyframes crt-img-anim {
+
             /* Keep horizontal centering by preserving translateX(-50%) in every keyframe
                The animation changes scale/opacity/filter but must not drop the translateX offset. */
             0% {
@@ -913,11 +954,115 @@
             -webkit-text-stroke: 2px rgba(255, 255, 255, 0.95) !important;
             text-shadow: 0 0 10px rgba(255, 255, 255, 0.55), 0 0 20px rgba(255, 255, 255, 0.25);
         }
+
+        /* Transition Overlay CSS */
+        .transition-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 99999;
+            pointer-events: none;
+            opacity: 0;
+            background: transparent;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            will-change: opacity, backdrop-filter, background-color;
+        }
+
+        .transition-active {
+            animation: transition-anim 1.3s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+        }
+
+        /* 
+           Refined Transition v3:
+           Phase 1: Fade to Black (0-10%) -> Swap
+           Phase 2: CRT Turn On Simulation (10-100%)
+        */
+        @keyframes transition-anim {
+
+            /* --- Phase 1: Turn Off / Hide --- */
+            0% {
+                opacity: 0;
+                background-color: transparent;
+                backdrop-filter: none;
+            }
+
+            5% {
+                opacity: 1;
+                background-color: black;
+                backdrop-filter: none;
+            }
+
+            10% {
+                opacity: 1;
+                background-color: black;
+                /* Swap happens here */
+                backdrop-filter: brightness(0) contrast(1);
+            }
+
+            /* --- Phase 2: CRT Turn On (10% -> 100% mapped to crt-turn-on 0%->100%) --- */
+            11% {
+                opacity: 1;
+                background-color: transparent;
+                /* Reduced brightness/contrast (30->15, 5->3) */
+                backdrop-filter: brightness(15) contrast(3) grayscale(1) blur(2px);
+            }
+
+            /* 20->10, 3->2 */
+            37% {
+                backdrop-filter: brightness(10) contrast(2) grayscale(1) blur(1px);
+            }
+
+            /* 5->3, 2->1.5 */
+            46% {
+                backdrop-filter: brightness(3) contrast(1.5) grayscale(1);
+                opacity: 1;
+            }
+
+            /* Less dimming: 0.5->0.7 */
+            55% {
+                backdrop-filter: brightness(0.7) contrast(0.9) grayscale(1);
+                opacity: 0.7;
+            }
+
+            /* 2->1.5, 1.2->1.1 */
+            64% {
+                backdrop-filter: brightness(1.5) contrast(1.1) grayscale(0.5);
+                opacity: 1;
+            }
+
+            /* 0.7->0.8 */
+            73% {
+                backdrop-filter: brightness(0.8) contrast(0.95) grayscale(0);
+                opacity: 0.8;
+            }
+
+            /* 1.5->1.2 */
+            82% {
+                backdrop-filter: brightness(1.2) contrast(1.05) grayscale(0);
+                opacity: 1;
+            }
+
+            100% {
+                opacity: 0;
+                backdrop-filter: brightness(1) contrast(1) grayscale(0);
+                background-color: transparent;
+            }
+        }
     </style>
 
 </head>
 
 <body class="bg-gray-900 h-screen w-full overflow-hidden relative font-sans selection:bg-primary selection:text-white">
+    <!-- Transition Overlay -->
+    <div id="transitionOverlay" class="transition-overlay">
+        <!-- Noise: screen blend mode to be visible on dark backgrounds -->
+        <div class="absolute inset-0 bg-noise opacity-40 mix-blend-screen animate-vibration"></div>
+        <!-- Glitch lines -->
+        <div class="absolute inset-0 random-glitch-lines opacity-50 mix-blend-screen"></div>
+        <!-- Flash whiteout at midpoint -->
+        <div class="absolute inset-0 bg-white opacity-0 animate-pulse-fast mix-blend-overlay"></div>
+    </div>
     <!-- SVG Filter for Distortion -->
     <svg style="position: absolute; width: 0; height: 0; overflow: hidden;" aria-hidden="true">
         <defs>
@@ -1130,7 +1275,9 @@
                     <h1 class="font-display text-3xl md:text-4xl font-black tracking-tighter text-ink-black uppercase">
                         Permission <span class="text-primary italic">Check</span>
                     </h1>
-                    <p class="font-japanese text-[8px] tracking-[0.06em] whitespace-nowrap mt-1 font-bold text-tech-gray">権限の確認</p>
+                    <p
+                        class="font-japanese text-[8px] tracking-[0.06em] whitespace-nowrap mt-1 font-bold text-tech-gray">
+                        権限の確認</p>
                 </div>
             </div>
 
@@ -1258,7 +1405,9 @@
                     <h1 class="font-display text-3xl md:text-4xl font-black tracking-tighter text-ink-black uppercase">
                         CONTROLLER <span class="text-primary italic">CONNECT</span>
                     </h1>
-                    <p class="font-japanese text-[8px] tracking-[0.06em] whitespace-nowrap mt-1 font-bold text-tech-gray">コントローラの接続
+                    <p
+                        class="font-japanese text-[8px] tracking-[0.06em] whitespace-nowrap mt-1 font-bold text-tech-gray">
+                        コントローラの接続
                     </p>
                 </div>
             </div>
@@ -1369,7 +1518,8 @@
                     <h1 class="font-display text-2xl md:text-4xl font-black tracking-tighter text-ink-black uppercase">
                         CALIBRATION
                     </h1>
-                    <p class="font-japanese text-[8px] md:text-[8px] tracking-[0.06em] whitespace-nowrap mt-1 font-bold text-tech-gray">
+                    <p
+                        class="font-japanese text-[8px] md:text-[8px] tracking-[0.06em] whitespace-nowrap mt-1 font-bold text-tech-gray">
                         キャリブレーション</p>
                 </div>
             </div>
@@ -1386,7 +1536,8 @@
                 </div>
 
                 <div class="text-center mb-4 md:mb-8">
-                    <p class="font-sans font-bold !text-[18px] md:!text-[18px] leading-relaxed tracking-[0.02em] text-ink-black">
+                    <p
+                        class="font-sans font-bold !text-[18px] md:!text-[18px] leading-relaxed tracking-[0.02em] text-ink-black">
                         端末を正面に向け、グローブも<br class="md:hidden">正面へ構えてください
                     </p>
                     <p
@@ -1930,6 +2081,8 @@
                     class="absolute top-4 right-4 z-50 text-xs text-white/20 border border-white/10 px-2 py-1 opacity-50 hover:opacity-100">DEBUG</button>
             </div>
 
+
+        </div> <!-- End CRT Container Wrapper -->
             <!-- Mission Result Screens -->
             <div id="resultScreen" class="screen absolute inset-0 z-50 hidden">
                 <!-- Success -->
@@ -2199,8 +2352,6 @@
                     </div>
                 </div>
             </main>
-
-        </div> <!-- End CRT Container Wrapper -->
     </div>
 
 

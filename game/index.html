@@ -625,12 +625,15 @@
             transform-origin: center;
         }
 
+        /* legacy helper: prefer height-based centered images */
         .image-width-based {
-            width: 100%;
-            height: auto;
-            position: absolute;
-            top: 50%;
-            transform: translateY(-50%);
+            position: fixed;
+            left: 50%;
+            top: 0;
+            height: 100vh;
+            width: auto;
+            max-width: 100vw;
+            transform: translateX(-50%);
         }
     </style>
     <style>
@@ -653,46 +656,51 @@
         }
 
         @keyframes crt-img-anim {
+            /* Keep horizontal centering by preserving translateX(-50%) in every keyframe
+               The animation changes scale/opacity/filter but must not drop the translateX offset. */
             0% {
-                transform: scale(0, 0.005);
+                transform: translateX(-50%) scale(0, 0.005);
                 filter: brightness(30) contrast(5);
                 opacity: 0;
             }
 
             5% {
+                transform: translateX(-50%) scale(0.02, 0.02);
                 opacity: 1;
             }
 
             15% {
-                transform: scale(1, 0.005);
+                transform: translateX(-50%) scale(1, 0.005);
                 filter: brightness(30) contrast(5);
                 opacity: 1;
             }
 
             40% {
-                transform: scale(1, 1);
+                transform: translateX(-50%) scale(1, 1);
                 filter: brightness(5) contrast(2);
                 opacity: 1;
             }
 
             50% {
-                transform: scale(1, 1);
+                transform: translateX(-50%) scale(1, 1);
                 filter: brightness(0.5) contrast(0.8);
                 opacity: 0.7;
             }
 
             60% {
+                transform: translateX(-50%) scale(1, 1);
                 filter: brightness(2) contrast(1.2);
                 opacity: 1;
             }
 
             80% {
+                transform: translateX(-50%) scale(1, 1);
                 filter: brightness(1.5) contrast(1.1);
                 opacity: 1;
             }
 
             100% {
-                transform: scale(1, 1);
+                transform: translateX(-50%) scale(1, 1);
                 filter: brightness(1) contrast(1);
                 opacity: 1;
             }

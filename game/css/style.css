@@ -90,27 +90,66 @@ body {
     opacity: 0 !important;
 }
 
-/* Ensure splash content and its image fill the full area with no inline-gap */
+/* Splash images: display by viewport height and preserve aspect ratio, centered */
 #splashContent,
 #splashContent>img {
-    width: 100% !important;
-    height: 100% !important;
+    position: fixed !important;
+    left: 50% !important;
+    top: 0 !important;
+    height: 100vh !important;
+    width: auto !important;
+    max-width: 100vw !important;
+    transform: translateX(-50%) !important;
     display: block !important;
-    object-fit: cover !important;
+    object-fit: contain !important;
 }
 
 /* Ensure title images are fixed to viewport and ignore parent padding/layout */
+/* Title images: height-first centered, preserve original aspect ratio */
 #title02Img,
 #title02CrtImg {
     position: fixed !important;
-    left: 0 !important;
+    left: 50% !important;
     top: 0 !important;
-    width: 100vw !important;
     height: 100vh !important;
-    object-fit: cover !important;
+    width: auto !important;
+    max-width: 100vw !important;
+    transform: translateX(-50%) !important;
+    object-fit: contain !important;
     margin: 0 !important;
     padding: 0 !important;
     display: block !important;
+}
+
+/* Strong override: ensure any image used for splash/title inside CRT container
+   uses viewport-height scaling and stays horizontally centered. Use !important
+   so this wins over inline styles or utility classes. */
+#crt-main-display img,
+#titleScreen2 img,
+#splashScreen img {
+    position: fixed !important;
+    left: 50% !important;
+    top: 0 !important;
+    height: 100vh !important;
+    width: auto !important;
+    max-width: 100vw !important;
+    transform: translateX(-50%) !important;
+    object-fit: contain !important;
+}
+
+/* Specific override for images using Tailwind utility classes that may force width-based sizing */
+#splashContent img.w-full.h-full.object-cover,
+#splashContent img.w-full.h-full.object-cover[src],
+#titleScreen2 img.w-full.h-full.object-cover,
+#crt-main-display img.w-full.h-full.object-cover {
+    position: fixed !important;
+    left: 50% !important;
+    top: 0 !important;
+    height: 100vh !important;
+    width: auto !important;
+    max-width: 100vw !important;
+    transform: translateX(-50%) !important;
+    object-fit: contain !important;
 }
 
 /* Exception: completely disable any margin/padding inside splash/title screens
@@ -122,6 +161,20 @@ body {
     margin: 0 !important;
     padding: 0 !important;
     box-sizing: border-box !important;
+}
+
+/* Force start button left-bottom when splash is active to override other rules */
+#splashScreen.active #startButton,
+#splashScreen.active button#startButton {
+    position: fixed !important;
+    left: 15px !important;
+    right: auto !important;
+    bottom: 24px !important;
+    z-index: 95 !important;
+    pointer-events: auto !important;
+    width: min(35vw, 250px) !important;
+    max-width: 250px !important;
+    height: 60px !important;
 }
 
 /* Also ensure any common utility padding classes inside those screens are nulled */

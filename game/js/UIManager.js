@@ -476,7 +476,7 @@ export class UIManager {
         let current = countFrom;
 
         // Helper to convert Arabic numerals to 漢数字 and trigger animation
-        const numMap = {0: '零', 1: '一', 2: '二', 3: '三', 4: '四', 5: '五', 6: '六', 7: '七', 8: '八', 9: '九', 10: '十'};
+        const numMap = { 0: '零', 1: '一', 2: '二', 3: '三', 4: '四', 5: '五', 6: '六', 7: '七', 8: '八', 9: '九', 10: '十' };
         const toKanji = (n) => {
             const num = parseInt(String(n), 10);
             return (numMap[num] !== undefined) ? numMap[num] : String(n);
@@ -798,7 +798,7 @@ export class UIManager {
                 titleEl.insertBefore(bgImg, titleEl.firstChild);
             }
             // Remove utility classes if present to avoid tailwind width/fit overrides
-            try { bgImg.classList.remove('w-full','h-full','object-cover'); } catch (e) {}
+            try { bgImg.classList.remove('w-full', 'h-full', 'object-cover'); } catch (e) { }
             bgImg.src = 'assets/picture/Title02.jpg';
             // Make UI title image fixed to viewport so it's unaffected by parent padding
             // Scale to match viewport height while preserving aspect ratio
@@ -811,7 +811,7 @@ export class UIManager {
             bgImg.style.transform = 'translateX(-50%)';
             bgImg.style.zIndex = '60';
             bgImg.style.pointerEvents = 'none';
-            try { bgImg.style.setProperty('object-fit','contain','important'); } catch(e){}
+            try { bgImg.style.setProperty('object-fit', 'contain', 'important'); } catch (e) { }
             // keep UI image hidden until CRT reveals image
             bgImg.style.opacity = '0';
             bgImg.style.transition = '';
@@ -828,7 +828,7 @@ export class UIManager {
                         // insert as first child so it sits above video/canvas but under overlays
                         crtDisplay.insertBefore(crtImg, crtDisplay.firstChild);
                     }
-                    try { crtImg.classList.remove('w-full','h-full','object-cover'); } catch (e) {}
+                    try { crtImg.classList.remove('w-full', 'h-full', 'object-cover'); } catch (e) { }
                     crtImg.src = 'assets/picture/Title02.jpg';
                     // Ensure CRT-side image also occupies full viewport (fixed) so no parent padding shows
                     // Scale CRT-side image to match viewport height, preserve aspect ratio
@@ -841,7 +841,7 @@ export class UIManager {
                     crtImg.style.transform = 'translateX(-50%)';
                     crtImg.style.zIndex = '59';
                     crtImg.style.pointerEvents = 'none';
-                    try { crtImg.style.setProperty('object-fit','contain','important'); } catch(e){}
+                    try { crtImg.style.setProperty('object-fit', 'contain', 'important'); } catch (e) { }
                     // Ensure it's fully visible so CRT turn-on affects its brightness/contrast
                     crtImg.style.opacity = '1';
                     crtImg.style.filter = '';
@@ -981,7 +981,7 @@ export class UIManager {
                 else splashEl.insertBefore(uiImg, splashEl.firstChild);
             }
             uiImg.src = 'assets/picture/Title.jpg';
-            try { uiImg.classList.remove('w-full','h-full','object-cover'); } catch (e) {}
+            try { uiImg.classList.remove('w-full', 'h-full', 'object-cover'); } catch (e) { }
             // Scale UI-side splash image by viewport height, preserve aspect ratio
             uiImg.style.position = 'fixed';
             uiImg.style.left = '50%';
@@ -990,7 +990,7 @@ export class UIManager {
             uiImg.style.width = 'auto';
             uiImg.style.maxWidth = '100vw';
             uiImg.style.transform = 'translateX(-50%)';
-            try { uiImg.style.setProperty('object-fit','contain','important'); } catch(e){}
+            try { uiImg.style.setProperty('object-fit', 'contain', 'important'); } catch (e) { }
             uiImg.style.opacity = '0';
             uiImg.style.transition = 'opacity 0.4s ease-out';
             uiImg.style.zIndex = '50';
@@ -999,7 +999,7 @@ export class UIManager {
             // Ensure original image is displayed height-first and centered
             try {
                 // Remove utility classes that force width/height/object-fit before applying inline styles
-                try { existingImg.classList.remove('w-full','h-full','object-cover'); } catch (e) {}
+                try { existingImg.classList.remove('w-full', 'h-full', 'object-cover'); } catch (e) { }
                 existingImg.style.position = 'fixed';
                 existingImg.style.left = '50%';
                 existingImg.style.top = '0';
@@ -1007,7 +1007,7 @@ export class UIManager {
                 existingImg.style.width = 'auto';
                 existingImg.style.maxWidth = '100vw';
                 existingImg.style.transform = 'translateX(-50%)';
-                try { existingImg.style.setProperty('object-fit','contain','important'); } catch(e){}
+                try { existingImg.style.setProperty('object-fit', 'contain', 'important'); } catch (e) { }
                 existingImg.style.zIndex = '50';
                 existingImg.style.pointerEvents = 'none';
                 existingImg.style.opacity = '0';
@@ -1026,7 +1026,7 @@ export class UIManager {
                     crtImg.alt = 'Splash CRT';
                     crtDisplay.insertBefore(crtImg, crtDisplay.firstChild);
                 }
-                try { crtImg.classList.remove('w-full','h-full','object-cover'); } catch (e) {}
+                try { crtImg.classList.remove('w-full', 'h-full', 'object-cover'); } catch (e) { }
                 crtImg.src = 'assets/picture/Title.jpg';
                 // CRT-side splash image: height-first, preserve aspect ratio, centered
                 crtImg.style.position = 'fixed';
@@ -1038,7 +1038,7 @@ export class UIManager {
                 crtImg.style.transform = 'translateX(-50%)';
                 crtImg.style.zIndex = '59';
                 crtImg.style.pointerEvents = 'none';
-                try { crtImg.style.setProperty('object-fit','contain','important'); } catch(e){}
+                try { crtImg.style.setProperty('object-fit', 'contain', 'important'); } catch (e) { }
                 crtImg.style.opacity = '1';
                 try { crtImg.classList.remove('crt-img-animated'); void crtImg.offsetWidth; crtImg.classList.add('crt-img-animated'); } catch (e) { }
             }
@@ -1058,33 +1058,33 @@ export class UIManager {
                 splashEl.classList.add('active');
                 splashEl.style.display = 'block';
                 splashEl.style.pointerEvents = 'auto';
-                    const startBtn = document.getElementById('startButton');
-                    if (startBtn) {
-                        // Ensure start button is positioned above background and clickable
-                        startBtn.style.position = 'fixed';
-                        // Use pixel-based sizing computed from viewport to avoid percentage resolving to 0
-                        try {
-                            const vw = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
-                            const vh = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0);
-                            const leftPx = Math.floor(vw * 0.04);
-                            const bottomPx = Math.floor(vh * 0.04);
-                            const widthPx = Math.min(250, Math.max(64, Math.floor(vw * 0.35)));
-                            const heightPx = Math.min(100, Math.max(40, Math.floor(vh * 0.10)));
-                            startBtn.style.left = leftPx + 'px';
-                            startBtn.style.right = 'auto';
-                            startBtn.style.bottom = bottomPx + 'px';
-                            startBtn.style.width = widthPx + 'px';
-                            startBtn.style.height = heightPx + 'px';
-                        } catch (e) {
-                            // Fallback to safe defaults
-                            startBtn.style.left = '4%';
-                            startBtn.style.bottom = '4%';
-                            startBtn.style.width = '250px';
-                            startBtn.style.height = '60px';
-                        }
-                        startBtn.style.zIndex = '95';
-                        startBtn.style.pointerEvents = 'auto';
+                const startBtn = document.getElementById('startButton');
+                if (startBtn) {
+                    // Ensure start button is positioned above background and clickable
+                    startBtn.style.position = 'fixed';
+                    // Use pixel-based sizing computed from viewport to avoid percentage resolving to 0
+                    try {
+                        const vw = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
+                        const vh = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0);
+                        const leftPx = Math.floor(vw * 0.04);
+                        const bottomPx = Math.floor(vh * 0.04);
+                        const widthPx = Math.min(250, Math.max(64, Math.floor(vw * 0.35)));
+                        const heightPx = Math.min(100, Math.max(40, Math.floor(vh * 0.10)));
+                        startBtn.style.left = leftPx + 'px';
+                        startBtn.style.right = 'auto';
+                        startBtn.style.bottom = bottomPx + 'px';
+                        startBtn.style.width = widthPx + 'px';
+                        startBtn.style.height = heightPx + 'px';
+                    } catch (e) {
+                        // Fallback to safe defaults
+                        startBtn.style.left = '4%';
+                        startBtn.style.bottom = '4%';
+                        startBtn.style.width = '250px';
+                        startBtn.style.height = '60px';
                     }
+                    startBtn.style.zIndex = '95';
+                    startBtn.style.pointerEvents = 'auto';
+                }
             } catch (e) { }
         }, revealDelayMs);
 
@@ -1337,8 +1337,15 @@ export class UIManager {
             if (canvasEl) canvasEl.style.display = 'none';
         } else {
             // Ensure camera/canvas are visible if starting game
-            if (videoEl) videoEl.style.display = '';
-            if (canvasEl) canvasEl.style.display = '';
+            if (videoEl) {
+                videoEl.style.display = '';
+                videoEl.style.opacity = ''; // Reset opacity
+            }
+            if (canvasEl) {
+                canvasEl.style.display = '';
+                canvasEl.style.opacity = ''; // Reset opacity
+                canvasEl.classList.remove('hidden');
+            }
         }
 
         // Ensure display is visible (remove hidden)
@@ -1381,9 +1388,13 @@ export class UIManager {
             setTimeout(() => {
                 // If caller requested camera visible, ensure it's shown now
                 if (showCamera) {
-                    if (videoEl) videoEl.style.display = '';
+                    if (videoEl) {
+                        videoEl.style.display = '';
+                        videoEl.style.opacity = '';
+                    }
                     if (canvasEl) {
                         canvasEl.style.display = '';
+                        canvasEl.style.opacity = '';
                         canvasEl.classList.remove('hidden');
                     }
                 }
@@ -1392,14 +1403,81 @@ export class UIManager {
         } else {
             setTimeout(() => {
                 if (showCamera) {
-                    if (videoEl) videoEl.style.display = '';
+                    if (videoEl) {
+                        videoEl.style.display = '';
+                        videoEl.style.opacity = '';
+                    }
                     if (canvasEl) {
                         canvasEl.style.display = '';
+                        canvasEl.style.opacity = '';
                         canvasEl.classList.remove('hidden');
                     }
                 }
                 if (onComplete) onComplete();
             }, 2000);
         }
+    }
+
+    /**
+     * TV消灯演出（ゲーム終了時）
+     * 縦に圧縮→白い線→消失
+     */
+    playTvTurnOffAnimation(onComplete) {
+        // Target elements visible during gameplay
+        const targets = [
+            document.getElementById('cameraVideo'),
+            document.getElementById('gameCanvas'),
+            document.getElementById('uiContainer')
+        ];
+
+        // Apply animation class
+        targets.forEach(el => {
+            if (el) {
+                el.classList.remove('tv-turn-off-active');
+                void el.offsetWidth; // reflow
+                el.classList.add('tv-turn-off-active');
+            }
+        });
+
+        // Wait for animation to finish (0.5s defined in CSS)
+        setTimeout(() => {
+            targets.forEach(el => {
+                if (el) {
+                    el.classList.remove('tv-turn-off-active');
+                    // Ensure they stay hidden until next state
+                    // Note: showResult logic will likely handle classList 'hidden' for UI,
+                    // but we force opacity/display to ensure screen stays black.
+                    el.style.opacity = '0';
+                }
+            });
+            if (onComplete) onComplete();
+        }, 550);
+    }
+
+    /**
+     * スクリーン遷移エフェクト再生
+     * onMidpoint: 画面切り替えのタイミング（完全に暗転/ブラーがかかった瞬間）に呼ばれるコールバック
+     */
+    playScreenTransition(onMidpoint) {
+        const overlay = document.getElementById('transitionOverlay');
+        if (!overlay) {
+            if (onMidpoint) onMidpoint();
+            return;
+        }
+
+        // 既存のクラスをリセット
+        overlay.classList.remove('transition-active');
+        void overlay.offsetWidth; // リフロー
+        overlay.classList.add('transition-active');
+
+        // 中間地点（Phase 1: 10% = 130ms）でコールバック実行
+        setTimeout(() => {
+            if (onMidpoint) onMidpoint();
+        }, 130); // 10%時点 (Swap)
+
+        // アニメーション終了後にクラス削除
+        setTimeout(() => {
+            overlay.classList.remove('transition-active');
+        }, 1400); // 1.3s + マージン
     }
 }

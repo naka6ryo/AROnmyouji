@@ -156,9 +156,11 @@ class AROnmyoujiGame {
         this.debugOverlay.logInfo(`キャリブレーション完了: ${pitch_deg.toFixed(1)}, ${yaw_deg.toFixed(1)}, ${roll_deg.toFixed(1)}`);
 
         // 校正完了 -> ゲーム画面へ遷移するが、ゲームはまだ開始しない
-        this.appState.calibrationComplete();
-        // ここでスタートボタンを表示確実にONにする
-        this.uiManager.toggleSceneStartButton(true);
+        this.uiManager.playScreenTransition(() => {
+            this.appState.calibrationComplete();
+            // ここでスタートボタンを表示確実にONにする
+            this.uiManager.toggleSceneStartButton(true);
+        });
     }
 
     /**
@@ -231,7 +233,9 @@ class AROnmyoujiGame {
         } catch (e) {
             console.warn('sound init/load failed', e);
         }
-        this.appState.startGame();
+        this.uiManager.playScreenTransition(() => {
+            this.appState.startGame();
+        });
     }
 
     /**
@@ -316,7 +320,9 @@ class AROnmyoujiGame {
             this.uiManager.addPermissionLog('✓ カメラ権限取得成功');
             this.uiManager.addPermissionLog('✓ 全権限取得完了');
 
-            this.appState.permissionGranted();
+            this.uiManager.playScreenTransition(() => {
+                this.appState.permissionGranted();
+            });
 
         } catch (error) {
             console.error(error);
@@ -336,7 +342,9 @@ class AROnmyoujiGame {
             await this.bleAdapter.connect();
             this.uiManager.updateBLEStatus('接続成功');
             this.debugOverlay.logInfo('BLE接続成功');
-            this.appState.bleConnected();
+            this.uiManager.playScreenTransition(() => {
+                this.appState.bleConnected();
+            });
         } catch (error) {
             this.uiManager.showBLEError(error.message);
             this.debugOverlay.logError(`BLE接続エラー: ${error.message}`);
@@ -507,14 +515,28 @@ class AROnmyoujiGame {
 
     onGameOver(data) {
         this.isRunning = false;
-        this.uiManager.showResult('ゲームオーバー', data.killCount, this.gameWorld.gameTime / 1000);
-        this.appState.endGame();
+        // 1. TV Turn Off
+        this.uiManager.playTvTurnOffAnimation(() => {
+            // 2. Screen Transition (Glitch/Noise)
+            this.uiManager.playScreenTransition(() => {
+                // 3. Show Result
+                this.uiManager.showResult('ゲームオーバー', data.killCount, this.gameWorld.gameTime / 1000);
+                this.appState.endGame();
+            });
+        });
     }
 
     onGameClear(data) {
         this.isRunning = false;
-        this.uiManager.showResult('クリア！', data.killCount, data.time / 1000);
-        this.appState.endGame();
+        // 1. TV Turn Off
+        this.uiManager.playTvTurnOffAnimation(() => {
+            // 2. Screen Transition (Glitch/Noise)
+            this.uiManager.playScreenTransition(() => {
+                // 3. Show Result
+                this.uiManager.showResult('クリア！', data.killCount, data.time / 1000);
+                this.appState.endGame();
+            });
+        });
     }
 
     async onHapticEvent(event) {

@@ -61,6 +61,8 @@
                         'glitch': 'glitch 2s infinite',
                         'scanline': 'scanline 8s linear infinite',
                         'border-pulse': 'borderPulse 3s ease-in-out infinite',
+                        'vibration': 'vibration 0.3s linear infinite',
+                        'border-pulse-vibrate': 'borderPulse 3s ease-in-out infinite, vibration 0.3s linear infinite',
                     },
                     keyframes: {
                         glitch: {
@@ -78,6 +80,13 @@
                         borderPulse: {
                             '0%, 100%': { borderColor: 'rgba(255, 0, 51, 0.4)', boxShadow: '0 0 10px rgba(255, 0, 51, 0.1)' },
                             '50%': { borderColor: 'rgba(255, 0, 51, 0.9)', boxShadow: '0 0 25px rgba(255, 0, 51, 0.3)' },
+                        },
+                        vibration: {
+                            '0%, 100%': { transform: 'translate(0, 0)' },
+                            '20%': { transform: 'translate(-1px, 1px)' },
+                            '40%': { transform: 'translate(1px, -1px)' },
+                            '60%': { transform: 'translate(-2px, 0px)' },
+                            '80%': { transform: 'translate(0px, 2px)' }
                         }
                     }
                 },
@@ -879,6 +888,23 @@
                 letter-spacing: 0em;
             }
         }
+
+        /* Countdown uses same styling as fuda hologram */
+        #countdownValue.hologram-effect {
+            font-family: 'Shippori Mincho', serif;
+            font-weight: 900;
+            color: transparent !important;
+            -webkit-text-stroke: 2px rgba(255, 20, 20, 0.9) !important;
+            text-shadow: 0 0 10px rgba(255, 0, 0, 0.5), 0 0 20px rgba(255, 0, 0, 0.3);
+            letter-spacing: 0.15em;
+            mix-blend-mode: screen;
+        }
+
+        /* Ensure countdown uses white outline (transparent fill + white stroke) */
+        #countdownValue.hologram-effect {
+            -webkit-text-stroke: 2px rgba(255, 255, 255, 0.95) !important;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.55), 0 0 20px rgba(255, 255, 255, 0.25);
+        }
     </style>
 
 </head>
@@ -1470,8 +1496,7 @@
                         <div
                             class="absolute inset-0 flex flex-col items-center justify-center transform -skew-x-[20deg]">
                             <span
-                                class="font-display font-black text-white text-base md:text-lg tracking-wider italic transform skew-x-[20deg]">START
-                                GAME</span>
+                                class="font-display font-black text-white text-base md:text-lg tracking-wider italic transform skew-x-[20deg]">Start</span>
                             <span
                                 class="font-japanese text-[10px] text-white/90 font-bold tracking-widest transform skew-x-[20deg]">ゲーム開始</span>
                         </div>
@@ -1496,6 +1521,12 @@
                 <div class="w-1 h-3 md:h-4 bg-ink-black opacity-50"></div>
                 <div class="w-1 h-3 md:h-4 bg-ink-black opacity-25"></div>
             </div>
+        </div>
+    </div>
+
+    <div id="countdownOverlay"
+        class="screen absolute inset-0 z-[75] flex items-center justify-center pointer-events-none hidden bg-transparent">
+        <div id="countdownValue" class="font-display text-9xl hologram-effect">
         </div>
     </div>
 
@@ -1554,6 +1585,11 @@
         <div id="uiContainer">
 
 
+            <!-- Center: Hologram Text (Onmyo Style) - Initially hidden -->
+            <div id="hologramText" class="hologram-fuda-text" style="z-index: 80;">
+                急急如律令
+            </div>
+
             <!-- Gameplay Screen (Updated with User's HUD) -->
             <div id="gameplayScreen" class="screen hidden w-full h-full absolute inset-0 z-40">
                 <!-- Game Effects Overlay (z-50 in user's doc, but inside gameplayScreen) -->
@@ -1570,7 +1606,7 @@
                 </div>
 
                 <!-- Main HUD UI -->
-                <div class="relative z-10 w-full h-full flex flex-col justify-between pointer-events-none">
+                <div class="relative z-[90] w-full h-full flex flex-col justify-between pointer-events-none">
                     <!-- Header / Top HUD -->
                     <header class="w-full relative z-[150] pointer-events-auto">
                         <div
@@ -1650,10 +1686,7 @@
                     <!-- Enemy Indicators Container (Full Screen) -->
                     <div id="enemyIndicators" class="absolute inset-0 w-full h-full pointer-events-none z-0"></div>
 
-                    <!-- Center: Hologram Text (Onmyo Style) - Initially hidden -->
-                    <div id="hologramText" class="hologram-fuda-text">
-                        急急如律令
-                    </div>
+
 
                     <!-- Center: Reticle / Crosshair -->
 
@@ -1708,16 +1741,11 @@
                     </div>
 
                     <!-- Bottom Controls & Status -->
-                    <div class="w-full p-6 pb-8 flex flex-col justify-end pointer-events-auto mt-auto relative h-full">
+                    <div class="w-full p-6 pb-8 flex flex-col justify-end pointer-events-none mt-auto relative h-full">
 
 
                         <!-- Countdown Overlay -->
-                        <div id="countdownOverlay"
-                            class="absolute inset-0 z-60 flex items-center justify-center pointer-events-none hidden">
-                            <div id="countdownValue"
-                                class="font-display text-9xl text-white drop-shadow-[0_0_20px_rgba(255,0,0,0.8)] animate-pulse">
-                            </div>
-                        </div>
+
 
                         <!-- audio debug panel removed -->
 
@@ -1761,14 +1789,7 @@
                             </div>
                         </div>
 
-                        <!-- Bottom Left: Action Button -->
-                        <div class="flex w-full justify-start items-end gap-4 mt-auto pr-32 pb-4">
-                            <button id="cancelButton"
-                                class="parallelogram bg-black/60 border border-white/40 text-white h-12 w-32 flex items-center justify-center backdrop-blur-md active:bg-white active:text-black transition-colors hover:border-primary/80 hover:text-primary">
-                                <span
-                                    class="font-display font-bold tracking-widest text-sm skew-x-[15deg] uppercase">Cancel</span>
-                            </button>
-                        </div>
+
 
                         <!-- Footer Line -->
                         <div
@@ -1905,11 +1926,15 @@
             <div id="resultScreen" class="screen absolute inset-0 z-50 hidden">
                 <!-- Success -->
                 <main id="missionCompletedScreen"
-                    class="screen absolute inset-0 z-50 bg-white hidden flex flex-col items-center justify-center overflow-hidden">
+                    class="screen absolute inset-0 z-50 hidden flex flex-col items-center justify-center bg-white text-ink-black">
+                    <!-- Added overflow-y-auto to support smaller screens -->
                     <div
-                        class="relative w-full max-w-[420px] h-[840px] max-h-[95vh] bg-white shadow-2xl overflow-hidden flex flex-col border border-gray-200">
-                        <div class="absolute inset-0 z-0 bg-dot-grid opacity-40 pointer-events-none"></div>
-                        <header class="relative z-20 flex justify-between items-start p-6 pt-8">
+                        class="relative w-full max-w-[420px] h-[840px] max-h-[95vh] bg-white shadow-2xl overflow-hidden flex flex-col border border-gray-200 group">
+                        <div
+                            class="absolute top-[25%] left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] bg-primary rounded-full blur-[90px] opacity-10 pointer-events-none z-0">
+                        </div>
+                        <div class="absolute inset-0 z-0 bg-dot-grid opacity-20 pointer-events-none"></div>
+                        <header class="relative z-20 flex justify-between items-start p-6 pt-8 shrink-0">
                             <div class="relative w-14 h-14 flex items-center justify-center">
                                 <svg class="absolute inset-0 w-full h-full animate-spin-slow" viewBox="0 0 100 100">
                                     <circle cx="50" cy="50" fill="none" r="48" stroke="#e5e5e5" stroke-dasharray="4 4"
@@ -1924,30 +1949,42 @@
                             </div>
                             <div class="flex flex-col items-end gap-1">
                                 <div
-                                    class="flex items-center gap-2 border border-primary bg-red-50 px-2 py-1 transform skew-x-[-12deg]">
+                                    class="flex items-center gap-2 border border-primary bg-primary/10 px-2 py-1 transform skew-x-[-12deg] shadow-[0_0_10px_rgba(255,0,51,0.2)]">
                                     <span
                                         class="w-1.5 h-1.5 bg-primary rounded-full animate-pulse transform skew-x-[12deg]"></span>
                                     <span
                                         class="font-display text-[10px] font-bold text-primary tracking-widest transform skew-x-[12deg]">SECURE</span>
                                 </div>
-                                <span class="font-mono text-[9px] text-tech-gray">HASH: 99-XA-02</span>
+                                <span class="font-mono text-[9px] text-tech-gray">HASH: 99-XA-02 // CMPL</span>
                             </div>
                         </header>
-                        <div class="relative z-10 flex-grow flex flex-col items-center pt-8">
-                            <div class="relative w-full flex items-center justify-center h-64 mb-4">
+                        <div
+                            class="relative z-10 flex-grow flex flex-col items-center pt-2 overflow-y-auto no-scrollbar">
+                            <div class="relative w-full flex items-center justify-center h-auto mt-0 mb-0 shrink-0">
                                 <div class="relative z-10 text-center">
-                                    <h1 class="font-japanese font-black text-7xl text-primary tracking-tighter leading-none glitch-text drop-shadow-2xl"
-                                        data-text="任務完了">任務完了</h1>
+                                    <h1 class="font-japanese font-black text-primary tracking-tighter leading-none glitch-text drop-shadow-2xl"
+                                        style="font-size: 5rem;" data-text="任務完了">任務完了</h1>
                                     <div
                                         class="mt-4 inline-block border-t border-b border-primary/50 py-1 px-4 bg-black/80 backdrop-blur-sm">
-                                        <p class="font-display font-bold text-xs tracking-[0.4em] text-white uppercase">
+                                        <p class="font-display font-bold tracking-[0.4em] text-white uppercase"
+                                            style="font-size: 0.65rem;">
                                             Mission Complete</p>
                                     </div>
                                 </div>
                             </div>
-                            <div class="w-full px-6 relative z-20">
-                                <div class="bg-white border border-gray-200 shadow-xl p-6 relative overflow-hidden">
-                                    <div class="flex flex-col gap-6 relative z-10">
+                            <div class="flex-grow"></div>
+                            <div class="w-full px-6 relative z-20 shrink-0 mb-0">
+                                <div
+                                    class="bg-white/90 backdrop-blur-md border border-primary/40 p-4 relative overflow-hidden">
+                                    <div class="absolute top-0 right-0 w-8 h-8">
+                                        <div
+                                            class="absolute top-0 right-0 w-full h-full border-t-4 border-r-4 border-primary/20">
+                                        </div>
+                                    </div>
+                                    <div
+                                        class="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-primary/20">
+                                    </div>
+                                    <div class="flex flex-col gap-3 relative z-10">
                                         <div class="flex items-center justify-between group">
                                             <div class="flex flex-col">
                                                 <span
@@ -1982,19 +2019,28 @@
                                     </div>
                                 </div>
                             </div>
+                            <div class="flex-grow"></div>
                         </div>
-                        <div class="p-6 pb-10 w-full z-30 mt-auto bg-gradient-to-t from-white via-white to-transparent">
-                            <button id="returnToTitleButtonSuccess" class="w-full h-16 relative group outline-none">
+                        <div
+                            class="p-6 pb-6 w-full z-50 mt-auto bg-gradient-to-t from-white via-white to-transparent shrink-0">
+                            <button id="returnToTitleButtonSuccess"
+                                class="w-full h-16 relative group outline-none cursor-pointer pointer-events-auto">
                                 <div
-                                    class="absolute inset-0 bg-primary transform -skew-x-12 transition-all duration-300 shadow-[4px_4px_0px_0px_rgba(13,13,13,1)] group-hover:translate-x-1 group-hover:translate-y-1 group-hover:shadow-none">
+                                    class="absolute inset-0 bg-primary transform -skew-x-12 transition-all duration-300 shadow-[4px_4px_0px_0px_rgba(13,13,13,0.3)] group-hover:translate-x-1 group-hover:translate-y-1 group-hover:shadow-[0_0_15px_rgba(255,0,51,0.4)]">
                                 </div>
                                 <div class="absolute inset-0 flex items-center justify-center transform -skew-x-12">
-                                    <span
-                                        class="font-display font-black text-white text-lg tracking-[0.2em] group-hover:animate-pulse">RETURN
-                                        TO BASE</span>
+                                    <div class="flex flex-col items-center justify-center mr-2">
+                                        <span
+                                            class="font-display font-black text-white text-lg tracking-[0.1em] group-hover:animate-pulse drop-shadow-md leading-none">RETURN
+                                            TO BASE</span>
+                                        <span
+                                            class="text-[0.65rem] font-japanese font-bold text-white/70 leading-none mt-0.5">(帰還)</span>
+                                    </div>
                                     <span
                                         class="material-symbols-outlined text-white ml-2 text-xl group-hover:translate-x-1 transition-transform">east</span>
                                 </div>
+                                <div class="absolute top-0 left-4 w-px h-2 bg-white/60 transform -skew-x-12"></div>
+                                <div class="absolute bottom-0 right-4 w-px h-2 bg-white/60 transform -skew-x-12"></div>
                             </button>
                             <div class="flex justify-between items-center mt-4 px-2 opacity-60">
                                 <span class="text-[8px] font-mono text-tech-gray">ZANBARAI_SYS // V.2.0.4</span>
@@ -2062,7 +2108,7 @@
                         <div class="flex-grow"></div>
                         <div class="w-full px-6 relative z-20 shrink-0 mb-0">
                             <div
-                                class="bg-panel-bg/90 backdrop-blur-md border border-[#FF0033]/40 p-4 relative overflow-hidden animate-border-pulse">
+                                class="bg-panel-bg/90 backdrop-blur-md border border-[#FF0033]/40 p-4 relative overflow-hidden animate-border-pulse-vibrate">
                                 <div class="absolute top-0 right-0 w-8 h-8">
                                     <div
                                         class="absolute top-0 right-0 w-full h-full border-t-4 border-r-4 border-[#FF0033] drop-shadow-[0_0_8px_rgba(255,0,51,0.8)]">
@@ -2081,7 +2127,8 @@
                                         </div>
                                         <div class="flex items-baseline gap-1">
                                             <span id="failScore"
-                                                class="text-5xl font-display font-black text-white tracking-tight">0</span>
+                                                class="text-5xl font-display font-black text-white tracking-tight animate-vibration inline-block"
+                                                style="animation-delay: 0.1s;">0</span>
                                         </div>
                                     </div>
                                     <div class="w-full h-px bg-red-500/20"></div>
@@ -2098,7 +2145,8 @@
                                                 class="text-[10px] text-red-300/50 font-display tracking-widest mb-1 text-right uppercase">Defeated</span>
                                             <div class="flex flex-col items-end gap-1">
                                                 <div id="failKills"
-                                                    class="bg-[#FF0033] text-white px-3 py-1 text-xs font-bold font-display skew-x-[-10deg] shadow-[0_0_10px_rgba(255,0,51,0.4)]">
+                                                    class="bg-[#FF0033] text-white px-3 py-1 text-xs font-bold font-display skew-x-[-10deg] shadow-[0_0_10px_rgba(255,0,51,0.4)] animate-vibration"
+                                                    style="animation-delay: 0.2s;">
                                                     0 KILLS</div>
                                             </div>
                                         </div>

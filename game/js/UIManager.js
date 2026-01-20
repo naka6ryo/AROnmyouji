@@ -520,6 +520,27 @@ export class UIManager {
 
         updateText(String(current));
 
+        // Play countdown start SFX immediately when countdown begins
+        try {
+            const audioKey = 'countdown';
+            const assetPath = 'assets/sfx/Countdown02-2.mp3';
+            const mgr = (typeof window !== 'undefined' && window.soundManager) ? window.soundManager : (typeof soundManager !== 'undefined' ? soundManager : null);
+            try {
+                if (mgr && typeof mgr.play === 'function') {
+                    mgr.play(audioKey, { volume: 0.95 });
+                    console.log('[UIManager] countdown sound played via soundManager.play');
+                } else if (mgr && typeof mgr.load === 'function') {
+                    mgr.load({ [audioKey]: assetPath }).then(() => { try { mgr.play(audioKey, { volume: 0.95 }); console.log('[UIManager] countdown loaded then played'); } catch (e) {} }).catch(e => { console.warn('[UIManager] countdown load failed', e); });
+                } else {
+                    const a = document.createElement('audio');
+                    a.src = assetPath;
+                    a.preload = 'auto';
+                    a.volume = 0.95;
+                    a.play().catch(() => { });
+                }
+            } catch (e) { console.warn('[UIManager] countdown play error', e); }
+        } catch (e) { console.warn('[UIManager] countdown outer error', e); }
+
         // clear any existing countdown timer
         if (this._countdownTimer) {
             clearTimeout(this._countdownTimer);

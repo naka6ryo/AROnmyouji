@@ -41,7 +41,6 @@ export class UIManager {
             calibPitchBars: document.getElementById('calibPitchBars'),
             calibYawBars: document.getElementById('calibYawBars'),
             calibRollBars: document.getElementById('calibRollBars'),
-            resetCalibrationButton: document.getElementById('resetCalibrationButton'),
             startCalibrationButton: document.getElementById('startCalibrationButton'),
 
             // Title Screen 2 (New)
@@ -131,8 +130,7 @@ export class UIManager {
         // BLE Connect
         this.bindClick(this.elements.connectBleButton, handlers.onConnectBLE);
 
-        // Calibrate: リセット（再キャリブ）と確定（ゲーム開始）を分離
-        this.bindClick(this.elements.resetCalibrationButton, handlers.onResetCalibration);
+        // Calibrate: 確定（ゲーム開始）ボタンのみバインド
         this.bindClick(this.elements.startCalibrationButton, handlers.onConfirmCalibration);
 
         // Title Screen 2 (New)

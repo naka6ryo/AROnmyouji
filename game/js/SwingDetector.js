@@ -7,7 +7,7 @@ export class SwingDetector {
     constructor() {
         // 閾値
         this.A_START = 0.25;      // g
-        this.A_END = 0.18;        // g
+        this.A_END = 0.22;        // g (変更: 終了判定を 0.22 に更新)
         this.DA_START = 0.08;     // g
         this.T_MIN = 60;          // ms
         this.T_COOLDOWN = 220;    // ms

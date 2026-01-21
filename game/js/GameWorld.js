@@ -31,18 +31,26 @@ export class GameWorld {
     }
 
     /**
-     * ゲームを開始
+     * ゲーム状態をリセット (タイトルに戻る時など)
      */
-    startGame() {
+    reset() {
         this.enemyManager.reset();
-        this.enemyManager.onEnemySpawned = (enemy) => {
-            if (this.onEnemySpawned) this.onEnemySpawned(enemy);
-        };
-
-        this.playerHP = this.maxPlayerHP;
         this.killCount = 0;
         this.damageCount = 0;
         this.gameTime = 0;
+        this.playerHP = this.maxPlayerHP;
+        console.log('[GameWorld] リセット完了');
+    }
+
+    /**
+     * ゲームを開始
+     */
+    startGame() {
+        this.reset(); // 再利用
+
+        this.enemyManager.onEnemySpawned = (enemy) => {
+            if (this.onEnemySpawned) this.onEnemySpawned(enemy);
+        };
 
         console.log('[GameWorld] ゲーム開始');
     }

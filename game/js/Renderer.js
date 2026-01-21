@@ -89,10 +89,14 @@ export class Renderer {
         this.scene.add(directionalLight);
 
         // リサイズ対応
-        window.addEventListener('resize', () => this.onResize());
+        this._resizeHandler = this.onResize.bind(this);
+        window.addEventListener('resize', this._resizeHandler);
         if (window.visualViewport) {
-            window.visualViewport.addEventListener('resize', () => this.onResize());
+            window.visualViewport.addEventListener('resize', this._resizeHandler);
         }
+
+        // 初期クリア (前のフレームの残骸を防止)
+        this.renderer.clear();
 
         console.log('[Renderer] 初期化完了');
     }
@@ -345,6 +349,15 @@ export class Renderer {
      * クリーンアップ
      */
     dispose() {
+        // イベントリスナー削除
+        if (this._resizeHandler) {
+            window.removeEventListener('resize', this._resizeHandler);
+            if (window.visualViewport) {
+                window.visualViewport.removeEventListener('resize', this._resizeHandler);
+            }
+            this._resizeHandler = null;
+        }
+
         // 全メッシュを削除
         for (const hitodama of this.enemyObjects.values()) {
             hitodama.dispose();
@@ -354,6 +367,45 @@ export class Renderer {
         this.slashProjectileManager.dispose();
         this.swingTracer.dispose();
 
+        // シーン内の残存オブジェクトを再帰的に破棄 (Safety Net)
+        // HitodamaResourcesなどの共有ジオメトリ/マテリアルは破棄しないように注意が必要だが
+        // Hitodama.dispose()ですでに管理されているはず。
+        // ここでは "orphaned" な Mesh (例えば dispose 漏れのエフェクト) を念のため削除する。
+        const disposeObject = (obj) => {
+            if (!obj) return;
+            // 再帰的に子要素を処理
+            if (obj.children) {
+                while (obj.children.length > 0) {
+                    disposeObject(obj.children[0]);
+                    obj.remove(obj.children[0]);
+                }
+            }
+            // ジオメトリの破棄 (共有リソースでない場合のみ安全に行いたいが、判別困難なため
+            // 個別クラス(Hitodama等)のdisposeに任せるのが基本。
+            // ここではあくまでシーン付着の解除を主眼とする)
+        };
+
+        // シーン直下の子要素を全て削除
+        while (this.scene.children.length > 0) {
+            const child = this.scene.children[0];
+            this.scene.remove(child);
+            // 個別にdisposeが必要なものは本来Managerがやるべきだが、
+            // 念のためtraverseしてdispose可能なものを探す...のは危険(共有リソース)。
+            // removeだけにしておくのが無難。
+        }
+
+        // Texture
+        if (this.videoTexture) {
+            this.videoTexture.dispose();
+            this.videoTexture = null;
+        }
+
         this.renderer.dispose();
+        // ★重要: キャンバスをクリアするが、ContextLossは避ける（再利用不可になるため）
+        // forceContextLoss() Removed
+        this.renderer.domElement = null;
+        this.renderer = null;
+
+        console.log('[Renderer] Dispose完了');
     }
 }

@@ -73,9 +73,10 @@ export class GameWorld {
         }
 
         // 敵管理更新
+        const remainingSecs = Math.max(0, (this.maxGameTime - this.gameTime) / 1000);
         this.enemyManager.update(deltaTime, (enemy) => {
             this.handlePlayerDamage(enemy);
-        });
+        }, remainingSecs, this.maxGameTime / 1000);
     }
 
     /**

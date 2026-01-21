@@ -22,8 +22,8 @@ export class SlashProjectileManager {
      * 円弧飛翔体を追加
      */
     addProjectile(startPyr, endPyr, intensity) {
-        // 始点と終点の3D位置を計算（半径0.3m）
-        const baseRadius = 0.3;
+        // 始点と終点の3D位置を計算（半径0.3m -> 1.5倍）
+        const baseRadius = 0.3 * 1.5;
 
         const startPitchRad = startPyr.pitch * Math.PI / 180;
         const startYawRad = startPyr.yaw * Math.PI / 180;

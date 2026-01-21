@@ -578,6 +578,7 @@ class AROnmyoujiGame {
             try {
                 if (this.renderer && typeof this.renderer.dispose === 'function') {
                     this.renderer.dispose();
+                    this.renderer = null; // ★ Dereference immediately
                 }
             } catch (e) { console.warn('renderer dispose failed', e); }
 
@@ -596,7 +597,10 @@ class AROnmyoujiGame {
             } catch (e) { console.warn('renderer recreate failed', e); }
 
             // Clear in-memory enemies and indicators
-            try { if (this.gameWorld && this.gameWorld.enemyManager) this.gameWorld.enemyManager.reset(); } catch (e) { }
+            // Clear in-memory enemies and stats
+            try {
+                if (this.gameWorld) this.gameWorld.reset();
+            } catch (e) { }
             try { this.uiManager.clearEnemyIndicators(); } catch (e) { }
 
             // Hide gameplay HUD overlays if present

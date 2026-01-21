@@ -530,7 +530,7 @@ export class UIManager {
                     mgr.play(audioKey, { volume: 0.95 });
                     console.log('[UIManager] countdown sound played via soundManager.play');
                 } else if (mgr && typeof mgr.load === 'function') {
-                    mgr.load({ [audioKey]: assetPath }).then(() => { try { mgr.play(audioKey, { volume: 0.95 }); console.log('[UIManager] countdown loaded then played'); } catch (e) {} }).catch(e => { console.warn('[UIManager] countdown load failed', e); });
+                    mgr.load({ [audioKey]: assetPath }).then(() => { try { mgr.play(audioKey, { volume: 0.95 }); console.log('[UIManager] countdown loaded then played'); } catch (e) { } }).catch(e => { console.warn('[UIManager] countdown load failed', e); });
                 } else {
                     const a = document.createElement('audio');
                     a.src = assetPath;
@@ -726,19 +726,19 @@ export class UIManager {
         try {
             const audioKey = 'fluorescent_crackle';
             const assetPath = 'assets/sfx/Fluorescent_Light-Noise01-1(Crackle).mp3';
-            try { if (typeof soundManager !== 'undefined') soundManager.initAudioContext(); } catch (e) {}
+            try { if (typeof soundManager !== 'undefined') soundManager.initAudioContext(); } catch (e) { }
             const mgr = (typeof window !== 'undefined' && window.soundManager) ? window.soundManager : (typeof soundManager !== 'undefined' ? soundManager : null);
             try {
                 if (mgr && typeof mgr.play === 'function') {
                     mgr.play(audioKey, { volume: 0.55 });
                 } else if (mgr && typeof mgr.load === 'function') {
-                    mgr.load({ [audioKey]: assetPath }).then(() => { try { mgr.play(audioKey, { volume: 0.55 }); } catch (e){} }).catch(e => { console.warn('[UIManager] fluorescent_crackle load failed', e); });
+                    mgr.load({ [audioKey]: assetPath }).then(() => { try { mgr.play(audioKey, { volume: 0.55 }); } catch (e) { } }).catch(e => { console.warn('[UIManager] fluorescent_crackle load failed', e); });
                 } else {
                     const a = document.createElement('audio');
                     a.src = assetPath;
                     a.preload = 'auto';
                     a.volume = 0.55;
-                    a.play().catch(() => {});
+                    a.play().catch(() => { });
                 }
             } catch (e) { console.warn('[UIManager] fluorescent_crackle play failed', e); }
         } catch (e) { }
@@ -917,8 +917,8 @@ export class UIManager {
             let tvPlayPromise = Promise.resolve();
             try {
                 if (typeof soundManager !== 'undefined' && soundManager) {
-                    try { soundManager.initAudioContext(); } catch (e) {}
-                    try { soundManager.unlock(); } catch (e) {}
+                    try { soundManager.initAudioContext(); } catch (e) { }
+                    try { soundManager.unlock(); } catch (e) { }
 
                     const audioKey = 'tv_turn_off';
                     const assetPath = 'assets/sfx/TV-Turn_Off01-2(Reverb).mp3';
@@ -938,7 +938,7 @@ export class UIManager {
                                 soundManager.play(audioKey, { volume: 0.9 });
                             } catch (e) {
                                 try {
-                                    soundManager.load({ [audioKey]: assetPath }).then(() => { try { soundManager.play(audioKey, { volume: 0.9 }); } catch (e) {} }).catch(() => {});
+                                    soundManager.load({ [audioKey]: assetPath }).then(() => { try { soundManager.play(audioKey, { volume: 0.9 }); } catch (e) { } }).catch(() => { });
                                 } catch (e) { }
                             }
                         } catch (e) { }
@@ -972,7 +972,7 @@ export class UIManager {
                                 this._titleSignalStarted = true;
                                 const audioKey = 'tv_signal_noise';
                                 const assetPath = 'assets/sfx/TV-Signal_Noise01-3(Retro).mp3';
-                                try { if (typeof soundManager !== 'undefined') soundManager.initAudioContext(); } catch (e) {}
+                                try { if (typeof soundManager !== 'undefined') soundManager.initAudioContext(); } catch (e) { }
 
                                 // Halve masterGain so other sounds become half as loud
                                 try {
@@ -1010,7 +1010,7 @@ export class UIManager {
                                             src.connect(loopGain);
                                             // Connect directly to destination to avoid masterGain path
                                             loopGain.connect(ctx.destination);
-                                            try { src.start(0); } catch (e) { try { src.start(); } catch (e) {} }
+                                            try { src.start(0); } catch (e) { try { src.start(); } catch (e) { } }
                                             this._titleLoopSource = src;
                                             this._titleLoopGain = loopGain;
                                             console.log('[UIManager] title signal loop started via WebAudio');
@@ -1273,7 +1273,7 @@ export class UIManager {
         try {
             const audioKey = 'tv_turn_off';
             const assetPath = 'assets/sfx/TV-Turn_Off01-2(Reverb).mp3';
-            try { if (typeof soundManager !== 'undefined' && soundManager) { try { soundManager.unlock(); } catch(e){} } } catch(e){}
+            try { if (typeof soundManager !== 'undefined' && soundManager) { try { soundManager.unlock(); } catch (e) { } } } catch (e) { }
 
             const mgr = (typeof window !== 'undefined' && window.soundManager) ? window.soundManager : (typeof soundManager !== 'undefined' ? soundManager : null);
 
@@ -1288,9 +1288,9 @@ export class UIManager {
                         if (mgr && typeof mgr.play === 'function') {
                             mgr.play(audioKey, { volume: 0.9 });
                         } else if (mgr && mgr.load && typeof mgr.load === 'function') {
-                            mgr.load({ [audioKey]: assetPath }).then(() => { try { if (mgr.play) mgr.play(audioKey, { volume: 0.9 }); } catch(e){} }).catch(() => {});
+                            mgr.load({ [audioKey]: assetPath }).then(() => { try { if (mgr.play) mgr.play(audioKey, { volume: 0.9 }); } catch (e) { } }).catch(() => { });
                         }
-                    } catch (e) {}
+                    } catch (e) { }
                     tvPlayPromise = new Promise(resolve => setTimeout(resolve, 1200));
                 }
             } catch (e) {
@@ -1545,7 +1545,7 @@ export class UIManager {
         try {
             const audioKey = 'tv_turn_off';
             const assetPath = 'assets/sfx/TV-Turn_Off01-2(Reverb).mp3';
-            try { if (typeof soundManager !== 'undefined') { soundManager.initAudioContext(); soundManager.unlock(); } } catch (e) {}
+            try { if (typeof soundManager !== 'undefined') { soundManager.initAudioContext(); soundManager.unlock(); } } catch (e) { }
 
             const mgr = (typeof window !== 'undefined' && window.soundManager) ? window.soundManager : (typeof soundManager !== 'undefined' ? soundManager : null);
             const playViaMgr = () => {
@@ -1563,7 +1563,7 @@ export class UIManager {
                 try {
                     const loader = (mgr && typeof mgr.load === 'function') ? mgr : (typeof soundManager !== 'undefined' ? soundManager : null);
                     if (loader && typeof loader.load === 'function') {
-                        loader.load({ [audioKey]: assetPath }).then(() => { try { playViaMgr(); } catch (e) {} }).catch(e => { console.warn('[UIManager] boot sfx load failed', e); });
+                        loader.load({ [audioKey]: assetPath }).then(() => { try { playViaMgr(); } catch (e) { } }).catch(e => { console.warn('[UIManager] boot sfx load failed', e); });
                     }
                 } catch (e) { console.warn('[UIManager] boot sfx load threw', e); }
 
@@ -1619,6 +1619,29 @@ export class UIManager {
         void crtDisplay.offsetWidth; // Force reflow
         crtDisplay.classList.add('crt-turn-on-active');
 
+        // ★ HUDの出現をCRT点灯と同期させる (少し遅延させて自然に)
+        if (showCamera) {
+            setTimeout(() => {
+                if (videoEl) {
+                    videoEl.style.display = '';
+                    videoEl.style.opacity = '';
+                }
+                if (canvasEl) {
+                    canvasEl.style.display = '';
+                    canvasEl.style.opacity = '';
+                    canvasEl.classList.remove('hidden');
+                }
+                // Restore UI container (HUD) visibility immediately
+                try {
+                    if (this.elements && this.elements.uiContainer) {
+                        this.elements.uiContainer.style.opacity = '';
+                        this.elements.uiContainer.style.display = '';
+                        this.elements.uiContainer.classList.remove('hidden');
+                    }
+                } catch (e) { }
+            }, 100); // 100ms delay for effect
+        }
+
         // Remove overlay after animation finishes (slightly after keyframe)
         if (crtLineEl) {
             setTimeout(() => {
@@ -1638,7 +1661,7 @@ export class UIManager {
             }, 1100);
 
             setTimeout(() => {
-                // If caller requested camera visible, ensure it's shown now
+                // Ensure camera/canvas are visible if starting game (redundant safety)
                 if (showCamera) {
                     if (videoEl) {
                         videoEl.style.display = '';
@@ -1653,18 +1676,8 @@ export class UIManager {
                 if (onComplete) onComplete();
             }, 2000);
         } else {
+            // Hologramなしの場合でも完了コールバックは呼ぶ
             setTimeout(() => {
-                if (showCamera) {
-                    if (videoEl) {
-                        videoEl.style.display = '';
-                        videoEl.style.opacity = '';
-                    }
-                    if (canvasEl) {
-                        canvasEl.style.display = '';
-                        canvasEl.style.opacity = '';
-                        canvasEl.classList.remove('hidden');
-                    }
-                }
                 if (onComplete) onComplete();
             }, 2000);
         }
@@ -1683,7 +1696,7 @@ export class UIManager {
                     this._titleSignalStarted = true;
                     const audioKey = 'tv_signal_noise';
                     const assetPath = 'assets/sfx/TV-Signal_Noise01-3(Retro).mp3';
-                    try { if (typeof soundManager !== 'undefined') soundManager.initAudioContext(); } catch (e) {}
+                    try { if (typeof soundManager !== 'undefined') soundManager.initAudioContext(); } catch (e) { }
 
                     // Halve masterGain so other sounds become half as loud
                     try {
@@ -1718,7 +1731,7 @@ export class UIManager {
                                 loopGain.gain.value = desiredRelative / Math.max(0.0001, appliedMaster);
                                 src.connect(loopGain);
                                 loopGain.connect(ctx.destination);
-                                try { src.start(0); } catch (e) { try { src.start(); } catch (e) {} }
+                                try { src.start(0); } catch (e) { try { src.start(); } catch (e) { } }
                                 this._titleLoopSource = src;
                                 this._titleLoopGain = loopGain;
                                 console.log('[UIManager] title signal loop started via WebAudio');
@@ -1785,7 +1798,7 @@ export class UIManager {
         try {
             const audioKey = 'tv_turn_off_2';
             const assetPath = 'assets/sfx/TV-Turn_Off02-3(Reverb).mp3';
-            try { if (typeof soundManager !== 'undefined') { soundManager.initAudioContext(); } } catch (e) {}
+            try { if (typeof soundManager !== 'undefined') { soundManager.initAudioContext(); } } catch (e) { }
 
             const mgr = (typeof window !== 'undefined' && window.soundManager) ? window.soundManager : (typeof soundManager !== 'undefined' ? soundManager : null);
             const playViaMgr = () => {
@@ -1803,7 +1816,7 @@ export class UIManager {
                 try {
                     const loader = (mgr && typeof mgr.load === 'function') ? mgr : (typeof soundManager !== 'undefined' ? soundManager : null);
                     if (loader && typeof loader.load === 'function') {
-                        loader.load({ [audioKey]: assetPath }).then(() => { try { playViaMgr(); } catch (e) {} }).catch(e => { console.warn('[UIManager] tv_turn_off_2 load failed', e); });
+                        loader.load({ [audioKey]: assetPath }).then(() => { try { playViaMgr(); } catch (e) { } }).catch(e => { console.warn('[UIManager] tv_turn_off_2 load failed', e); });
                     }
                 } catch (e) { console.warn('[UIManager] tv_turn_off_2 load threw', e); }
 
@@ -1862,21 +1875,21 @@ export class UIManager {
         try {
             const audioKey = 'fluorescent_crackle';
             const assetPath = 'assets/sfx/Fluorescent_Light-Noise01-1(Crackle).mp3';
-            try { if (typeof soundManager !== 'undefined') soundManager.initAudioContext(); } catch (e) {}
+            try { if (typeof soundManager !== 'undefined') soundManager.initAudioContext(); } catch (e) { }
             const mgr = (typeof window !== 'undefined' && window.soundManager) ? window.soundManager : (typeof soundManager !== 'undefined' ? soundManager : null);
             try {
                 if (mgr && typeof mgr.play === 'function') {
                     mgr.play(audioKey, { volume: 0.55 });
                     console.log('[UIManager] playScreenTransition played fluorescent_crackle');
                 } else if (mgr && typeof mgr.load === 'function') {
-                    mgr.load({ [audioKey]: assetPath }).then(() => { try { mgr.play(audioKey, { volume: 0.55 }); } catch (e){} }).catch(e => { console.warn('[UIManager] fluorescent_crackle load failed', e); });
+                    mgr.load({ [audioKey]: assetPath }).then(() => { try { mgr.play(audioKey, { volume: 0.55 }); } catch (e) { } }).catch(e => { console.warn('[UIManager] fluorescent_crackle load failed', e); });
                 } else {
                     // HTMLAudio fallback
                     const a = document.createElement('audio');
                     a.src = assetPath;
                     a.preload = 'auto';
                     a.volume = 0.55;
-                    a.play().catch(() => {});
+                    a.play().catch(() => { });
                 }
             } catch (e) { console.warn('[UIManager] fluorescent_crackle play failed', e); }
         } catch (e) { }

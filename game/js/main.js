@@ -659,20 +659,26 @@ class AROnmyoujiGame {
 
     onReconnect() {
         this.uiManager.hideTitleScreen2(); // Ensure Title 2 is hidden
-        this.bleAdapter.disconnect();
-        this.appState.reconnect();
+        try { this.bleAdapter.disconnect(); } catch (e) { }
+
+        // Play transition effect + SFX, then switch to BLE Connect screen
+        this.uiManager.playScreenTransition(() => {
+            this.appState.reconnect();
+        });
     }
 
     onRecalibrate() {
         this.uiManager.hideTitleScreen2(); // Ensure Title 2 is hidden
         // 再キャリブレーション：既存の校正フラグをクリアしてキャリブレーション画面へ
-        try {
-            if (this.motionInterpreter) this.motionInterpreter.isCalibrated = false;
-        } catch (e) { }
+        try { if (this.motionInterpreter) this.motionInterpreter.isCalibrated = false; } catch (e) { }
         // 画面表示用基準をクリアしてキャリブレーション画面へ
         this.calibrationDisplayBaseline = null;
-        this.appState.recalibrate();
-        this.debugOverlay.logInfo('再キャリブレーションモードへ移行');
+
+        // Play transition effect + SFX, then switch to Calibration screen
+        this.uiManager.playScreenTransition(() => {
+            this.appState.recalibrate();
+            this.debugOverlay.logInfo('再キャリブレーションモードへ移行');
+        });
     }
 
     onResetCalibration() {

@@ -653,29 +653,37 @@ export class UIManager {
         let rotation = 0;
         const marginPct = 6;
 
-        if (normYaw >= normPitch) {
-            // Horizontal edge
-            const verticalShift = clamp(pitchDiff / halfVert, -1, 1) * 45;
-            yPct = 50 - verticalShift * 0.5;
-            if (yawDiff > 0) {
-                xPct = 100 - marginPct;
-                rotation = 90;
-            } else {
-                xPct = marginPct;
-                rotation = -90;
-            }
-        } else {
-            // Vertical edge
-            const horizontalShift = clamp(yawDiff / halfHorz, -1, 1) * 45;
-            xPct = 50 + horizontalShift * 0.5;
-            if (pitchDiff > 0) {
-                yPct = marginPct;
-                rotation = 0;
-            } else {
-                yPct = 100 - marginPct;
-                rotation = 180;
-            }
-        }
+        // ベクトル計算による連続的な位置・回転制御
+        // 正規化されたオフセット (-1 ~ 1 がFOV範囲、それ以上は画面外)
+        const vx = yawDiff / halfHorz;
+        const vy = pitchDiff / halfVert; // pitchDiff > 0 is Up
+
+        // 画面の中心から見た方向 (ラジアン)
+        // 数学的には +X=Right, +Y=Up. atan2(y, x)
+        const rad = Math.atan2(vy, vx);
+
+        // 画面端への投影
+        // ベクトルの最大成分で割ることで、[-1, 1]のボックス境界上にマッピングする
+        // ゼロ除算防止
+        const absVx = Math.abs(vx);
+        const absVy = Math.abs(vy);
+        const scale = 1.0 / Math.max(absVx, absVy, 0.0001);
+
+        // 境界上の位置 (-1 ~ 1)
+        const edgeX = vx * scale;
+        const edgeY = vy * scale;
+
+        // CSS %座標への変換
+        // edgeX: -1(Left) -> 1(Right) => 50 + edgeX * (50 - margin)
+        // edgeY: -1(Bottom) -> 1(Top) => 50 - edgeY * (50 - margin)  (CSS Y is Down)
+        // marginPct is already defined above
+        xPct = 50 + edgeX * (50 - marginPct);
+        yPct = 50 - edgeY * (50 - marginPct);
+
+        // 回転 (CSS rotateは時計回り, 0deg=Up)
+        // atan2(1, 0) = 90deg (Up) -> 0deg required -> 90 - 90 = 0
+        // atan2(0, 1) = 0deg (Right) -> 90deg required -> 90 - 0 = 90
+        rotation = 90 - (rad * 180 / Math.PI);
 
         el.style.left = `${xPct}%`;
         el.style.top = `${yPct}%`;
@@ -689,9 +697,9 @@ export class UIManager {
             const t = Math.max(0, Math.min(1, (maxDist - dist) / (maxDist - minDist)));
             const minScale = 0.9;
             const maxScale = 1.8;
-            const scale = minScale + t * (maxScale - minScale);
+            const scaleVal = minScale + t * (maxScale - minScale);
 
-            arrow.style.transform = `translate(-50%, -50%) rotate(${rotation}deg) scale(${scale})`;
+            arrow.style.transform = `translate(-50%, -50%) rotate(${rotation}deg) scale(${scaleVal})`;
         }
     }
 

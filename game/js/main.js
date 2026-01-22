@@ -152,8 +152,20 @@ class AROnmyoujiGame {
         }
 
         const { pitch_deg, yaw_deg, roll_deg } = this.latestFrame;
+
+        // Ensure front-reset (display baseline) is applied each time the user
+        // confirms calibration. This guarantees that after returning from
+        // Title Screen 2 and re-entering calibration, pressing the start
+        // button will reset the controller's front orientation.
+        this.calibrationDisplayBaseline = {
+            pitch: pitch_deg,
+            yaw: yaw_deg,
+            roll: roll_deg
+        };
+        try { if (this.motionInterpreter) this.motionInterpreter.isCalibrated = false; } catch (e) { }
+
         this.motionInterpreter.calibrate(pitch_deg, yaw_deg, roll_deg);
-        this.debugOverlay.logInfo(`キャリブレーション完了: ${pitch_deg.toFixed(1)}, ${yaw_deg.toFixed(1)}, ${roll_deg.toFixed(1)}`);
+        this.debugOverlay.logInfo(`キャリブレーション完了: ${pitch_deg.toFixed(1)}, ${yaw_deg.toFixed(1)}, ${roll_deg.toFixed(1)} (front reset applied)`);
 
         // 校正完了 -> ゲーム画面へ遷移するが、ゲームはまだ開始しない
         this.uiManager.playScreenTransition(() => {

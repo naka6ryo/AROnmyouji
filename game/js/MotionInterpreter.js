@@ -13,7 +13,8 @@ export class MotionInterpreter {
         this.circleRecognizer = new CircleGestureRecognizer();
 
         // Calibration
-        this.pyr0 = null;
+        // `pyr0` may hold partial axes (e.g. only `yaw`) when doing yaw-only reset
+        this.pyr0 = {};
         this.isCalibrated = false;
 
         // Power Mode
@@ -66,9 +67,13 @@ export class MotionInterpreter {
     }
 
     calibrate(pitch_deg, yaw_deg, roll_deg) {
-        this.pyr0 = { pitch: pitch_deg, yaw: yaw_deg, roll: roll_deg };
+        // Support partial calibration: only overwrite axes that are provided (numbers).
+        if (!this.pyr0) this.pyr0 = {};
+        if (typeof pitch_deg === 'number') this.pyr0.pitch = pitch_deg;
+        if (typeof yaw_deg === 'number') this.pyr0.yaw = yaw_deg;
+        if (typeof roll_deg === 'number') this.pyr0.roll = roll_deg;
         this.isCalibrated = true;
-        console.log('[MotionInterpreter] Calibrated:', this.pyr0);
+        console.log('[MotionInterpreter] Calibrated (partial ok):', this.pyr0);
     }
 
     update(frame) {
@@ -91,9 +96,9 @@ export class MotionInterpreter {
     getRelativePYR(pitch, yaw, roll) {
         if (!this.isCalibrated) return { pitch, yaw, roll };
         return {
-            pitch: this.unwrapAngle(pitch - this.pyr0.pitch),
-            yaw: this.unwrapAngle(yaw - this.pyr0.yaw),
-            roll: this.unwrapAngle(roll - this.pyr0.roll)
+            pitch: (this.pyr0 && typeof this.pyr0.pitch === 'number') ? this.unwrapAngle(pitch - this.pyr0.pitch) : pitch,
+            yaw: (this.pyr0 && typeof this.pyr0.yaw === 'number') ? this.unwrapAngle(yaw - this.pyr0.yaw) : yaw,
+            roll: (this.pyr0 && typeof this.pyr0.roll === 'number') ? this.unwrapAngle(roll - this.pyr0.roll) : roll
         };
     }
 

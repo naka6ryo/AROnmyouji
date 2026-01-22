@@ -385,10 +385,9 @@ export class UIManager {
 
         for (const enemy of enemies) {
             // Screen check
-            // Screen check
             const worldPos = getEnemyWorldPosFunc(enemy);
             const ndc = projectToNdcFunc(worldPos);
-            const margin = 0.1;
+            const margin = 0.02;
             // OpenGL NDC depth is -1 to 1. Check full range.
             const onScreen = ndc.z >= -1 && ndc.z <= 1 &&
                 ndc.x >= -1 + margin && ndc.x <= 1 - margin &&

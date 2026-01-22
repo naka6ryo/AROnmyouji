@@ -293,7 +293,12 @@ export class Renderer {
      * 任意のワールド座標をNDCに射影
      */
     projectToNdc(worldPos) {
+        // Ensure camera matrices are fresh (View Matrix specifically)
+        this.camera.updateMatrixWorld();
+        this.camera.matrixWorldInverse.copy(this.camera.matrixWorld).invert();
+
         const v = new THREE.Vector3(worldPos.x, worldPos.y, worldPos.z);
+        // Note: project() uses matrixWorldInverse (View) * projectionMatrix
         v.project(this.camera);
         return v; // x,y,zが-1〜1に正規化された座標
     }

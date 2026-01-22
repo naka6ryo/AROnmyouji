@@ -120,7 +120,7 @@ export class GameWorld {
 
         const x = Math.cos(elevRad) * Math.sin(azimRad);
         const y = Math.sin(elevRad);
-        const z = Math.cos(elevRad) * Math.cos(azimRad);
+        const z = -Math.cos(elevRad) * Math.cos(azimRad); // Z is inverted (Forward is -Z)
 
         return { x, y, z };
     }

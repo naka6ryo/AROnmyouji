@@ -20,7 +20,7 @@ export class GameWorld {
 
         // ゲーム時間
         this.gameTime = 0;
-        this.maxGameTime = 30000; // 30秒
+        this.maxGameTime = 45000; // 45秒 (変更)
 
         // コールバック
         this.onEnemySpawned = null; // via EnemyManager
@@ -73,9 +73,10 @@ export class GameWorld {
         }
 
         // 敵管理更新
+        const remainingSecs = Math.max(0, (this.maxGameTime - this.gameTime) / 1000);
         this.enemyManager.update(deltaTime, (enemy) => {
             this.handlePlayerDamage(enemy);
-        });
+        }, remainingSecs, this.maxGameTime / 1000);
     }
 
     /**
@@ -119,7 +120,7 @@ export class GameWorld {
 
         const x = Math.cos(elevRad) * Math.sin(azimRad);
         const y = Math.sin(elevRad);
-        const z = Math.cos(elevRad) * Math.cos(azimRad);
+        const z = -Math.cos(elevRad) * Math.cos(azimRad); // Z is inverted (Forward is -Z)
 
         return { x, y, z };
     }

@@ -152,8 +152,21 @@ class AROnmyoujiGame {
         }
 
         const { pitch_deg, yaw_deg, roll_deg } = this.latestFrame;
-        this.motionInterpreter.calibrate(pitch_deg, yaw_deg, roll_deg);
-        this.debugOverlay.logInfo(`キャリブレーション完了: ${pitch_deg.toFixed(1)}, ${yaw_deg.toFixed(1)}, ${roll_deg.toFixed(1)}`);
+
+        // Ensure front-reset (display baseline) is applied each time the user
+        // confirms calibration. This guarantees that after returning from
+        // Title Screen 2 and re-entering calibration, pressing the start
+        // button will reset the controller's front orientation.
+        // Apply display baseline / reset only for yaw axis
+        this.calibrationDisplayBaseline = {
+            yaw: yaw_deg,
+            onlyYaw: true
+        };
+        try { if (this.motionInterpreter) this.motionInterpreter.isCalibrated = false; } catch (e) { }
+
+        // Calibrate motion interpreter for yaw only (pitch/roll unchanged)
+        this.motionInterpreter.calibrate(undefined, yaw_deg, undefined);
+        this.debugOverlay.logInfo(`キャリブレーション完了 (ヨーのみ補正): yaw=${yaw_deg.toFixed(1)} (front yaw reset applied)`);
 
         // 校正完了 -> ゲーム画面へ遷移するが、ゲームはまだ開始しない
         this.uiManager.playScreenTransition(() => {
@@ -397,11 +410,13 @@ class AROnmyoujiGame {
         this.latestFrame = frame;
 
         if (this.appState.getCurrentState() === 'calibrate') {
-            // If a display baseline was set by reset, show angles relative to that baseline
+            // If a display baseline was set by reset, show angles relative to that baseline.
+            // Support yaw-only baseline for front-reset UX.
             if (this.calibrationDisplayBaseline) {
-                const dp = this.unwrapAngleDeg(frame.pitch_deg - this.calibrationDisplayBaseline.pitch);
-                const dy = this.unwrapAngleDeg(frame.yaw_deg - this.calibrationDisplayBaseline.yaw);
-                const dr = this.unwrapAngleDeg(frame.roll_deg - this.calibrationDisplayBaseline.roll);
+                const onlyYaw = !!this.calibrationDisplayBaseline.onlyYaw;
+                const dp = onlyYaw ? frame.pitch_deg : this.unwrapAngleDeg(frame.pitch_deg - (this.calibrationDisplayBaseline.pitch ?? 0));
+                const dy = this.unwrapAngleDeg(frame.yaw_deg - (this.calibrationDisplayBaseline.yaw ?? 0));
+                const dr = onlyYaw ? frame.roll_deg : this.unwrapAngleDeg(frame.roll_deg - (this.calibrationDisplayBaseline.roll ?? 0));
                 this.uiManager.updateCalibrationValues(dp, dy, dr);
             } else {
                 this.uiManager.updateCalibrationValues(frame.pitch_deg, frame.yaw_deg, frame.roll_deg);

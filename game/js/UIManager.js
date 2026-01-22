@@ -41,7 +41,6 @@ export class UIManager {
             calibPitchBars: document.getElementById('calibPitchBars'),
             calibYawBars: document.getElementById('calibYawBars'),
             calibRollBars: document.getElementById('calibRollBars'),
-            resetCalibrationButton: document.getElementById('resetCalibrationButton'),
             startCalibrationButton: document.getElementById('startCalibrationButton'),
 
             // Title Screen 2 (New)
@@ -131,8 +130,7 @@ export class UIManager {
         // BLE Connect
         this.bindClick(this.elements.connectBleButton, handlers.onConnectBLE);
 
-        // Calibrate: リセット（再キャリブ）と確定（ゲーム開始）を分離
-        this.bindClick(this.elements.resetCalibrationButton, handlers.onResetCalibration);
+        // Calibrate: 確定（ゲーム開始）ボタンのみバインド
         this.bindClick(this.elements.startCalibrationButton, handlers.onConfirmCalibration);
 
         // Title Screen 2 (New)
@@ -389,8 +387,11 @@ export class UIManager {
             // Screen check
             const worldPos = getEnemyWorldPosFunc(enemy);
             const ndc = projectToNdcFunc(worldPos);
-            const margin = 0.1;
-            const onScreen = ndc.z < 0 && ndc.z >= -1 && ndc.x >= -1 + margin && ndc.x <= 1 - margin && ndc.y >= -1 + margin && ndc.y <= 1 - margin;
+            const margin = 0.02;
+            // OpenGL NDC depth is -1 to 1. Check full range.
+            const onScreen = ndc.z >= -1 && ndc.z <= 1 &&
+                ndc.x >= -1 + margin && ndc.x <= 1 - margin &&
+                ndc.y >= -1 + margin && ndc.y <= 1 - margin;
 
             const existing = this.enemyIndicatorMap.get(enemy.id);
             if (onScreen) {
@@ -401,23 +402,117 @@ export class UIManager {
                 continue;
             }
 
-            // Calculate direction
-            const enemyDir = {
-                x: worldPos.x, // Assuming getEnemyWorldPosFunc returns vector relative to center, which works for direction calculation if origin is same
-                y: worldPos.y,
-                z: worldPos.z
-            };
-            // Note: getEnemyWorldPosFunc returns Cartesian coords, so we can use them directly for atan2
-            const enemyYaw = Math.atan2(enemyDir.x, enemyDir.z);
-            const enemyElev = Math.atan2(enemyDir.y, Math.sqrt(enemyDir.x * enemyDir.x + enemyDir.z * enemyDir.z));
+            // Calculate direction using Basis Vectors relative to View
+            // This avoids Euler angle singularities and Left/Right confusion.
 
-            let yawDiff = (enemyYaw - viewYaw) * 180 / Math.PI;
-            let pitchDiff = (enemyElev - viewElev) * 180 / Math.PI;
-            yawDiff = this.normalizeAngleDeg(yawDiff);
-            pitchDiff = this.normalizeAngleDeg(pitchDiff);
+            // 1. Basis Vectors
+            // ViewDir is passed (assumed Normalized).
+            // We need 'Right' and 'Up' relative to the camera view.
+            // Assuming World Up is (0, 1, 0).
+            const fwd = { x: viewDir.x, y: viewDir.y, z: viewDir.z };
+
+            // Normalize fwd just in case
+            const fwdLen = Math.sqrt(fwd.x * fwd.x + fwd.y * fwd.y + fwd.z * fwd.z);
+            if (fwdLen > 0) { fwd.x /= fwdLen; fwd.y /= fwdLen; fwd.z /= fwdLen; }
+
+            // Right = Cross(Fwd, WorldUp)
+            // WorldUp = (0, 1, 0)
+            // Cross((fx, fy, fz), (0, 1, 0)) = (-fz, 0, fx)
+            let right = { x: -fwd.z, y: 0, z: fwd.x };
+            let rightLen = Math.sqrt(right.x * right.x + right.y * right.y + right.z * right.z);
+
+            // Handle looking straight up/down (Singularity)
+            if (rightLen < 0.001) {
+                // If looking Up/Down, Right is +X (arbitrary but stable)
+                right = { x: 1, y: 0, z: 0 };
+                rightLen = 1;
+            } else {
+                right.x /= rightLen; right.y /= rightLen; right.z /= rightLen;
+            }
+
+            // Up = Cross(Right, Fwd)
+            const up = {
+                x: right.y * fwd.z - right.z * fwd.y,
+                y: right.z * fwd.x - right.x * fwd.z,
+                z: right.x * fwd.y - right.y * fwd.x
+            };
+
+            // 2. Enemy Direction Relative to Camera
+            // worldPos is relative to camera (since it's computed from r, azim, elev)
+            // or if it's world coords, we assume camera is at origin or we only care about direction.
+            // Normalize enemy vector.
+            const eVec = { x: worldPos.x, y: worldPos.y, z: worldPos.z };
+            const eLen = Math.sqrt(eVec.x * eVec.x + eVec.y * eVec.y + eVec.z * eVec.z);
+            if (eLen > 0) { eVec.x /= eLen; eVec.y /= eLen; eVec.z /= eLen; }
+
+            // 3. Project Enemy Vector onto Basis
+            // vx = Dot(eVec, right)
+            // vy = Dot(eVec, up)
+            // vz = Dot(eVec, fwd) -- We use this to know if behind
+            const vx = eVec.x * right.x + eVec.y * right.y + eVec.z * right.z;
+            const vy = eVec.x * up.x + eVec.y * up.y + eVec.z * up.z;
+            const vz = eVec.x * fwd.x + eVec.y * fwd.y + eVec.z * fwd.z;
+
+            // 4. Calculate Screen Angle
+            // atan2(vy, vx) gives angle in Camera Plane (Math usually: 0=Right, 90=Up)
+            // If vz < 0 (Behind), the projection (vx, vy) is still valid directionally 
+            // but we ensure it points correctly "outward" from center.
+            let rad = Math.atan2(vy, vx);
+
+            // 5. Map to Screen Edge
+            // We want to place the arrow on the boundary box [-1, 1]
+            // We assume 1.0 is the edge of the FOV (approx).
+            // Actually, vx/vy are dot products (cosines).
+            // We just project direction.
+
+            const cosA = Math.cos(rad);
+            const sinA = Math.sin(rad);
+
+            // Determine intersection with box [-1, 1] x [-1, 1]
+            // Scale so max component is 1
+            const absCos = Math.abs(cosA);
+            const absSin = Math.sin(Math.abs(rad)); // or straight Math.abs(sinA)
+
+            const scale = 1.0 / Math.max(absCos, Math.abs(sinA), 0.0001);
+            const edgeX = cosA * scale;
+            const edgeY = sinA * scale;
+
+            // 6. Convert to CSS %
+            // X: -1(Left) -> 1(Right)
+            // Y: -1(Bottom) -> 1(Top) (Math Up) -> CSS Top is 0
+            const marginPct = 6;
+            const xPct = 50 + edgeX * (50 - marginPct);
+            const yPct = 50 - edgeY * (50 - marginPct);
+
+            // 7. Rotation
+            // CSS 0 deg = Up.
+            // Math 0 deg = Right.
+            // We want Arrow to Point AT the enemy.
+            // Vector (edgeX, edgeY) is direction TO enemy.
+            // Angle of that vector = rad.
+            // Math Angle -> CSS Angle:
+            // Up (90) -> 0.   (90 - 90 = 0)
+            // Right (0) -> 90. (90 - 0 = 90)
+            // Left (180) -> -90. (90 - 180 = -90)
+            const rotation = 90 - (rad * 180 / Math.PI);
 
             const indicatorEl = existing || this.createEnemyIndicator(container);
-            this.positionIndicator(indicatorEl, yawDiff, pitchDiff, halfHorz, halfVert, enemy);
+
+            indicatorEl.style.left = `${xPct}%`;
+            indicatorEl.style.top = `${yPct}%`;
+
+            const arrow = indicatorEl.querySelector('.arrow');
+            if (arrow) {
+                const minDist = 0.9;
+                const maxDist = 4.0;
+                const dist = (enemy && typeof enemy.distance === 'number') ? enemy.distance : maxDist;
+                const t = Math.max(0, Math.min(1, (maxDist - dist) / (maxDist - minDist)));
+                const minScale = 0.9;
+                const maxScale = 1.8;
+                const scaleVal = minScale + t * (maxScale - minScale);
+
+                arrow.style.transform = `translate(-50%, -50%) rotate(${rotation}deg) scale(${scaleVal})`;
+            }
             this.updateIndicatorLabel(indicatorEl, enemy);
 
             this.enemyIndicatorMap.set(enemy.id, indicatorEl);
@@ -655,29 +750,37 @@ export class UIManager {
         let rotation = 0;
         const marginPct = 6;
 
-        if (normYaw >= normPitch) {
-            // Horizontal edge
-            const verticalShift = clamp(pitchDiff / halfVert, -1, 1) * 45;
-            yPct = 50 - verticalShift * 0.5;
-            if (yawDiff > 0) {
-                xPct = 100 - marginPct;
-                rotation = 90;
-            } else {
-                xPct = marginPct;
-                rotation = -90;
-            }
-        } else {
-            // Vertical edge
-            const horizontalShift = clamp(yawDiff / halfHorz, -1, 1) * 45;
-            xPct = 50 + horizontalShift * 0.5;
-            if (pitchDiff > 0) {
-                yPct = marginPct;
-                rotation = 0;
-            } else {
-                yPct = 100 - marginPct;
-                rotation = 180;
-            }
-        }
+        // ベクトル計算による連続的な位置・回転制御
+        // 正規化されたオフセット (-1 ~ 1 がFOV範囲、それ以上は画面外)
+        const vx = yawDiff / halfHorz;
+        const vy = pitchDiff / halfVert; // pitchDiff > 0 is Up
+
+        // 画面の中心から見た方向 (ラジアン)
+        // 数学的には +X=Right, +Y=Up. atan2(y, x)
+        const rad = Math.atan2(vy, vx);
+
+        // 画面端への投影
+        // ベクトルの最大成分で割ることで、[-1, 1]のボックス境界上にマッピングする
+        // ゼロ除算防止
+        const absVx = Math.abs(vx);
+        const absVy = Math.abs(vy);
+        const scale = 1.0 / Math.max(absVx, absVy, 0.0001);
+
+        // 境界上の位置 (-1 ~ 1)
+        const edgeX = vx * scale;
+        const edgeY = vy * scale;
+
+        // CSS %座標への変換
+        // edgeX: -1(Left) -> 1(Right) => 50 + edgeX * (50 - margin)
+        // edgeY: -1(Bottom) -> 1(Top) => 50 - edgeY * (50 - margin)  (CSS Y is Down)
+        // marginPct is already defined above
+        xPct = 50 + edgeX * (50 - marginPct);
+        yPct = 50 - edgeY * (50 - marginPct);
+
+        // 回転 (CSS rotateは時計回り, 0deg=Up)
+        // atan2(1, 0) = 90deg (Up) -> 0deg required -> 90 - 90 = 0
+        // atan2(0, 1) = 0deg (Right) -> 90deg required -> 90 - 0 = 90
+        rotation = 90 - (rad * 180 / Math.PI);
 
         el.style.left = `${xPct}%`;
         el.style.top = `${yPct}%`;
@@ -691,9 +794,9 @@ export class UIManager {
             const t = Math.max(0, Math.min(1, (maxDist - dist) / (maxDist - minDist)));
             const minScale = 0.9;
             const maxScale = 1.8;
-            const scale = minScale + t * (maxScale - minScale);
+            const scaleVal = minScale + t * (maxScale - minScale);
 
-            arrow.style.transform = `translate(-50%, -50%) rotate(${rotation}deg) scale(${scale})`;
+            arrow.style.transform = `translate(-50%, -50%) rotate(${rotation}deg) scale(${scaleVal})`;
         }
     }
 

@@ -1831,7 +1831,7 @@
                     </header>
 
                     <!-- Enemy Indicators Container (Full Screen) -->
-                    <div id="enemyIndicators" class="absolute inset-0 w-full h-full pointer-events-none z-[99998]"></div>
+                    <!-- Enemy indicators removed from here and moved to body bottom to avoid parent stacking contexts -->
 
 
 
@@ -2545,6 +2545,8 @@
             }
         });
     </script>
+        <!-- Enemy Indicators Container (moved here to be a direct child of body; high z-index ensures visibility above HUD) -->
+        <div id="enemyIndicators" class="absolute inset-0 w-full h-full pointer-events-none z-[99998]"></div>
 </body>
 
 </html>

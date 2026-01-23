@@ -355,8 +355,8 @@ export class UIManager {
         // モバイル端末の振動（対応している場合）
         try {
             if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
-                // 短い振動パターン: 100ms - 40ms - 100ms
-                navigator.vibrate([100, 40, 100]);
+                // 被弾時は断続的に3回振動させる: 80ms 振動, 40ms 間隔 を2回繰り返し計3回
+                navigator.vibrate([80, 40, 80, 40, 80]);
             }
         } catch (e) {
             // 安全のため例外は無視

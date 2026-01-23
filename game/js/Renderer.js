@@ -364,40 +364,11 @@ export class Renderer {
         }
 
         // 全メッシュを削除
-        for (const hitodama of this.enemyObjects.values()) {
-            hitodama.dispose();
-        }
+        this.enemyObjects.forEach(h => h.dispose());
         this.enemyObjects.clear();
 
         this.slashProjectileManager.dispose();
         this.swingTracer.dispose();
-
-        // シーン内の残存オブジェクトを再帰的に破棄 (Safety Net)
-        // HitodamaResourcesなどの共有ジオメトリ/マテリアルは破棄しないように注意が必要だが
-        // Hitodama.dispose()ですでに管理されているはず。
-        // ここでは "orphaned" な Mesh (例えば dispose 漏れのエフェクト) を念のため削除する。
-        const disposeObject = (obj) => {
-            if (!obj) return;
-            // 再帰的に子要素を処理
-            if (obj.children) {
-                while (obj.children.length > 0) {
-                    disposeObject(obj.children[0]);
-                    obj.remove(obj.children[0]);
-                }
-            }
-            // ジオメトリの破棄 (共有リソースでない場合のみ安全に行いたいが、判別困難なため
-            // 個別クラス(Hitodama等)のdisposeに任せるのが基本。
-            // ここではあくまでシーン付着の解除を主眼とする)
-        };
-
-        // シーン直下の子要素を全て削除
-        while (this.scene.children.length > 0) {
-            const child = this.scene.children[0];
-            this.scene.remove(child);
-            // 個別にdisposeが必要なものは本来Managerがやるべきだが、
-            // 念のためtraverseしてdispose可能なものを探す...のは危険(共有リソース)。
-            // removeだけにしておくのが無難。
-        }
 
         // Texture
         if (this.videoTexture) {
@@ -405,12 +376,46 @@ export class Renderer {
             this.videoTexture = null;
         }
 
-        this.renderer.dispose();
-        // ★重要: キャンバスをクリアするが、ContextLossは避ける（再利用不可になるため）
-        // forceContextLoss() Removed
-        this.renderer.domElement = null;
-        this.renderer = null;
+        if (this.renderer) {
+            this.renderer.dispose();
+            this.renderer.domElement = null;
+            this.renderer = null;
+        }
 
-        console.log('[Renderer] Dispose完了');
+        console.log('[Renderer] Dispose完了 (App Shutdown)');
+    }
+
+    /**
+     * ゲームリスタート用のリセット (Context保持)
+     */
+    reset() {
+        // 1. Clear Enemies
+        for (const hitodama of this.enemyObjects.values()) {
+            hitodama.dispose();
+        }
+        this.enemyObjects.clear();
+
+        // 2. Reset Sub-managers
+        this.slashProjectileManager.reset();
+        this.swingTracer.reset();
+
+        // 3. Clear transient scene objects
+        // We preserve cameraPivot and Lights.
+        // Remove other children if any remain (safety net)
+        // Hitodama and Projectiles attach to scene, so their dispose/reset should remove them.
+        // We double check scene children just in case.
+        const preserved = new Set([this.cameraPivot, ...this.scene.children.filter(c => c.isLight)]);
+
+        // Remove anything else
+        for (let i = this.scene.children.length - 1; i >= 0; i--) {
+            const child = this.scene.children[i];
+            if (!preserved.has(child)) {
+                this.scene.remove(child);
+                // We don't deep dispose here because we assume managers did it.
+            }
+        }
+
+        this.renderer.clear();
+        console.log('[Renderer] Reset executed (Context preserved)');
     }
 }

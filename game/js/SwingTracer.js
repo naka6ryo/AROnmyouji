@@ -112,4 +112,9 @@ export class SwingTracer {
         this.disposeMesh();
         if (this.material) this.material.dispose();
     }
+
+    reset() {
+        this.disposeMesh();
+        // Do not dispose material as it is shared/reused
+    }
 }

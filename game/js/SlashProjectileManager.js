@@ -253,4 +253,8 @@ export class SlashProjectileManager {
         }
         this.projectiles = [];
     }
+
+    reset() {
+        this.dispose();
+    }
 }

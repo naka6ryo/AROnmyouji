@@ -595,27 +595,20 @@ class AROnmyoujiGame {
                 }
             } catch (e) { }
 
-            // Fully dispose renderer and related resources to remove all Three.js effects
+            // Reset Renderer logic (keep context, clear scene)
             try {
-                if (this.renderer && typeof this.renderer.dispose === 'function') {
-                    this.renderer.dispose();
-                    this.renderer = null; // ★ Dereference immediately
-                }
-            } catch (e) { console.warn('renderer dispose failed', e); }
+                if (this.renderer) {
+                    this.renderer.reset();
 
-            // Recreate a fresh renderer instance so future games start from a clean slate
-            try {
-                this.renderer = new Renderer('gameCanvas', this.debugOverlay);
-                // rebind callback
-                this.renderer.onSlashHitEnemy = (data) => this.onRendererSlashHit(data);
-                // keep canvas hidden while on title
-                if (this.renderer.canvas) {
-                    this.renderer.canvas.classList.add('hidden');
-                    this.renderer.canvas.style.pointerEvents = 'none';
+                    // keep canvas hidden while on title
+                    if (this.renderer.canvas) {
+                        this.renderer.canvas.classList.add('hidden');
+                        this.renderer.canvas.style.pointerEvents = 'none';
+                    }
                 }
-                const vid = document.getElementById('cameraVideo');
-                if (vid) vid.style.display = 'none';
-            } catch (e) { console.warn('renderer recreate failed', e); }
+            } catch (e) { console.warn('renderer reset failed', e); }
+
+            // Clear in-memory enemies and indicators
 
             // Clear in-memory enemies and indicators
             // Clear in-memory enemies and stats

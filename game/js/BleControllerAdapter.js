@@ -148,14 +148,30 @@ export class BleControllerAdapter {
      * @param {number} interval - パルス間隔（ms）
      */
     async sendHapticPulses(pulses, interval) {
-        for (let i = 0; i < pulses.length; i++) {
-            const pulse = pulses[i];
-            await this.sendHapticCommand(pulse.strength, pulse.duration);
-            
-            if (i < pulses.length - 1) {
-                // 次のパルスまで待機
-                await new Promise(resolve => setTimeout(resolve, interval));
+        if (!this.isConnected || !this.hapticCharacteristic) {
+            console.warn('[BLE] sendHapticPulses: 未接続またはCharacteristic未取得');
+            return false;
+        }
+
+        try {
+            // 直接 writeValue を連続で行い、sendHapticCommand のレート制限チェックを回避する
+            for (let i = 0; i < pulses.length; i++) {
+                const pulse = pulses[i];
+                const command = new Uint8Array([
+                    Math.min(255, Math.max(0, pulse.strength)),
+                    Math.min(255, Math.max(0, pulse.duration))
+                ]);
+                await this.hapticCharacteristic.writeValue(command);
+                this.lastHapticSendTime = performance.now();
+
+                if (i < pulses.length - 1) {
+                    await new Promise(resolve => setTimeout(resolve, Math.max(0, interval)));
+                }
             }
+            return true;
+        } catch (error) {
+            console.error('[BLE] sendHapticPulses エラー:', error);
+            return false;
         }
     }
     

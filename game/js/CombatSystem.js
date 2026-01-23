@@ -112,12 +112,12 @@ export class CombatSystem {
      */
     sendDamageHaptic() {
         // 断続的に3回振動するように変更
-        // 各パルスは強度255、duration=12(=120ms)、パルス間隔は60ms
+        // 各パルスは強度255、duration=12(=120ms)、パルス間隔は120msに設定して確実に3回送信
         this.sendHapticEvent('player_damage', [
             { strength: 255, duration: 12 },
             { strength: 255, duration: 12 },
             { strength: 255, duration: 12 }
-        ], 60);
+        ], 120);
     }
 
     /**

@@ -375,6 +375,9 @@ class AROnmyoujiGame {
         // 念のためスタートボタンを隠す
         this.uiManager.toggleSceneStartButton(false);
 
+        // Reset motion interpreter (safety check to ensure no carry-over stiffness)
+        if (this.motionInterpreter) this.motionInterpreter.reset();
+
         // Ensure audio context is initialized and SFX loading started
         try {
             this.soundManager.initAudioContext();
@@ -577,6 +580,9 @@ class AROnmyoujiGame {
         try {
             // Stop the loop
             this.isRunning = false;
+
+            // Reset motion interpreter state (clears trails, active swings, gestures)
+            if (this.motionInterpreter) this.motionInterpreter.reset();
 
             // Ensure TV effects persist on title
             try {

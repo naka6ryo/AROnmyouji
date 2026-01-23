@@ -166,4 +166,14 @@ export class SwingDetector {
         const z = Math.cos(pitchRad) * Math.cos(yawRad);
         return { x, y, z };
     }
+
+    reset() {
+        this.state = 'Idle';
+        this.startTime = 0;
+        this.cooldownEndTime = 0;
+        this.lastIntensity = 0;
+        this.trajectory = [];
+        this.prevAMag = 0;
+        console.log('[SwingDetector] Reset executed');
+    }
 }

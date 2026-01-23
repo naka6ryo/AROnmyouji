@@ -148,4 +148,14 @@ export class MotionInterpreter {
     getCircleDebugInfo() {
         return this.circleRecognizer.getDebugInfo();
     }
+
+    reset() {
+        this.swingDetector.reset();
+        this.circleRecognizer.reset();
+        this.recentSwings = [];
+        this.isPowerMode = false;
+        this.powerModeEndTime = 0;
+        // Do not reset "isCalibrated" or "pyr0" as calibration is usually persistent until explicitly recalibrated
+        console.log('[MotionInterpreter] Reset executed');
+    }
 }

@@ -99,4 +99,10 @@ export class CircleGestureRecognizer {
             bufferSize: this.buffer.length
         };
     }
+
+    reset() {
+        this.buffer = [];
+        this.lastDetectedTime = 0;
+        console.log('[CircleGestureRecognizer] Reset executed');
+    }
 }

@@ -82,8 +82,8 @@ export class EnemyManager {
      */
     spawnEnemy(remainingSeconds, maxGameSeconds) {
         const azim = Math.random() * 360;
-        // ピッチ（仰角）は -10 度 から 45 度 の範囲でランダムに出現させる
-        const elev = -10 + Math.random() * 55;
+        // ピッチ（仰角）は 10 度 から 60 度 の範囲でランダムに出現させる
+        const elev = 10 + Math.random() * 50;
 
         // 速度倍率を計算して敵の接近速度を決定
         const speedMultiplier = this.computeSpeedMultiplier(remainingSeconds, maxGameSeconds);

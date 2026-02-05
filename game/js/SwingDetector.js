@@ -6,12 +6,12 @@
 export class SwingDetector {
     constructor() {
         // 閾値
-        this.A_START = 0.30;      // g (変更: 開始判定を 0.30 に更新)
-        this.A_END = 0.27;        // g (変更: 終了判定を 0.27 に更新)
-        this.DA_START = 0.08;     // g
+        this.A_START = 0.60;      // g (変更: 開始判定を 0.30 に更新)
+        this.A_END = 0.60;        // g (変更: 終了判定を 0.27 に更新)
+        this.DA_START = 0.10;     // g
         this.T_MIN = 60;          // ms
         this.T_COOLDOWN = 220;    // ms
-        this.A_MAX = 0.60;        // g
+        this.A_MAX = 1.00;        // g
 
         // 状態
         this.state = 'Idle'; // Idle, SwingActive, Cooldown

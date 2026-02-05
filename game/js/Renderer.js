@@ -131,16 +131,31 @@ export class Renderer {
      */
     updateCameraRotation() {
         const { alpha, beta, gamma } = this.deviceOrientation;
-        const euler = new THREE.Euler(
-            beta * Math.PI / 180,
-            alpha * Math.PI / 180,
-            -gamma * Math.PI / 180,
-            'YXZ'
-        );
-        euler.x += this.orientationOffset.x;
-        euler.y += this.orientationOffset.y;
-        euler.z += this.orientationOffset.z;
-        this.cameraPivot.rotation.copy(euler);
+
+        // Use Quaternions to avoid Gimbal Lock likely caused by Euler 'YXZ' order
+        // when pitch (beta + offset) reaches -90 degrees.
+
+        const qa = new THREE.Quaternion();
+        qa.setFromAxisAngle(new THREE.Vector3(0, 1, 0), alpha * Math.PI / 180);
+
+        const qb = new THREE.Quaternion();
+        // Include the offset (-90 deg) directly in the beta rotation quaternion
+        // This maintains the 'YXZ' intrinsic rotation order logic: Y(alpha) -> X(beta) -> Z(gamma)
+        // scaling beta by -90 offset.
+        // Original: euler.x = beta + offset.x
+        qb.setFromAxisAngle(new THREE.Vector3(1, 0, 0), (beta * Math.PI / 180) + this.orientationOffset.x);
+
+        const qc = new THREE.Quaternion();
+        qc.setFromAxisAngle(new THREE.Vector3(0, 0, 1), gamma * Math.PI / 180);
+
+        // Compose: Y * X * Z
+        const qFinal = new THREE.Quaternion();
+        qFinal.multiply(qa);
+        qFinal.multiply(qb);
+        qFinal.multiply(qc);
+
+        this.cameraPivot.quaternion.copy(qFinal);
+
         // 実際のワールド前方を再取得
         const forward = this.getCameraForward();
         this.viewDirection = { x: forward.x, y: forward.y, z: forward.z };

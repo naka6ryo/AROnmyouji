@@ -471,36 +471,39 @@ export class UIManager {
 
             // 4. Calculate Screen Angle
             // atan2(vy, vx) gives angle in Camera Plane (Math usually: 0=Right, 90=Up)
-            // If vz < 0 (Behind), the projection (vx, vy) is still valid directionally 
-            // but we ensure it points correctly "outward" from center.
             let rad = Math.atan2(vy, vx);
 
             // 5. Map to Screen Edge
-            // We want to place the arrow on the boundary box [-1, 1]
-            // We assume 1.0 is the edge of the FOV (approx).
-            // Actually, vx/vy are dot products (cosines).
-            // We just project direction.
-
-            const cosA = Math.cos(rad);
-            const sinA = Math.sin(rad);
-
-            // Determine intersection with box [-1, 1] x [-1, 1]
-            // Scale so max component is 1
-            const absCos = Math.abs(cosA);
-            const absSin = Math.sin(Math.abs(rad)); // or straight Math.abs(sinA)
-
-            const scale = 1.0 / Math.max(absCos, Math.abs(sinA), 0.0001);
-            const edgeX = cosA * scale;
-            const edgeY = sinA * scale;
-
-            // 6. Convert to CSS %
-            // X: -1(Left) -> 1(Right)
-            // Y: -1(Bottom) -> 1(Top) (Math Up) -> CSS Top is 0
             const marginPct = 6;
-            const xPct = 50 + edgeX * (50 - marginPct);
-            const yPct = 50 - edgeY * (50 - marginPct);
+            let xPct;
+            let yPct;
+            let edgeX;
+            let edgeY;
 
-            // 7. Rotation
+            if (vz < 0) {
+                // Behind-camera enemies are pushed to the side so the player can turn
+                // horizontally instead of chasing an arrow into the top edge.
+                const sideThreshold = 0.08;
+                const previousSide = existing && existing.dataset.behindSide
+                    ? Number(existing.dataset.behindSide)
+                    : 1;
+                const side = Math.abs(vx) > sideThreshold ? (vx < 0 ? -1 : 1) : previousSide;
+                edgeX = side;
+                edgeY = Math.max(-0.35, Math.min(0.35, vy * 0.6));
+                rad = Math.atan2(edgeY, edgeX);
+                xPct = 50 + side * (50 - marginPct);
+                yPct = Math.max(35, Math.min(65, 50 - edgeY * (50 - marginPct)));
+            } else {
+                const cosA = Math.cos(rad);
+                const sinA = Math.sin(rad);
+                const scale = 1.0 / Math.max(Math.abs(cosA), Math.abs(sinA), 0.0001);
+                edgeX = cosA * scale;
+                edgeY = sinA * scale;
+                xPct = 50 + edgeX * (50 - marginPct);
+                yPct = 50 - edgeY * (50 - marginPct);
+            }
+
+            // 6. Rotation
             // CSS 0 deg = Up.
             // Math 0 deg = Right.
             // We want Arrow to Point AT the enemy.
@@ -513,6 +516,11 @@ export class UIManager {
             const rotation = 90 - (rad * 180 / Math.PI);
 
             const indicatorEl = existing || this.createEnemyIndicator(container);
+            if (vz < 0) {
+                indicatorEl.dataset.behindSide = String(edgeX < 0 ? -1 : 1);
+            } else {
+                delete indicatorEl.dataset.behindSide;
+            }
 
             this.setStyleIfChanged(indicatorEl, 'left', `${xPct}%`);
             this.setStyleIfChanged(indicatorEl, 'top', `${yPct}%`);
@@ -746,15 +754,19 @@ export class UIManager {
         if (arrow && enemy && typeof enemy.distance === 'number') {
             const minDist = 0.9;
             const maxDist = 4.0;
+            const dangerDist = 1.8;
             const dist = Math.max(minDist, Math.min(maxDist, enemy.distance));
             const t = Math.max(0, Math.min(1, (maxDist - dist) / (maxDist - minDist)));
             const hue = (1 - t) * 120; // 120=green, 0=red
             const color = `hsl(${hue}, 80%, 50%)`;
             this.setStyleIfChanged(arrow, 'borderBottomColor', color);
             this.setStyleIfChanged(arrow, 'filter', `drop-shadow(0 0 8px ${color})`);
+            el.classList.toggle('danger', enemy.distance <= dangerDist);
             if (label) {
                 this.setStyleIfChanged(label, 'color', color);
             }
+        } else {
+            el.classList.remove('danger');
         }
     }
 

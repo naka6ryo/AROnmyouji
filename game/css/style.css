@@ -352,14 +352,41 @@ body {
     transform: translate(-50%, -50%);
 }
 
+.enemy-indicator::before,
+.enemy-indicator::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 74px;
+    height: 74px;
+    border: 2px solid rgba(255, 24, 48, 0.8);
+    border-radius: 50%;
+    transform: translate(-50%, -50%) scale(0.7);
+    opacity: 0;
+    pointer-events: none;
+}
+
 .enemy-indicator .arrow {
     width: 0;
     height: 0;
-    border-left: 12px solid transparent;
-    border-right: 12px solid transparent;
-    border-bottom: 24px solid #ffd166;
-    filter: drop-shadow(0 0 8px #ffd166);
+    border-left: 18px solid transparent;
+    border-right: 18px solid transparent;
+    border-bottom: 36px solid #ffd166;
+    filter: drop-shadow(0 0 12px #ffd166);
     transition: transform 0.08s linear, border-bottom-color 0.2s, filter 0.2s;
+}
+
+.enemy-indicator.danger::before {
+    animation: enemy-danger-ring 0.85s ease-out infinite;
+}
+
+.enemy-indicator.danger::after {
+    animation: enemy-danger-ring 0.85s ease-out 0.28s infinite;
+}
+
+.enemy-indicator.danger .arrow {
+    animation: enemy-arrow-danger-pulse 0.55s ease-in-out infinite alternate;
 }
 
 .enemy-indicator .label {
@@ -370,6 +397,30 @@ body {
     letter-spacing: 1px;
     white-space: nowrap;
     display: none;
+}
+
+@keyframes enemy-danger-ring {
+    0% {
+        opacity: 0.85;
+        transform: translate(-50%, -50%) scale(0.55);
+        box-shadow: 0 0 12px rgba(255, 0, 32, 0.7), inset 0 0 10px rgba(255, 0, 32, 0.4);
+    }
+    100% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(1.25);
+        box-shadow: 0 0 28px rgba(255, 0, 32, 0);
+    }
+}
+
+@keyframes enemy-arrow-danger-pulse {
+    0% {
+        opacity: 0.9;
+        filter: drop-shadow(0 0 12px rgba(255, 0, 32, 0.95));
+    }
+    100% {
+        opacity: 1;
+        filter: drop-shadow(0 0 26px rgba(255, 0, 32, 1)) drop-shadow(0 0 8px rgba(255, 255, 255, 0.65));
+    }
 }
 
 #hudTop {

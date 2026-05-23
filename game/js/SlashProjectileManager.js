@@ -73,9 +73,8 @@ export class SlashProjectileManager {
             intensity,
             direction: this.camera.getWorldDirection(new THREE.Vector3()).normalize(),
             hitEnemies: new Set(),
-            baseOpacity: 0.75 + intensity * 0.25,
-            visualScale: 1.0 + Math.max(0.5, Math.min(2.0, intensity || 1.0)) * 0.08,
-            spinSpeed: (intensity >= 1.2 ? 0.9 : 0.55) * (Math.random() > 0.5 ? 1 : -1)
+            baseOpacity: 0.75 + intensity * 0.2,
+            visualScale: 1.0 + Math.max(0.5, Math.min(2.0, intensity || 1.0)) * 0.04
         };
 
         this.projectiles.push(projectile);
@@ -128,7 +127,7 @@ export class SlashProjectileManager {
                 }
             }
 
-            // メッシュ更新（拡大・移動・フェード）
+            // メッシュ更新（拡大・移動・発光の揺らぎ）
             this.updateProjectileMesh(proj, radiusScale, lifeFraction, deltaTimeSec);
 
             return true;
@@ -142,13 +141,11 @@ export class SlashProjectileManager {
         // Move
         proj.mesh.position.add(this._moveScratch.copy(proj.direction).multiplyScalar(proj.speed * deltaTimeSec));
 
-        // Scale and add a little pulse so the blade feels like a slash, not a plain ring.
-        const slashPulse = 1.0 + Math.sin(lifeFraction * Math.PI) * 0.08 * Math.min(1.6, proj.intensity);
+        // Keep the slash straight and visible while it travels.
+        const slashPulse = 1.0 + Math.sin(lifeFraction * Math.PI) * 0.03 * Math.min(1.6, proj.intensity);
         const visualScale = proj.visualScale || 1.0;
         proj.mesh.scale.set(radiusScale * visualScale, radiusScale * visualScale * slashPulse, radiusScale * visualScale);
-        proj.mesh.rotation.z += proj.spinSpeed * deltaTimeSec;
 
-        const fade = Math.pow(1.0 - lifeFraction, 1.35);
         proj.mesh.traverse(child => {
             if (!child.material) return;
             const materials = Array.isArray(child.material) ? child.material : [child.material];
@@ -157,7 +154,7 @@ export class SlashProjectileManager {
                 const flicker = material.userData.flicker
                     ? 0.82 + Math.sin((performance.now() + material.userData.flickerOffset) * 0.035) * 0.18
                     : 1.0;
-                material.opacity = baseOpacity * fade * flicker;
+                material.opacity = baseOpacity * flicker;
             }
         });
     }
@@ -238,30 +235,30 @@ export class SlashProjectileManager {
         const group = new THREE.Group();
         group.frustumCulled = false;
 
-        const bladeLengthBoost = 1.0 + strength * 0.08;
+        const bladeLengthBoost = 1.0 + strength * 0.04;
         group.scale.set(bladeLengthBoost, bladeLengthBoost, bladeLengthBoost);
 
-        const glowGeometry = new THREE.TubeGeometry(curve, 36, 0.048 + strength * 0.014, 12, false);
-        const glowMaterial = this.createSlashMaterial(0x00c8ff, 0.34 + strength * 0.13, true);
+        const glowGeometry = this.createTaperedSlashGeometry(curve, 36, 0.026 + strength * 0.004, 10, 0.16);
+        const glowMaterial = this.createSlashMaterial(0x00c8ff, 0.18 + strength * 0.04, true);
         const glowMesh = new THREE.Mesh(glowGeometry, glowMaterial);
         glowMesh.userData.role = 'glow';
         group.add(glowMesh);
 
-        const edgeGeometry = new THREE.TubeGeometry(curve, 36, 0.027 + strength * 0.006, 10, false);
-        const edgeMaterial = this.createSlashMaterial(0x64f6ff, 0.55 + strength * 0.12, true);
+        const edgeGeometry = this.createTaperedSlashGeometry(curve, 38, 0.017 + strength * 0.003, 9, 0.13);
+        const edgeMaterial = this.createSlashMaterial(0x64f6ff, 0.38 + strength * 0.05, true);
         const edgeMesh = new THREE.Mesh(edgeGeometry, edgeMaterial);
         edgeMesh.userData.role = 'edge';
         group.add(edgeMesh);
 
-        const coreGeometry = new THREE.TubeGeometry(curve, 40, 0.012 + strength * 0.003, 8, false);
-        const coreMaterial = this.createSlashMaterial(0xffffff, 0.86 + strength * 0.07, false);
+        const coreGeometry = this.createTaperedSlashGeometry(curve, 42, 0.0075 + strength * 0.0018, 8, 0.08);
+        const coreMaterial = this.createSlashMaterial(0xffffff, 0.88 + strength * 0.04, false);
         const coreMesh = new THREE.Mesh(coreGeometry, coreMaterial);
         coreMesh.userData.role = 'core';
         group.add(coreMesh);
 
         const tailCurve = new THREE.CatmullRomCurve3(this.createTailCurvePoints(points));
-        const tailGeometry = new THREE.TubeGeometry(tailCurve, 24, 0.022 + strength * 0.005, 8, false);
-        const tailMaterial = this.createSlashMaterial(0x0077ff, 0.24 + strength * 0.08, true);
+        const tailGeometry = this.createTaperedSlashGeometry(tailCurve, 26, 0.012 + strength * 0.002, 8, 0.1);
+        const tailMaterial = this.createSlashMaterial(0x0077ff, 0.12 + strength * 0.03, true);
         const tailMesh = new THREE.Mesh(tailGeometry, tailMaterial);
         tailMesh.userData.role = 'tail';
         group.add(tailMesh);
@@ -294,6 +291,62 @@ export class SlashProjectileManager {
             tailPoints.push(p);
         }
         return tailPoints;
+    }
+
+    createTaperedSlashGeometry(curve, tubularSegments, maxRadius, radialSegments, tipRadiusFactor = 0.12) {
+        const vertices = [];
+        const normals = [];
+        const uvs = [];
+        const indices = [];
+        const up = new THREE.Vector3(0, 1, 0);
+        const altUp = new THREE.Vector3(1, 0, 0);
+        const tangent = new THREE.Vector3();
+        const normal = new THREE.Vector3();
+        const binormal = new THREE.Vector3();
+
+        for (let i = 0; i <= tubularSegments; i++) {
+            const t = i / tubularSegments;
+            const center = curve.getPointAt(t);
+            tangent.copy(curve.getTangentAt(t)).normalize();
+            normal.crossVectors(Math.abs(tangent.dot(up)) > 0.92 ? altUp : up, tangent).normalize();
+            binormal.crossVectors(tangent, normal).normalize();
+
+            const middleWeight = Math.sin(t * Math.PI);
+            const radius = maxRadius * (tipRadiusFactor + (1.0 - tipRadiusFactor) * Math.pow(middleWeight, 0.85));
+
+            for (let j = 0; j < radialSegments; j++) {
+                const v = j / radialSegments;
+                const angle = v * Math.PI * 2;
+                const radialScale = 0.72 + Math.abs(Math.sin(angle)) * 0.28;
+                const ringNormal = new THREE.Vector3()
+                    .copy(normal).multiplyScalar(Math.cos(angle) * radialScale)
+                    .add(binormal.clone().multiplyScalar(Math.sin(angle)))
+                    .normalize();
+                const vertex = center.clone().add(ringNormal.clone().multiplyScalar(radius));
+
+                vertices.push(vertex.x, vertex.y, vertex.z);
+                normals.push(ringNormal.x, ringNormal.y, ringNormal.z);
+                uvs.push(t, v);
+            }
+        }
+
+        for (let i = 0; i < tubularSegments; i++) {
+            for (let j = 0; j < radialSegments; j++) {
+                const a = i * radialSegments + j;
+                const b = i * radialSegments + ((j + 1) % radialSegments);
+                const c = (i + 1) * radialSegments + j;
+                const d = (i + 1) * radialSegments + ((j + 1) % radialSegments);
+                indices.push(a, c, b, b, c, d);
+            }
+        }
+
+        const geometry = new THREE.BufferGeometry();
+        geometry.setIndex(indices);
+        geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+        geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+        geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+        geometry.computeBoundingSphere();
+        return geometry;
     }
 
     createSlashMaterial(color, opacity, flicker) {

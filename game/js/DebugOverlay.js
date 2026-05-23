@@ -40,6 +40,8 @@ export class DebugOverlay {
         
         // 表示状態
         this.isVisible = false;
+        this._pendingLogRender = false;
+        this._pendingData = {};
         
         // 触覚送信カウント
         this.hapticsSentCount = 0;
@@ -62,6 +64,12 @@ export class DebugOverlay {
         
         if (this.isVisible) {
             this.overlayElement.classList.remove('hidden');
+            if (this._pendingLogRender) this.updateLogDisplay();
+            if (this._pendingData) {
+                const pending = this._pendingData;
+                this._pendingData = {};
+                this.update(pending);
+            }
             console.log('[DebugOverlay] 表示: hidden クラスを削除');
         } else {
             this.overlayElement.classList.add('hidden');
@@ -73,6 +81,17 @@ export class DebugOverlay {
      * デバッグ情報を更新
      */
     update(data) {
+        if (!this.isVisible) {
+            const pendingData = { ...data };
+            if (data.hapticEvent !== undefined) {
+                this.lastHapticEvent = data.hapticEvent;
+                this.hapticsSentCount++;
+                delete pendingData.hapticEvent;
+            }
+            Object.assign(this._pendingData, pendingData);
+            return;
+        }
+
         // BLE状態
         if (data.bleConnected !== undefined) {
             this.debugElements.bleState.textContent = data.bleConnected ? '接続中' : '未接続';
@@ -165,7 +184,11 @@ export class DebugOverlay {
         }
         
         // DOM更新
-        this.updateLogDisplay();
+        if (this.isVisible) {
+            this.updateLogDisplay();
+        } else {
+            this._pendingLogRender = true;
+        }
         
         // コンソールにも出力
         console.log(`[${timestamp}] [${level.toUpperCase()}] ${message}`);
@@ -175,6 +198,10 @@ export class DebugOverlay {
      * ログ表示を更新
      */
     updateLogDisplay() {
+        if (!this.isVisible) {
+            this._pendingLogRender = true;
+            return;
+        }
         if (!this.logContentElement) {
             console.error('[DebugOverlay] updateLogDisplay失敗: logContentElement が null');
             return;
@@ -195,6 +222,7 @@ export class DebugOverlay {
         
         // 自動スクロール
         this.logContentElement.scrollTop = this.logContentElement.scrollHeight;
+        this._pendingLogRender = false;
     }
     
     /**

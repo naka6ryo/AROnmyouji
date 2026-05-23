@@ -24,6 +24,7 @@ export class BleControllerAdapter {
         this.hapticQueue = [];
         this.lastHapticSendTime = 0;
         this.HAPTIC_MIN_INTERVAL = 100; // ms
+        this.DEBUG_LOGS = false;
     }
     
     /**
@@ -75,7 +76,7 @@ export class BleControllerAdapter {
     handleSensorData(dataView) {
         if (this.onDataCallback) {
             // DataViewを配列に変換
-            const byteArray = new Uint8Array(dataView.buffer);
+            const byteArray = new Uint8Array(dataView.buffer, dataView.byteOffset, dataView.byteLength);
             this.onDataCallback(byteArray);
         }
     }
@@ -120,7 +121,7 @@ export class BleControllerAdapter {
         // レート制限チェック
         const now = performance.now();
         if (now - this.lastHapticSendTime < this.HAPTIC_MIN_INTERVAL) {
-            console.log('[BLE] 触覚コマンド: レート制限によりスキップ');
+            if (this.DEBUG_LOGS) console.log('[BLE] 触覚コマンド: レート制限によりスキップ');
             return false;
         }
         
@@ -134,7 +135,7 @@ export class BleControllerAdapter {
             await this.hapticCharacteristic.writeValue(command);
             this.lastHapticSendTime = now;
             
-            console.log(`[BLE] 触覚コマンド送信: strength=${strength}, duration=${duration * 10}ms`);
+            if (this.DEBUG_LOGS) console.log(`[BLE] 触覚コマンド送信: strength=${strength}, duration=${duration * 10}ms`);
             return true;
         } catch (error) {
             console.error('[BLE] 触覚コマンド送信エラー:', error);

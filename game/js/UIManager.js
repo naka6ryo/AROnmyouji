@@ -9,6 +9,9 @@ export class UIManager {
     constructor() {
         this.elements = {};
         this.enemyIndicatorMap = new Map(); // enemyId -> element
+        this._textCache = new WeakMap();
+        this._styleCache = new WeakMap();
+        this._barActiveCountCache = new WeakMap();
     }
 
     /**
@@ -171,6 +174,26 @@ export class UIManager {
         }
     }
 
+    setTextIfChanged(element, value) {
+        if (!element) return;
+        const text = String(value);
+        if (this._textCache.get(element) === text) return;
+        element.textContent = text;
+        this._textCache.set(element, text);
+    }
+
+    setStyleIfChanged(element, prop, value) {
+        if (!element) return;
+        let cache = this._styleCache.get(element);
+        if (!cache) {
+            cache = {};
+            this._styleCache.set(element, cache);
+        }
+        if (cache[prop] === value) return;
+        element.style[prop] = value;
+        cache[prop] = value;
+    }
+
     // --- Permission Screen Updates ---
 
     updatePermissionStatus(type, status, message) {
@@ -179,22 +202,22 @@ export class UIManager {
         if (!el) return;
 
         if (status === 'granted') {
-            el.textContent = '[ OK ]';
+            this.setTextIfChanged(el, '[ OK ]');
             el.classList.remove('animate-pulse', 'text-primary'); // Remove pulse/red
             el.classList.add('text-ink-black');
         } else if (status === 'denied') {
-            el.textContent = '[ DENIED ]';
+            this.setTextIfChanged(el, '[ DENIED ]');
             el.classList.remove('animate-pulse');
             el.classList.add('text-gray-400');
         } else {
             // Pending/Prompt
-            if (message) el.textContent = `[ ${message} ]`;
+            if (message) this.setTextIfChanged(el, `[ ${message} ]`);
         }
     }
 
     showPermissionError(message) {
         if (this.elements.permissionError) {
-            this.elements.permissionError.textContent = `ERROR: ${message}`;
+            this.setTextIfChanged(this.elements.permissionError, `ERROR: ${message}`);
         }
     }
 
@@ -205,7 +228,7 @@ export class UIManager {
         // Update footer status text (single line only)
         const statusEl = this.elements.permissionDebugLogStatus;
         if (statusEl) {
-            statusEl.textContent = message.toUpperCase();
+            this.setTextIfChanged(statusEl, message.toUpperCase());
         }
     }
 
@@ -217,13 +240,13 @@ export class UIManager {
             const isConnected = (status === '接続成功' || status === 'Connected' || message === '接続成功');
 
             if (isConnected) {
-                this.elements.bleStatus.textContent = '[ CONNECTED ]';
+                this.setTextIfChanged(this.elements.bleStatus, '[ CONNECTED ]');
                 this.elements.bleStatus.classList.remove('animate-pulse', 'text-primary');
                 this.elements.bleStatus.classList.add('text-ink-black');
             } else {
                 // Formatting for display
                 const displayMsg = message || status;
-                this.elements.bleStatus.textContent = `[ ${displayMsg.toUpperCase()} ]`;
+                this.setTextIfChanged(this.elements.bleStatus, `[ ${displayMsg.toUpperCase()} ]`);
                 this.elements.bleStatus.classList.add('animate-pulse', 'text-primary');
                 this.elements.bleStatus.classList.remove('text-ink-black');
             }
@@ -231,13 +254,13 @@ export class UIManager {
 
         // Also update footer
         if (this.elements.bleFooterStatus) {
-            this.elements.bleFooterStatus.textContent = (message || status).toUpperCase();
+            this.setTextIfChanged(this.elements.bleFooterStatus, (message || status).toUpperCase());
         }
     }
 
     showBLEError(message) {
         if (this.elements.bleError) {
-            this.elements.bleError.textContent = `ERROR: ${message}`;
+            this.setTextIfChanged(this.elements.bleError, `ERROR: ${message}`);
         }
     }
 
@@ -261,6 +284,8 @@ export class UIManager {
         const maxBars = 15;
         const degPerBar = 6;
         const activeCount = Math.min(maxBars, Math.ceil(Math.abs(value) / degPerBar));
+        if (this._barActiveCountCache.get(container) === activeCount) return;
+        this._barActiveCountCache.set(container, activeCount);
 
         // Get all bar divs
         const bars = container.children;
@@ -280,23 +305,23 @@ export class UIManager {
 
     updateHUD(stats, playerState) {
         // メインHUDの数値更新
-        if (this.elements.playerHP) this.elements.playerHP.textContent = `${playerState.hp} / ${playerState.maxHP}`;
-        if (this.elements.killCount) this.elements.killCount.textContent = `${stats.killCount}`;
-        if (this.elements.timeLeft) this.elements.timeLeft.textContent = `${stats.remainingTime.toFixed(0)}`;
+        this.setTextIfChanged(this.elements.playerHP, `${playerState.hp} / ${playerState.maxHP}`);
+        this.setTextIfChanged(this.elements.killCount, `${stats.killCount}`);
+        this.setTextIfChanged(this.elements.timeLeft, `${stats.remainingTime.toFixed(0)}`);
 
         // HPバーの更新（メイン）
         if (this.elements.hpBarFill) {
             const pct = Math.max(0, Math.min(1, playerState.hp / playerState.maxHP));
-            this.elements.hpBarFill.style.width = `${pct * 100}%`;
+            this.setStyleIfChanged(this.elements.hpBarFill, 'width', `${pct * 100}%`);
         }
 
         // スタートオーバーレイ用の数値同期（もし表示中なら同じ値を表示）
-        if (this.elements.playerHPStart) this.elements.playerHPStart.textContent = `${playerState.hp} / ${playerState.maxHP}`;
-        if (this.elements.killCountStart) this.elements.killCountStart.textContent = `${stats.killCount}`;
-        if (this.elements.timeLeftStart) this.elements.timeLeftStart.textContent = `${stats.remainingTime.toFixed(0)}`;
+        this.setTextIfChanged(this.elements.playerHPStart, `${playerState.hp} / ${playerState.maxHP}`);
+        this.setTextIfChanged(this.elements.killCountStart, `${stats.killCount}`);
+        this.setTextIfChanged(this.elements.timeLeftStart, `${stats.remainingTime.toFixed(0)}`);
         if (this.elements.hpBarFillStart) {
             const pct2 = Math.max(0, Math.min(1, playerState.hp / playerState.maxHP));
-            this.elements.hpBarFillStart.style.width = `${pct2 * 100}%`;
+            this.setStyleIfChanged(this.elements.hpBarFillStart, 'width', `${pct2 * 100}%`);
         }
 
         // Top center HUD (Elapsed / Defeated)
@@ -304,27 +329,27 @@ export class UIManager {
             const remainingSec = Math.max(0, stats.remainingTime);
             const mm = String(Math.floor(remainingSec / 60)).padStart(2, '0');
             const ss = String(Math.floor(remainingSec % 60)).padStart(2, '0');
-            this.elements.elapsedTimeDisplay.textContent = `${mm}:${ss}`;
+            this.setTextIfChanged(this.elements.elapsedTimeDisplay, `${mm}:${ss}`);
         }
         if (this.elements.defeatedDisplay) {
-            this.elements.defeatedDisplay.textContent = `${stats.killCount}`;
+            this.setTextIfChanged(this.elements.defeatedDisplay, `${stats.killCount}`);
         }
 
         // Vertical HP update
         if (this.elements.verticalHpFill) {
             const pct = Math.max(0, Math.min(1, playerState.hp / playerState.maxHP));
-            this.elements.verticalHpFill.style.height = `${pct * 100}%`;
+            this.setStyleIfChanged(this.elements.verticalHpFill, 'height', `${pct * 100}%`);
         }
-        if (this.elements.verticalHpNum) this.elements.verticalHpNum.textContent = `${playerState.hp}`;
-        if (this.elements.verticalHpMax) this.elements.verticalHpMax.textContent = `${playerState.maxHP}`;
+        this.setTextIfChanged(this.elements.verticalHpNum, `${playerState.hp}`);
+        this.setTextIfChanged(this.elements.verticalHpMax, `${playerState.maxHP}`);
     }
 
     updatePowerMode(active, remainingTime) {
         if (this.elements.hudPowerMode) {
-            this.elements.hudPowerMode.style.display = active ? 'block' : 'none';
+            this.setStyleIfChanged(this.elements.hudPowerMode, 'display', active ? 'block' : 'none');
         }
         if (this.elements.powerModeTime && active) {
-            this.elements.powerModeTime.textContent = (remainingTime / 1000).toFixed(1);
+            this.setTextIfChanged(this.elements.powerModeTime, (remainingTime / 1000).toFixed(1));
         }
     }
 
@@ -498,10 +523,10 @@ export class UIManager {
 
             const indicatorEl = existing || this.createEnemyIndicator(container);
 
-            indicatorEl.style.left = `${xPct}%`;
-            indicatorEl.style.top = `${yPct}%`;
+            this.setStyleIfChanged(indicatorEl, 'left', `${xPct}%`);
+            this.setStyleIfChanged(indicatorEl, 'top', `${yPct}%`);
 
-            const arrow = indicatorEl.querySelector('.arrow');
+            const arrow = indicatorEl._arrow;
             if (arrow) {
                 const minDist = 0.9;
                 const maxDist = 4.0;
@@ -511,7 +536,7 @@ export class UIManager {
                 const maxScale = 1.8;
                 const scaleVal = minScale + t * (maxScale - minScale);
 
-                arrow.style.transform = `translate(-50%, -50%) rotate(${rotation}deg) scale(${scaleVal})`;
+                this.setStyleIfChanged(arrow, 'transform', `translate(-50%, -50%) rotate(${rotation}deg) scale(${scaleVal})`);
             }
             this.updateIndicatorLabel(indicatorEl, enemy);
 
@@ -712,19 +737,21 @@ export class UIManager {
         label.className = 'label';
         wrapper.appendChild(arrow);
         wrapper.appendChild(label);
+        wrapper._arrow = arrow;
+        wrapper._label = label;
         container.appendChild(wrapper);
         return wrapper;
     }
 
     updateIndicatorLabel(el, enemy) {
-        const label = el.querySelector('.label');
+        const label = el._label;
         if (label) {
             // 距離を表示
-            label.textContent = `${enemy.distance.toFixed(1)}m`;
+            this.setTextIfChanged(label, `${enemy.distance.toFixed(1)}m`);
         }
 
         // 矢印の色を距離に応じて緑 -> 赤 に補間
-        const arrow = el.querySelector('.arrow');
+        const arrow = el._arrow;
         if (arrow && enemy && typeof enemy.distance === 'number') {
             const minDist = 0.9;
             const maxDist = 4.0;
@@ -732,10 +759,10 @@ export class UIManager {
             const t = Math.max(0, Math.min(1, (maxDist - dist) / (maxDist - minDist)));
             const hue = (1 - t) * 120; // 120=green, 0=red
             const color = `hsl(${hue}, 80%, 50%)`;
-            arrow.style.borderBottomColor = color;
-            arrow.style.filter = `drop-shadow(0 0 8px ${color})`;
+            this.setStyleIfChanged(arrow, 'borderBottomColor', color);
+            this.setStyleIfChanged(arrow, 'filter', `drop-shadow(0 0 8px ${color})`);
             if (label) {
-                label.style.color = color;
+                this.setStyleIfChanged(label, 'color', color);
             }
         }
     }
@@ -782,9 +809,9 @@ export class UIManager {
         // atan2(0, 1) = 0deg (Right) -> 90deg required -> 90 - 0 = 90
         rotation = 90 - (rad * 180 / Math.PI);
 
-        el.style.left = `${xPct}%`;
-        el.style.top = `${yPct}%`;
-        const arrow = el.querySelector('.arrow');
+        this.setStyleIfChanged(el, 'left', `${xPct}%`);
+        this.setStyleIfChanged(el, 'top', `${yPct}%`);
+        const arrow = el._arrow;
         if (arrow) {
             // スケールを距離に応じて変化させる
             // 敵距離が近いほど t -> 1 (赤・大きく)、遠いほど t -> 0 (緑・小さめ)
@@ -796,7 +823,7 @@ export class UIManager {
             const maxScale = 1.8;
             const scaleVal = minScale + t * (maxScale - minScale);
 
-            arrow.style.transform = `translate(-50%, -50%) rotate(${rotation}deg) scale(${scaleVal})`;
+            this.setStyleIfChanged(arrow, 'transform', `translate(-50%, -50%) rotate(${rotation}deg) scale(${scaleVal})`);
         }
     }
 

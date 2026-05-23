@@ -23,6 +23,10 @@ export class Hitodama {
 
         this.fragments = [];
         this.shockwaves = [];
+        this._tailBaseColor = new THREE.Color(0xff5500);
+        this._pureColor = new THREE.Color(0xaaddff);
+        this._scratchColor = new THREE.Color();
+        this._scratchVec = new THREE.Vector3();
 
         // テクスチャ取得 via AssetLoader
         const sparkTexture = assetLoader.getTexture('spark');
@@ -181,8 +185,7 @@ export class Hitodama {
 
         // 破片
         const fragmentCount = 100;
-        const fragGeo = new THREE.ConeGeometry(0.2, 0.8, 3); // Slightly larger for explosion
-        fragGeo.rotateX(Math.PI / 2);
+        const fragGeo = HitodamaResources.geometries.explosionFragment;
 
         for (let i = 0; i < fragmentCount; i++) {
             const fragMat = new THREE.MeshBasicMaterial({
@@ -246,7 +249,7 @@ export class Hitodama {
         const colors = this.tailGeometry.attributes.color.array;
         const sizes = this.tailGeometry.attributes.size.array;
 
-        const baseColor = new THREE.Color(0xff5500);
+        const baseColor = this._tailBaseColor;
 
         for (let i = 0; i < this.tailCount; i++) {
             const pos = this.tailPositions[i];
@@ -307,7 +310,7 @@ export class Hitodama {
                 continue;
             }
             activeFragments++;
-            frag.mesh.position.add(frag.velocity.clone().multiplyScalar(dt));
+            frag.mesh.position.add(this._scratchVec.copy(frag.velocity).multiplyScalar(dt));
             frag.mesh.rotation.x += frag.rotationSpeed.x * dt;
             frag.mesh.rotation.y += frag.rotationSpeed.y * dt;
             frag.mesh.rotation.z += frag.rotationSpeed.z * dt;
@@ -330,7 +333,7 @@ export class Hitodama {
     }
 
     updatePurification(dt) {
-        const pureColor = new THREE.Color(0xaaddff);
+        const pureColor = this._pureColor;
         this.light.color.lerp(pureColor, dt * 2.0);
         this.light.intensity *= 0.95;
 
@@ -342,7 +345,7 @@ export class Hitodama {
                 continue;
             }
             activeFragments++;
-            frag.mesh.position.add(frag.velocity.clone().multiplyScalar(dt));
+            frag.mesh.position.add(this._scratchVec.copy(frag.velocity).multiplyScalar(dt));
             frag.mesh.rotation.x += frag.rotationSpeed.x * dt;
             frag.mesh.rotation.y += frag.rotationSpeed.y * dt;
             frag.mesh.rotation.z += frag.rotationSpeed.z * dt;
@@ -368,7 +371,7 @@ export class Hitodama {
             // Tint color
             const colors = this.tailGeometry.attributes.color.array;
             for (let i = 0; i < this.tailCount * 3; i += 3) {
-                const c = new THREE.Color(colors[i], colors[i + 1], colors[i + 2]);
+                const c = this._scratchColor.setRGB(colors[i], colors[i + 1], colors[i + 2]);
                 c.lerp(pureColor, 0.1);
                 colors[i] = c.r;
                 colors[i + 1] = c.g;
@@ -417,8 +420,9 @@ export class Hitodama {
         positions.needsUpdate = true;
 
         // tail
-        this.tailPositions.unshift(this.pos.clone());
-        if (this.tailPositions.length > this.tailCount) this.tailPositions.pop();
+        const tailPos = this.tailPositions.pop() || new THREE.Vector3();
+        tailPos.copy(this.pos);
+        this.tailPositions.unshift(tailPos);
     }
 
     finalizeDeath() {

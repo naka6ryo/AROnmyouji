@@ -8,6 +8,8 @@ import { Hitodama } from './Hitodama.js';
 import { SwingTracer } from './SwingTracer.js';
 import { SlashProjectileManager } from './SlashProjectileManager.js';
 
+const MOBILE_MAX_PIXEL_RATIO = 1.5;
+
 export class Renderer {
     constructor(canvasId, debugOverlay = null) {
         this.canvas = document.getElementById(canvasId);
@@ -32,6 +34,7 @@ export class Renderer {
             0.1,
             1000
         );
+        this.scene.camera = this.camera;
 
         // 手を伸ばして端末を持つ前提で、回転中心とカメラ位置を分離
         // pivotを身体側に置き、カメラを原点に配置
@@ -49,12 +52,27 @@ export class Renderer {
             antialias: true,
             premultipliedAlpha: false
         });
-        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent || '');
+        this.maxPixelRatio = isMobile ? MOBILE_MAX_PIXEL_RATIO : 2;
+        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, this.maxPixelRatio));
         this.renderer.setClearColor(0x000000, 0);
         this.renderer.toneMapping = THREE.ReinhardToneMapping;
         this.renderer.autoClear = false;
+        this._lastCssWidth = 0;
+        this._lastCssHeight = 0;
+        this._lastPixelRatio = 0;
 
-        this.updateRendererSize();
+        this._axisY = new THREE.Vector3(0, 1, 0);
+        this._axisX = new THREE.Vector3(1, 0, 0);
+        this._axisZ = new THREE.Vector3(0, 0, 1);
+        this._qa = new THREE.Quaternion();
+        this._qb = new THREE.Quaternion();
+        this._qc = new THREE.Quaternion();
+        this._qFinal = new THREE.Quaternion();
+        this._forward = new THREE.Vector3();
+        this._projectionScratch = new THREE.Vector3();
+        this._pivotPositionScratch = new THREE.Vector3();
+        this._cameraPositionScratch = new THREE.Vector3();
 
         // 端末姿勢（視点制御用）
         this.deviceOrientation = { alpha: 0, beta: 0, gamma: 0 };
@@ -96,6 +114,7 @@ export class Renderer {
         }
 
         // 初期クリア (前のフレームの残骸を防止)
+        this.updateRendererSize();
         this.renderer.clear();
 
         console.log('[Renderer] 初期化完了');
@@ -110,9 +129,6 @@ export class Renderer {
             beta: event.beta || 0,    // X軸回転
             gamma: event.gamma || 0   // Y軸回転
         };
-
-        // 視線方向ベクトルを計算
-        this.viewDirection = this.calculateViewDirection();
 
         // カメラの向きを更新
         this.updateCameraRotation();
@@ -135,21 +151,21 @@ export class Renderer {
         // Use Quaternions to avoid Gimbal Lock likely caused by Euler 'YXZ' order
         // when pitch (beta + offset) reaches -90 degrees.
 
-        const qa = new THREE.Quaternion();
-        qa.setFromAxisAngle(new THREE.Vector3(0, 1, 0), alpha * Math.PI / 180);
+        const qa = this._qa;
+        qa.setFromAxisAngle(this._axisY, alpha * Math.PI / 180);
 
-        const qb = new THREE.Quaternion();
+        const qb = this._qb;
         // Include the offset (-90 deg) directly in the beta rotation quaternion
         // This maintains the 'YXZ' intrinsic rotation order logic: Y(alpha) -> X(beta) -> Z(gamma)
         // scaling beta by -90 offset.
         // Original: euler.x = beta + offset.x
-        qb.setFromAxisAngle(new THREE.Vector3(1, 0, 0), (beta * Math.PI / 180) + this.orientationOffset.x);
+        qb.setFromAxisAngle(this._axisX, (beta * Math.PI / 180) + this.orientationOffset.x);
 
-        const qc = new THREE.Quaternion();
-        qc.setFromAxisAngle(new THREE.Vector3(0, 0, 1), gamma * Math.PI / 180);
+        const qc = this._qc;
+        qc.setFromAxisAngle(this._axisZ, gamma * Math.PI / 180);
 
         // Compose: Y * X * Z
-        const qFinal = new THREE.Quaternion();
+        const qFinal = this._qFinal.identity();
         qFinal.multiply(qa);
         qFinal.multiply(qb);
         qFinal.multiply(qc);
@@ -203,10 +219,11 @@ export class Renderer {
                     console.log(`[Renderer] 敵(人魂)爆発完了・削除: id=${enemyId}`);
                 };
                 try {
-                    const camPos = new THREE.Vector3();
-                    this.camera.getWorldPosition(camPos);
                     if (!this.scene.userData) this.scene.userData = {};
-                    this.scene.userData.cameraPosition = camPos;
+                    if (!this.scene.userData.cameraPosition) {
+                        this.scene.userData.cameraPosition = new THREE.Vector3();
+                    }
+                    this.camera.getWorldPosition(this.scene.userData.cameraPosition);
                 } catch (e) { }
                 hitodama.explode({ toCameraBias: true });
                 console.log(`[Renderer] 敵(人魂)爆発開始 (playerDamage): id=${enemyId}`);
@@ -271,8 +288,6 @@ export class Renderer {
      * 描画（敵情報を受け取って衝突判定）
      */
     render(deltaTime, enemies) {
-        this.updateRendererSize();
-
         // 人魂のアニメーション更新
         const dtSec = deltaTime / 1000;
         for (const hitodama of this.enemyObjects.values()) {
@@ -307,12 +322,12 @@ export class Renderer {
     /**
      * 任意のワールド座標をNDCに射影
      */
-    projectToNdc(worldPos) {
+    projectToNdc(worldPos, target = this._projectionScratch) {
         // Ensure camera matrices are fresh (View Matrix specifically)
         this.camera.updateMatrixWorld();
         this.camera.matrixWorldInverse.copy(this.camera.matrixWorld).invert();
 
-        const v = new THREE.Vector3(worldPos.x, worldPos.y, worldPos.z);
+        const v = target.set(worldPos.x, worldPos.y, worldPos.z);
         // Note: project() uses matrixWorldInverse (View) * projectionMatrix
         v.project(this.camera);
         return v; // x,y,zが-1〜1に正規化された座標
@@ -321,8 +336,8 @@ export class Renderer {
     /**
      * カメラのワールド前方ベクトルを取得
      */
-    getCameraForward() {
-        const dir = new THREE.Vector3();
+    getCameraForward(target = this._forward) {
+        const dir = target;
         this.camera.getWorldDirection(dir);
         return dir.normalize();
     }
@@ -330,8 +345,8 @@ export class Renderer {
     /**
      * cameraPivotのワールド座標を取得
      */
-    getPivotWorldPosition() {
-        const pivotPos = new THREE.Vector3();
+    getPivotWorldPosition(target = this._pivotPositionScratch) {
+        const pivotPos = target;
         this.cameraPivot.getWorldPosition(pivotPos);
         return pivotPos;
     }
@@ -342,10 +357,17 @@ export class Renderer {
     updateRendererSize() {
         const width = this.canvas.clientWidth || window.innerWidth;
         const height = this.canvas.clientHeight || window.innerHeight;
-        if (this.renderer.domElement.width !== width || this.renderer.domElement.height !== height) {
+        const pixelRatio = Math.min(window.devicePixelRatio || 1, this.maxPixelRatio || 1);
+        if (this._lastPixelRatio !== pixelRatio) {
+            this.renderer.setPixelRatio(pixelRatio);
+            this._lastPixelRatio = pixelRatio;
+        }
+        if (this._lastCssWidth !== width || this._lastCssHeight !== height) {
             this.renderer.setSize(width, height, false);
             this.camera.aspect = width / height;
             this.camera.updateProjectionMatrix();
+            this._lastCssWidth = width;
+            this._lastCssHeight = height;
         }
     }
 

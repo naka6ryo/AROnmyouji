@@ -15,6 +15,15 @@ import { DebugOverlay } from './DebugOverlay.js';
 import { UIManager } from './UIManager.js';
 import { soundManager } from './SoundManager.js';
 
+const PERFORMANCE_CONFIG = {
+    HUD_UPDATE_INTERVAL_MS: 100,
+    INDICATOR_UPDATE_INTERVAL_MS: 66,
+    DEBUG_UPDATE_INTERVAL_MS: 250,
+    CAMERA_MAX_WIDTH: 1280,
+    CAMERA_MAX_HEIGHT: 720,
+    CAMERA_MAX_FPS: 30
+};
+
 class AROnmyoujiGame {
     constructor() {
         // モジュール初期化
@@ -48,6 +57,9 @@ class AROnmyoujiGame {
         this.lastUpdateTime = 0;
         this.FIXED_DELTA_TIME = 1000 / 60; // 60 FPS
         this.isRunning = false;
+        this.lastHudUpdateTime = 0;
+        this.lastIndicatorUpdateTime = 0;
+        this.lastDebugUpdateTime = 0;
 
         // ダブルヒット防止用
         this.lastEnemyHitTime = new Map();
@@ -294,9 +306,7 @@ class AROnmyoujiGame {
             // カメラ権限
             this.uiManager.addPermissionLog('📷 カメラ権限要求中...');
 
-            this.cameraStream = await navigator.mediaDevices.getUserMedia({
-                video: { facingMode: 'environment' }
-            });
+            this.cameraStream = await this.getCameraStream();
             this.videoElement.srcObject = this.cameraStream;
             this.videoElement.muted = true;
 
@@ -351,6 +361,26 @@ class AROnmyoujiGame {
     /**
      * BLE接続
      */
+    async getCameraStream() {
+        const optimizedConstraints = {
+            video: {
+                facingMode: { ideal: 'environment' },
+                width: { ideal: PERFORMANCE_CONFIG.CAMERA_MAX_WIDTH, max: PERFORMANCE_CONFIG.CAMERA_MAX_WIDTH },
+                height: { ideal: PERFORMANCE_CONFIG.CAMERA_MAX_HEIGHT, max: PERFORMANCE_CONFIG.CAMERA_MAX_HEIGHT },
+                frameRate: { ideal: PERFORMANCE_CONFIG.CAMERA_MAX_FPS, max: PERFORMANCE_CONFIG.CAMERA_MAX_FPS }
+            }
+        };
+
+        try {
+            return await navigator.mediaDevices.getUserMedia(optimizedConstraints);
+        } catch (error) {
+            console.warn('[Camera] optimized constraints failed; falling back', error);
+            return navigator.mediaDevices.getUserMedia({
+                video: { facingMode: 'environment' }
+            });
+        }
+    }
+
     async connectBLE() {
         this.debugOverlay.logInfo('BLE接続開始');
         this.uiManager.updateBLEStatus('接続中...');
@@ -399,6 +429,9 @@ class AROnmyoujiGame {
         this.gameWorld.startGame();
         this.isRunning = true;
         this.lastUpdateTime = performance.now();
+        this.lastHudUpdateTime = 0;
+        this.lastIndicatorUpdateTime = 0;
+        this.lastDebugUpdateTime = 0;
         this.gameLoop();
         this.debugOverlay.logInfo('ゲームプレイ開始');
     }
@@ -430,7 +463,7 @@ class AROnmyoujiGame {
             this.motionInterpreter.update(frame);
         }
 
-        this.updateDebugInfo();
+        this.maybeUpdateDebugInfo();
     }
 
     /**
@@ -497,7 +530,7 @@ class AROnmyoujiGame {
         }
 
         this.combatSystem.sendHitHaptic(isCritical);
-        this.updateHUD(); // HUD更新
+        this.updateHUD(undefined, { forceHud: true, forceIndicators: true }); // HUD更新
     }
 
     onCircle(circle) {
@@ -519,7 +552,7 @@ class AROnmyoujiGame {
         this.renderer.removeEnemy(data.enemy.id);
         // 敵撃破サウンド
         try { this.soundManager.play('polygon_burst', { volume: 0.9 }); } catch (e) { }
-        this.updateHUD();
+        this.updateHUD(undefined, { forceHud: true, forceIndicators: true });
     }
 
     onPlayerDamaged(data) {
@@ -534,7 +567,7 @@ class AROnmyoujiGame {
             // Note: UIManager.updateEnemyIndicators calls will clean up next frame usually,
             // but we can rely on updateHUD calling updateEnemyIndicators if needed.
         }
-        this.updateHUD();
+        this.updateHUD(undefined, { forceHud: true, forceIndicators: true });
     }
 
     onGameOver(data) {
@@ -652,12 +685,13 @@ class AROnmyoujiGame {
         const viewDir = this.renderer.getViewDirection();
         this.combatSystem.update(safeDelta, viewDir);
 
+        const enemies = this.gameWorld.getEnemies();
         this.updateHUD(viewDir);
-        this.renderer.updateEnemies(this.gameWorld.getEnemies());
+        this.renderer.updateEnemies(enemies);
 
         // Renderer expects seconds usually? No, passed FIXED_DELTA_TIME which is ms (16.66).
         // Let's verify usage in Renderer.render
-        this.renderer.render(safeDelta, this.gameWorld.getEnemies());
+        this.renderer.render(safeDelta, enemies);
         requestAnimationFrame(() => this.gameLoop());
     }
 
@@ -720,19 +754,30 @@ class AROnmyoujiGame {
         this.debugOverlay.logInfo('キャリブレーション表示基準をリセットしました');
     }
 
-    updateHUD(viewDir) {
-        // Stats
-        this.uiManager.updateHUD(
-            this.gameWorld.getGameStats(),
-            this.gameWorld.getPlayerState()
-        );
+    updateHUD(viewDir, options = {}) {
+        const now = performance.now();
+        const forceHud = !!options.forceHud;
+        const forceIndicators = !!options.forceIndicators;
+        if (!viewDir && forceIndicators) {
+            viewDir = this.renderer.getViewDirection();
+        }
 
-        // Power Mode
-        const powerState = this.motionInterpreter.getPowerModeState();
-        this.uiManager.updatePowerMode(powerState.active, powerState.remaining);
+        // Stats
+        if (forceHud || now - this.lastHudUpdateTime >= PERFORMANCE_CONFIG.HUD_UPDATE_INTERVAL_MS) {
+            this.lastHudUpdateTime = now;
+            this.uiManager.updateHUD(
+                this.gameWorld.getGameStats(),
+                this.gameWorld.getPlayerState()
+            );
+
+            // Power Mode
+            const powerState = this.motionInterpreter.getPowerModeState();
+            this.uiManager.updatePowerMode(powerState.active, powerState.remaining);
+        }
 
         // Enemy Indicators
-        if (viewDir) {
+        if (viewDir && (forceIndicators || now - this.lastIndicatorUpdateTime >= PERFORMANCE_CONFIG.INDICATOR_UPDATE_INTERVAL_MS)) {
+            this.lastIndicatorUpdateTime = now;
             this.uiManager.updateEnemyIndicators(
                 this.gameWorld.getEnemies(),
                 viewDir,
@@ -744,6 +789,13 @@ class AROnmyoujiGame {
                 (enemy) => this.gameWorld.getEnemyDirection(enemy) // !!! getEnemyDirection returns DIRECTION, not Position. 
             );
         }
+    }
+
+    maybeUpdateDebugInfo() {
+        const now = performance.now();
+        if (now - this.lastDebugUpdateTime < PERFORMANCE_CONFIG.DEBUG_UPDATE_INTERVAL_MS) return;
+        this.lastDebugUpdateTime = now;
+        this.updateDebugInfo();
     }
 
     // Debug info update

@@ -16,6 +16,14 @@ export class SlashProjectileManager {
         this.projectiles = [];
         this.SLASH_SPEED = 8.0; // m/s
         this.SLASH_LIFETIME = 1500; // ms
+        this._cameraPos = new THREE.Vector3();
+        this._moveScratch = new THREE.Vector3();
+        this._enemyWorld = new THREE.Vector3();
+        this._startWorld = new THREE.Vector3();
+        this._endWorld = new THREE.Vector3();
+        this._ab = new THREE.Vector3();
+        this._ap = new THREE.Vector3();
+        this._closest = new THREE.Vector3();
     }
 
     /**
@@ -46,7 +54,7 @@ export class SlashProjectileManager {
         if (!arcMesh) return;
 
         // カメラの現在位置を基準に配置
-        const cameraPos = new THREE.Vector3();
+        const cameraPos = this._cameraPos;
         this.camera.getWorldPosition(cameraPos);
 
         arcMesh.position.copy(cameraPos);
@@ -127,7 +135,7 @@ export class SlashProjectileManager {
      */
     updateProjectileMesh(proj, radiusScale, lifeFraction, deltaTimeSec) {
         // Move
-        proj.mesh.position.add(proj.direction.clone().multiplyScalar(proj.speed * deltaTimeSec));
+        proj.mesh.position.add(this._moveScratch.copy(proj.direction).multiplyScalar(proj.speed * deltaTimeSec));
 
         // Scale (Note: This scales tube thickness too, which is an acceptable tradeoff for performance here)
         proj.mesh.scale.set(radiusScale, radiusScale, radiusScale);
@@ -150,7 +158,7 @@ export class SlashProjectileManager {
         const azimRad = enemy.azim * Math.PI / 180;
         const elevRad = enemy.elev * Math.PI / 180;
         const r = enemy.distance;
-        const enemyWorld = new THREE.Vector3(
+        const enemyWorld = this._enemyWorld.set(
             r * Math.cos(elevRad) * Math.sin(azimRad),
             r * Math.sin(elevRad),
             -r * Math.cos(elevRad) * Math.cos(azimRad)
@@ -164,8 +172,8 @@ export class SlashProjectileManager {
         // Wait, the "startPos" stored in proj is relative to the mesh origin.
         // So RealWorldPos = mesh.position + (startPos * radiusScale). (orientation is identity)
 
-        const startWorld = proj.startPos.clone().multiplyScalar(radiusScale).add(proj.mesh.position);
-        const endWorld = proj.endPos.clone().multiplyScalar(radiusScale).add(proj.mesh.position);
+        const startWorld = this._startWorld.copy(proj.startPos).multiplyScalar(radiusScale).add(proj.mesh.position);
+        const endWorld = this._endWorld.copy(proj.endPos).multiplyScalar(radiusScale).add(proj.mesh.position);
 
         // Note: The original logic used pivotPos as the center of calculation.
         // However, proj.mesh.position moves AWAY from the camera/pivot.
@@ -192,10 +200,10 @@ export class SlashProjectileManager {
         // Let's stick to the VISUAL position of the mesh.
 
         // 線分（円弧の弦）と点の距離
-        const ab = endWorld.clone().sub(startWorld);
-        const ap = enemyWorld.clone().sub(startWorld);
+        const ab = this._ab.copy(endWorld).sub(startWorld);
+        const ap = this._ap.copy(enemyWorld).sub(startWorld);
         const t = Math.max(0, Math.min(1, ab.dot(ap) / ab.lengthSq()));
-        const closest = startWorld.clone().add(ab.multiplyScalar(t));
+        const closest = this._closest.copy(startWorld).add(ab.multiplyScalar(t));
         const distToArc = enemyWorld.distanceTo(closest);
 
         // 判定閾値

@@ -6,6 +6,7 @@ export const HitodamaResources = {
         core: null,
         body: null,
         fragment: null,
+        explosionFragment: null,
         shockwaveSmall: null,
         shockwaveLarge: null,
         tail: null // Initialized per instance or shared buffer? Shared buffer is hard if length varies, but here length is fixed (40).
@@ -30,6 +31,10 @@ export const HitodamaResources = {
         const fragGeo = new THREE.ConeGeometry(0.15, 0.4, 3);
         fragGeo.rotateX(Math.PI / 2);
         this.geometries.fragment = fragGeo;
+
+        const explosionFragGeo = new THREE.ConeGeometry(0.2, 0.8, 3);
+        explosionFragGeo.rotateX(Math.PI / 2);
+        this.geometries.explosionFragment = explosionFragGeo;
 
         // Shockwaves
         this.geometries.shockwaveSmall = new THREE.RingGeometry(0.2, 0.5, 32);

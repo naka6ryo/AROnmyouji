@@ -13,6 +13,9 @@ export class SwingTracer {
         this.parent = camera || scene;
         this.mesh = null;
         this.TRACER_CENTER_Z = -0.4;
+        this.root = new THREE.Object3D();
+        this.root.position.set(0, 0, this.TRACER_CENTER_Z);
+        this.parent.add(this.root);
 
         this.TRACER_RADIUS = 0.4 * 1.5; // 球面半径（カメラ回転中心から）
         this.TRACER_BASE_WIDTH = 0.006 * 1.5 * 3; // 軌跡基本幅（4.5倍）
@@ -57,7 +60,7 @@ export class SwingTracer {
             const yawRad = pt.yaw * Math.PI / 180;
             const x = this.TRACER_RADIUS * Math.cos(pitchRad) * Math.sin(yawRad);
             const y = this.TRACER_RADIUS * Math.sin(pitchRad);
-            const z = this.TRACER_CENTER_Z - this.TRACER_RADIUS * Math.cos(pitchRad) * Math.cos(yawRad);
+            const z = -this.TRACER_RADIUS * Math.cos(pitchRad) * Math.cos(yawRad);
             pts.push(new THREE.Vector3(x, y, z));
         }
 
@@ -76,7 +79,7 @@ export class SwingTracer {
 
         this.mesh = new THREE.Mesh(tubeGeometry, this.material);
         this.mesh.frustumCulled = false;
-        this.parent.add(this.mesh);
+        this.root.add(this.mesh);
     }
 
     /**
@@ -100,7 +103,7 @@ export class SwingTracer {
      */
     disposeMesh() {
         if (this.mesh) {
-            this.parent.remove(this.mesh);
+            this.root.remove(this.mesh);
             if (this.mesh.geometry) this.mesh.geometry.dispose();
             // Do not dispose shared material here
             this.mesh = null;
@@ -112,6 +115,10 @@ export class SwingTracer {
      */
     dispose() {
         this.disposeMesh();
+        if (this.root) {
+            this.parent.remove(this.root);
+            this.root = null;
+        }
         if (this.material) this.material.dispose();
     }
 

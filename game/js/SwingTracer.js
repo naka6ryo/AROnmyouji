@@ -10,12 +10,16 @@ import { tracerVertexShader, tracerFragmentShader, tubeVertexShader } from './Sh
 export class SwingTracer {
     constructor(scene, camera = null) {
         this.scene = scene;
+        this.camera = camera;
         this.parent = camera || scene;
         this.mesh = null;
         this.TRACER_CENTER_Z = -0.4;
         this.root = new THREE.Object3D();
         this.root.position.set(0, 0, this.TRACER_CENTER_Z);
         this.parent.add(this.root);
+        this._cameraWorldQuaternion = new THREE.Quaternion();
+        this._worldToCameraQuaternion = new THREE.Quaternion();
+        this._directionScratch = new THREE.Vector3();
 
         this.TRACER_RADIUS = 0.4 * 1.5; // 球面半径（カメラ回転中心から）
         this.TRACER_BASE_WIDTH = 0.006 * 1.5 * 3; // 軌跡基本幅（4.5倍）
@@ -56,12 +60,7 @@ export class SwingTracer {
         // 軌跡から 3D 点列を作成
         const pts = [];
         for (const pt of trajectory) {
-            const pitchRad = pt.pitch * Math.PI / 180;
-            const yawRad = pt.yaw * Math.PI / 180;
-            const x = this.TRACER_RADIUS * Math.cos(pitchRad) * Math.sin(yawRad);
-            const y = this.TRACER_RADIUS * Math.sin(pitchRad);
-            const z = -this.TRACER_RADIUS * Math.cos(pitchRad) * Math.cos(yawRad);
-            pts.push(new THREE.Vector3(x, y, z));
+            pts.push(this.pyrToCameraLocalPoint(pt.pitch, pt.yaw));
         }
 
         if (pts.length < 2) return;
@@ -89,6 +88,24 @@ export class SwingTracer {
         if (this.material && this.material.uniforms) {
             this.material.uniforms.uTime.value = (performance.now() - this._startTime) * 0.001;
         }
+    }
+
+    pyrToCameraLocalPoint(pitch, yaw) {
+        const pitchRad = pitch * Math.PI / 180;
+        const yawRad = yaw * Math.PI / 180;
+        const direction = this._directionScratch.set(
+            Math.cos(pitchRad) * Math.sin(yawRad),
+            Math.sin(pitchRad),
+            -Math.cos(pitchRad) * Math.cos(yawRad)
+        );
+
+        if (this.camera) {
+            this.camera.getWorldQuaternion(this._cameraWorldQuaternion);
+            this._worldToCameraQuaternion.copy(this._cameraWorldQuaternion).invert();
+            direction.applyQuaternion(this._worldToCameraQuaternion);
+        }
+
+        return direction.clone().multiplyScalar(this.TRACER_RADIUS);
     }
 
     /**

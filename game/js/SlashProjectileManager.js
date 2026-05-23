@@ -24,6 +24,9 @@ export class SlashProjectileManager {
         this._ab = new THREE.Vector3();
         this._ap = new THREE.Vector3();
         this._closest = new THREE.Vector3();
+        this._slashNormal = new THREE.Vector3();
+        this._slashTangent = new THREE.Vector3();
+        this._slashSparkOffset = new THREE.Vector3();
     }
 
     /**
@@ -50,19 +53,19 @@ export class SlashProjectileManager {
         );
 
         // 2点を含む円弧を作成 (Base Geometry at scale 1.0)
-        const arcMesh = this.createArcMesh(startPos, endPos, intensity);
-        if (!arcMesh) return;
+        const slashGroup = this.createSlashGroup(startPos, endPos, intensity);
+        if (!slashGroup) return;
 
         // カメラの現在位置を基準に配置
         const cameraPos = this._cameraPos;
         this.camera.getWorldPosition(cameraPos);
 
-        arcMesh.position.copy(cameraPos);
-        this.scene.add(arcMesh);
+        slashGroup.position.copy(cameraPos);
+        this.scene.add(slashGroup);
 
         // 飛翔体として記録
         const projectile = {
-            mesh: arcMesh,
+            mesh: slashGroup,
             startPos: startPos.clone(),
             endPos: endPos.clone(),
             speed: this.SLASH_SPEED,
@@ -70,7 +73,9 @@ export class SlashProjectileManager {
             intensity,
             direction: this.camera.getWorldDirection(new THREE.Vector3()).normalize(),
             hitEnemies: new Set(),
-            baseOpacity: 0.7 + intensity * 0.3
+            baseOpacity: 0.75 + intensity * 0.25,
+            visualScale: 1.0 + Math.max(0.5, Math.min(2.0, intensity || 1.0)) * 0.08,
+            spinSpeed: (intensity >= 1.2 ? 0.9 : 0.55) * (Math.random() > 0.5 ? 1 : -1)
         };
 
         this.projectiles.push(projectile);
@@ -137,14 +142,24 @@ export class SlashProjectileManager {
         // Move
         proj.mesh.position.add(this._moveScratch.copy(proj.direction).multiplyScalar(proj.speed * deltaTimeSec));
 
-        // Scale (Note: This scales tube thickness too, which is an acceptable tradeoff for performance here)
-        proj.mesh.scale.set(radiusScale, radiusScale, radiusScale);
+        // Scale and add a little pulse so the blade feels like a slash, not a plain ring.
+        const slashPulse = 1.0 + Math.sin(lifeFraction * Math.PI) * 0.08 * Math.min(1.6, proj.intensity);
+        const visualScale = proj.visualScale || 1.0;
+        proj.mesh.scale.set(radiusScale * visualScale, radiusScale * visualScale * slashPulse, radiusScale * visualScale);
+        proj.mesh.rotation.z += proj.spinSpeed * deltaTimeSec;
 
-        // Fade
-        // Need to check if material is transparent, which it is by default in createArcMesh
-        if (proj.mesh.material) {
-            proj.mesh.material.opacity = proj.baseOpacity * (1.0 - lifeFraction);
-        }
+        const fade = Math.pow(1.0 - lifeFraction, 1.35);
+        proj.mesh.traverse(child => {
+            if (!child.material) return;
+            const materials = Array.isArray(child.material) ? child.material : [child.material];
+            for (const material of materials) {
+                const baseOpacity = material.userData.baseOpacity ?? proj.baseOpacity;
+                const flicker = material.userData.flicker
+                    ? 0.82 + Math.sin((performance.now() + material.userData.flickerOffset) * 0.035) * 0.18
+                    : 1.0;
+                material.opacity = baseOpacity * fade * flicker;
+            }
+        });
     }
 
     /**
@@ -216,29 +231,126 @@ export class SlashProjectileManager {
     /**
      * 円弧メッシュ作成
      */
-    createArcMesh(startPos, endPos, intensity) {
-        const points = [startPos];
+    createSlashGroup(startPos, endPos, intensity) {
+        const points = this.createSlashCurvePoints(startPos, endPos, intensity);
+        const curve = new THREE.CatmullRomCurve3(points);
+        const strength = Math.max(0.5, Math.min(2.0, intensity || 1.0));
+        const group = new THREE.Group();
+        group.frustumCulled = false;
+
+        const bladeLengthBoost = 1.0 + strength * 0.08;
+        group.scale.set(bladeLengthBoost, bladeLengthBoost, bladeLengthBoost);
+
+        const glowGeometry = new THREE.TubeGeometry(curve, 36, 0.048 + strength * 0.014, 12, false);
+        const glowMaterial = this.createSlashMaterial(0x00c8ff, 0.34 + strength * 0.13, true);
+        const glowMesh = new THREE.Mesh(glowGeometry, glowMaterial);
+        glowMesh.userData.role = 'glow';
+        group.add(glowMesh);
+
+        const edgeGeometry = new THREE.TubeGeometry(curve, 36, 0.027 + strength * 0.006, 10, false);
+        const edgeMaterial = this.createSlashMaterial(0x64f6ff, 0.55 + strength * 0.12, true);
+        const edgeMesh = new THREE.Mesh(edgeGeometry, edgeMaterial);
+        edgeMesh.userData.role = 'edge';
+        group.add(edgeMesh);
+
+        const coreGeometry = new THREE.TubeGeometry(curve, 40, 0.012 + strength * 0.003, 8, false);
+        const coreMaterial = this.createSlashMaterial(0xffffff, 0.86 + strength * 0.07, false);
+        const coreMesh = new THREE.Mesh(coreGeometry, coreMaterial);
+        coreMesh.userData.role = 'core';
+        group.add(coreMesh);
+
+        const tailCurve = new THREE.CatmullRomCurve3(this.createTailCurvePoints(points));
+        const tailGeometry = new THREE.TubeGeometry(tailCurve, 24, 0.022 + strength * 0.005, 8, false);
+        const tailMaterial = this.createSlashMaterial(0x0077ff, 0.24 + strength * 0.08, true);
+        const tailMesh = new THREE.Mesh(tailGeometry, tailMaterial);
+        tailMesh.userData.role = 'tail';
+        group.add(tailMesh);
+
+        this.addSparkLines(group, points, strength);
+
+        return group;
+    }
+
+    createSlashCurvePoints(startPos, endPos, intensity) {
+        const strength = Math.max(0.5, Math.min(2.0, intensity || 1.0));
+        const points = [startPos.clone()];
         for (let i = 1; i < 5; i++) {
             const t = i / 5;
             const midPoint = new THREE.Vector3();
             midPoint.lerpVectors(startPos, endPos, t);
-            midPoint.multiplyScalar(1.0 + Math.sin(t * Math.PI) * 0.3); // 膨らみ
+            midPoint.multiplyScalar(1.0 + Math.sin(t * Math.PI) * (0.28 + strength * 0.05)); // 膨らみ
             points.push(midPoint);
         }
-        points.push(endPos);
+        points.push(endPos.clone());
+        return points;
+    }
 
-        const curve = new THREE.CatmullRomCurve3(points);
-        const tubeGeometry = new THREE.TubeGeometry(curve, 20, 0.02, 8, false);
+    createTailCurvePoints(points) {
+        const tailPoints = [];
+        for (let i = 0; i < points.length; i++) {
+            const t = i / (points.length - 1);
+            const p = points[i].clone();
+            p.multiplyScalar(0.88 - Math.sin(t * Math.PI) * 0.08);
+            tailPoints.push(p);
+        }
+        return tailPoints;
+    }
 
+    createSlashMaterial(color, opacity, flicker) {
         const material = new THREE.MeshBasicMaterial({
-            color: 0x00ffff,
+            color,
             transparent: true,
-            opacity: 0.7 + intensity * 0.3,
+            opacity,
             side: THREE.DoubleSide,
-            blending: THREE.AdditiveBlending
+            blending: THREE.AdditiveBlending,
+            depthWrite: false
         });
+        material.userData.baseOpacity = opacity;
+        material.userData.flicker = flicker;
+        material.userData.flickerOffset = Math.random() * 1000;
+        return material;
+    }
 
-        return new THREE.Mesh(tubeGeometry, material);
+    addSparkLines(group, points, strength) {
+        const slashDir = this._slashTangent.copy(points[points.length - 1]).sub(points[0]);
+        if (slashDir.lengthSq() < 0.000001) {
+            slashDir.set(1, 0, 0);
+        } else {
+            slashDir.normalize();
+        }
+        const slashNormal = this._slashNormal.set(-slashDir.y, slashDir.x, slashDir.z * 0.2).normalize();
+        const sparkCount = Math.round(4 + strength * 5);
+
+        for (let i = 0; i < sparkCount; i++) {
+            const t = (i + 0.5) / sparkCount;
+            const base = new THREE.Vector3().lerpVectors(points[0], points[points.length - 1], t);
+            base.multiplyScalar(1.0 + Math.sin(t * Math.PI) * 0.25);
+
+            const side = i % 2 === 0 ? 1 : -1;
+            const spread = (0.035 + Math.random() * 0.055) * side * strength;
+            const length = 0.08 + Math.random() * 0.13 * strength;
+            const offset = this._slashSparkOffset.copy(slashNormal).multiplyScalar(spread);
+            const sparkStart = base.clone().add(offset);
+            const sparkEnd = sparkStart.clone()
+                .add(slashDir.clone().multiplyScalar(length * (0.35 + Math.random() * 0.45)))
+                .add(slashNormal.clone().multiplyScalar(spread * 1.7));
+
+            const sparkGeometry = new THREE.BufferGeometry().setFromPoints([sparkStart, sparkEnd]);
+            const sparkMaterial = new THREE.LineBasicMaterial({
+                color: Math.random() > 0.35 ? 0xeaffff : 0x61e7ff,
+                transparent: true,
+                opacity: 0.35 + strength * 0.12,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false
+            });
+            sparkMaterial.userData.baseOpacity = sparkMaterial.opacity;
+            sparkMaterial.userData.flicker = true;
+            sparkMaterial.userData.flickerOffset = Math.random() * 1000;
+
+            const spark = new THREE.Line(sparkGeometry, sparkMaterial);
+            spark.userData.role = 'spark';
+            group.add(spark);
+        }
     }
 
     /**
@@ -247,8 +359,15 @@ export class SlashProjectileManager {
     disposeProjectileMesh(proj) {
         if (proj.mesh) {
             this.scene.remove(proj.mesh);
-            if (proj.mesh.geometry) proj.mesh.geometry.dispose();
-            if (proj.mesh.material) proj.mesh.material.dispose();
+            proj.mesh.traverse(child => {
+                if (child.geometry) child.geometry.dispose();
+                if (child.material) {
+                    const materials = Array.isArray(child.material) ? child.material : [child.material];
+                    for (const material of materials) {
+                        material.dispose();
+                    }
+                }
+            });
         }
     }
 

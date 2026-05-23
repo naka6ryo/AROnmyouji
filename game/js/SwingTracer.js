@@ -12,7 +12,7 @@ export class SwingTracer {
         this.scene = scene;
         this.parent = camera || scene;
         this.mesh = null;
-        this.TRACER_CENTER_Z = -0.8;
+        this.TRACER_CENTER_Z = -0.4;
 
         this.TRACER_RADIUS = 0.4;       // 球面半径（カメラ回転中心から）
         this.TRACER_BASE_WIDTH = 0.006 * 1.5 * 3; // 軌跡基本幅（4.5倍）

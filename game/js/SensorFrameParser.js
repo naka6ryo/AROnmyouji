@@ -9,6 +9,12 @@
  *   S, seq, ax, ay, az, qw, qx, qy, qz, flags
  */
 
+const QUATERNION_CONTROLLER_AXIS_SIGNS = {
+    pitch: -1,
+    yaw: -1,
+    roll: -1
+};
+
 export class SensorFrameParser {
     constructor() {
         this.lastSeq = null;
@@ -152,7 +158,7 @@ export class SensorFrameParser {
     quaternionToControllerPYR(q) {
         const { w, x, y, z } = q;
 
-        const yaw = this.normalize180(
+        const rawYaw = this.normalize180(
             Math.atan2(
                 2.0 * (x * y + z * w),
                 1.0 - 2.0 * (y * y + z * z)
@@ -163,19 +169,19 @@ export class SensorFrameParser {
         const r22 = 1.0 - 2.0 * (x * x + y * y);
         const r20 = 2.0 * (x * z - y * w);
 
-        let pitch = -this.normalize180(Math.atan2(r21, r22) * 180.0 / Math.PI);
-        let roll = -this.normalize180(
+        let rawPitch = -this.normalize180(Math.atan2(r21, r22) * 180.0 / Math.PI);
+        let rawRoll = -this.normalize180(
             Math.atan2(-r20, Math.sqrt(r21 * r21 + r22 * r22)) * 180.0 / Math.PI
         );
 
-        if (Math.abs(roll) >= 90) {
-            pitch -= 180;
+        if (Math.abs(rawRoll) >= 90) {
+            rawPitch -= 180;
         }
 
         return {
-            pitch: this.normalize180(pitch),
-            yaw,
-            roll: this.normalize180(roll)
+            pitch: this.normalize180(rawPitch * QUATERNION_CONTROLLER_AXIS_SIGNS.pitch),
+            yaw: this.normalize180(rawYaw * QUATERNION_CONTROLLER_AXIS_SIGNS.yaw),
+            roll: this.normalize180(rawRoll * QUATERNION_CONTROLLER_AXIS_SIGNS.roll)
         };
     }
 

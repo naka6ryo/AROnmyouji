@@ -9,6 +9,8 @@ import { SwingTracer } from './SwingTracer.js';
 import { SlashProjectileManager } from './SlashProjectileManager.js';
 
 const MOBILE_MAX_PIXEL_RATIO = 1.5;
+const DEFAULT_CAMERA_FOV_DEG = 60;
+const DEG2RAD = Math.PI / 180;
 
 export class Renderer {
     constructor(canvasId, debugOverlay = null) {
@@ -29,7 +31,7 @@ export class Renderer {
             }
         }
         this.camera = new THREE.PerspectiveCamera(
-            60, // FOV
+            DEFAULT_CAMERA_FOV_DEG, // FOV
             window.innerWidth / window.innerHeight,
             0.1,
             1000
@@ -42,9 +44,6 @@ export class Renderer {
         this.scene.add(this.cameraPivot);
         this.cameraPivot.add(this.camera);
         this.camera.position.set(0, 0, 0);
-
-        // 端末を縦向きで持つことを基準に、X軸へ-90度オフセット
-        this.orientationOffset = new THREE.Euler(-Math.PI / 2, 0, 0, 'YXZ');
 
         this.renderer = new THREE.WebGLRenderer({
             canvas: this.canvas,
@@ -61,22 +60,24 @@ export class Renderer {
         this._lastCssWidth = 0;
         this._lastCssHeight = 0;
         this._lastPixelRatio = 0;
+        this._lastVideoWidth = 0;
+        this._lastVideoHeight = 0;
 
-        this._axisY = new THREE.Vector3(0, 1, 0);
-        this._axisX = new THREE.Vector3(1, 0, 0);
         this._axisZ = new THREE.Vector3(0, 0, 1);
-        this._qa = new THREE.Quaternion();
-        this._qb = new THREE.Quaternion();
-        this._qc = new THREE.Quaternion();
+        this._deviceEuler = new THREE.Euler(0, 0, 0, 'YXZ');
+        this._cameraFrameQuaternion = new THREE.Quaternion(-Math.sqrt(0.5), 0, 0, Math.sqrt(0.5));
+        this._screenTransformQuaternion = new THREE.Quaternion();
         this._qFinal = new THREE.Quaternion();
         this._forward = new THREE.Vector3();
+        this._right = new THREE.Vector3();
+        this._up = new THREE.Vector3();
         this._projectionScratch = new THREE.Vector3();
         this._pivotPositionScratch = new THREE.Vector3();
         this._cameraPositionScratch = new THREE.Vector3();
 
         // 端末姿勢（視点制御用）
-        this.deviceOrientation = { alpha: 0, beta: 0, gamma: 0 };
-        this.viewDirection = { x: 0, y: 0, z: 1 };
+        this.deviceOrientation = { alpha: 0, beta: 0, gamma: 0, screenOrientation: 0 };
+        this.viewDirection = { x: 0, y: 0, z: -1 };
 
         // 敵のメッシュ管理
         this.enemyObjects = new Map(); // enemyId -> Hitodama instance
@@ -108,9 +109,19 @@ export class Renderer {
 
         // リサイズ対応
         this._resizeHandler = this.onResize.bind(this);
+        this._orientationChangeHandler = this.onScreenOrientationChanged.bind(this);
+        this._videoMetadataHandler = this.onVideoMetadataLoaded.bind(this);
         window.addEventListener('resize', this._resizeHandler);
+        window.addEventListener('orientationchange', this._orientationChangeHandler);
         if (window.visualViewport) {
             window.visualViewport.addEventListener('resize', this._resizeHandler);
+        }
+        if (window.screen && window.screen.orientation && typeof window.screen.orientation.addEventListener === 'function') {
+            window.screen.orientation.addEventListener('change', this._orientationChangeHandler);
+        }
+        if (this.videoElement) {
+            this.videoElement.addEventListener('loadedmetadata', this._videoMetadataHandler);
+            this.videoElement.addEventListener('resize', this._videoMetadataHandler);
         }
 
         // 初期クリア (前のフレームの残骸を防止)
@@ -127,7 +138,8 @@ export class Renderer {
         this.deviceOrientation = {
             alpha: event.alpha || 0,  // Z軸回転
             beta: event.beta || 0,    // X軸回転
-            gamma: event.gamma || 0   // Y軸回転
+            gamma: event.gamma || 0,  // Y軸回転
+            screenOrientation: this.getScreenOrientationDegrees()
         };
 
         // カメラの向きを更新
@@ -146,29 +158,21 @@ export class Renderer {
      * カメラの回転を更新
      */
     updateCameraRotation() {
-        const { alpha, beta, gamma } = this.deviceOrientation;
+        const { alpha, beta, gamma, screenOrientation } = this.deviceOrientation;
 
-        // Use Quaternions to avoid Gimbal Lock likely caused by Euler 'YXZ' order
-        // when pitch (beta + offset) reaches -90 degrees.
+        // WebXR-like 3DoF path based on three.js DeviceOrientationControls:
+        // device attitude -> camera optical frame -> current screen orientation.
+        this._deviceEuler.set(beta * DEG2RAD, alpha * DEG2RAD, -gamma * DEG2RAD, 'YXZ');
 
-        const qa = this._qa;
-        qa.setFromAxisAngle(this._axisY, alpha * Math.PI / 180);
-
-        const qb = this._qb;
-        // Include the offset (-90 deg) directly in the beta rotation quaternion
-        // This maintains the 'YXZ' intrinsic rotation order logic: Y(alpha) -> X(beta) -> Z(gamma)
-        // scaling beta by -90 offset.
-        // Original: euler.x = beta + offset.x
-        qb.setFromAxisAngle(this._axisX, (beta * Math.PI / 180) + this.orientationOffset.x);
-
-        const qc = this._qc;
-        qc.setFromAxisAngle(this._axisZ, gamma * Math.PI / 180);
-
-        // Compose: Y * X * Z
-        const qFinal = this._qFinal.identity();
-        qFinal.multiply(qa);
-        qFinal.multiply(qb);
-        qFinal.multiply(qc);
+        const qFinal = this._qFinal;
+        qFinal.setFromEuler(this._deviceEuler);
+        qFinal.multiply(this._cameraFrameQuaternion);
+        qFinal.multiply(
+            this._screenTransformQuaternion.setFromAxisAngle(
+                this._axisZ,
+                -(screenOrientation || 0) * DEG2RAD
+            )
+        );
 
         this.cameraPivot.quaternion.copy(qFinal);
 
@@ -312,6 +316,26 @@ export class Renderer {
         this.updateRendererSize();
     }
 
+    onScreenOrientationChanged() {
+        this.deviceOrientation.screenOrientation = this.getScreenOrientationDegrees();
+        this.updateCameraRotation();
+        this.updateRendererSize();
+    }
+
+    onVideoMetadataLoaded() {
+        this.updateRendererSize();
+    }
+
+    getScreenOrientationDegrees() {
+        if (window.screen && window.screen.orientation && typeof window.screen.orientation.angle === 'number') {
+            return window.screen.orientation.angle;
+        }
+        if (typeof window.orientation === 'number') {
+            return window.orientation;
+        }
+        return 0;
+    }
+
     /**
      * 視線方向を取得
      */
@@ -324,7 +348,8 @@ export class Renderer {
      */
     projectToNdc(worldPos, target = this._projectionScratch) {
         // Ensure camera matrices are fresh (View Matrix specifically)
-        this.camera.updateMatrixWorld();
+        this.cameraPivot.updateMatrixWorld(true);
+        this.camera.updateMatrixWorld(true);
         this.camera.matrixWorldInverse.copy(this.camera.matrixWorld).invert();
 
         const v = target.set(worldPos.x, worldPos.y, worldPos.z);
@@ -342,6 +367,21 @@ export class Renderer {
         return dir.normalize();
     }
 
+    getCameraBasis() {
+        this.cameraPivot.updateMatrixWorld(true);
+        this.camera.updateMatrixWorld(true);
+        const q = this.camera.getWorldQuaternion(this._qFinal);
+        const right = this._right.set(1, 0, 0).applyQuaternion(q).normalize();
+        const up = this._up.set(0, 1, 0).applyQuaternion(q).normalize();
+        const forward = this.getCameraForward();
+
+        return {
+            right: { x: right.x, y: right.y, z: right.z },
+            up: { x: up.x, y: up.y, z: up.z },
+            forward: { x: forward.x, y: forward.y, z: forward.z }
+        };
+    }
+
     /**
      * cameraPivotのワールド座標を取得
      */
@@ -357,18 +397,44 @@ export class Renderer {
     updateRendererSize() {
         const width = this.canvas.clientWidth || window.innerWidth;
         const height = this.canvas.clientHeight || window.innerHeight;
+        const videoWidth = this.videoElement && this.videoElement.videoWidth ? this.videoElement.videoWidth : 0;
+        const videoHeight = this.videoElement && this.videoElement.videoHeight ? this.videoElement.videoHeight : 0;
         const pixelRatio = Math.min(window.devicePixelRatio || 1, this.maxPixelRatio || 1);
         if (this._lastPixelRatio !== pixelRatio) {
             this.renderer.setPixelRatio(pixelRatio);
             this._lastPixelRatio = pixelRatio;
         }
-        if (this._lastCssWidth !== width || this._lastCssHeight !== height) {
+        if (
+            this._lastCssWidth !== width ||
+            this._lastCssHeight !== height ||
+            this._lastVideoWidth !== videoWidth ||
+            this._lastVideoHeight !== videoHeight
+        ) {
             this.renderer.setSize(width, height, false);
             this.camera.aspect = width / height;
+            this.camera.fov = this.calculateCoveredVideoFov(width, height, videoWidth, videoHeight);
             this.camera.updateProjectionMatrix();
             this._lastCssWidth = width;
             this._lastCssHeight = height;
+            this._lastVideoWidth = videoWidth;
+            this._lastVideoHeight = videoHeight;
         }
+    }
+
+    calculateCoveredVideoFov(canvasWidth, canvasHeight, videoWidth, videoHeight) {
+        if (!canvasWidth || !canvasHeight || !videoWidth || !videoHeight) {
+            return DEFAULT_CAMERA_FOV_DEG;
+        }
+
+        const canvasAspect = canvasWidth / canvasHeight;
+        const videoAspect = videoWidth / videoHeight;
+        if (canvasAspect <= videoAspect) {
+            return DEFAULT_CAMERA_FOV_DEG;
+        }
+
+        const visibleHeightFraction = Math.min(1, videoAspect / canvasAspect);
+        const baseHalfFov = DEFAULT_CAMERA_FOV_DEG * DEG2RAD / 2;
+        return 2 * Math.atan(Math.tan(baseHalfFov) * visibleHeightFraction) / DEG2RAD;
     }
 
     /**
@@ -398,6 +464,18 @@ export class Renderer {
                 window.visualViewport.removeEventListener('resize', this._resizeHandler);
             }
             this._resizeHandler = null;
+        }
+        if (this._orientationChangeHandler) {
+            window.removeEventListener('orientationchange', this._orientationChangeHandler);
+            if (window.screen && window.screen.orientation && typeof window.screen.orientation.removeEventListener === 'function') {
+                window.screen.orientation.removeEventListener('change', this._orientationChangeHandler);
+            }
+            this._orientationChangeHandler = null;
+        }
+        if (this.videoElement && this._videoMetadataHandler) {
+            this.videoElement.removeEventListener('loadedmetadata', this._videoMetadataHandler);
+            this.videoElement.removeEventListener('resize', this._videoMetadataHandler);
+            this._videoMetadataHandler = null;
         }
 
         // 全メッシュを削除

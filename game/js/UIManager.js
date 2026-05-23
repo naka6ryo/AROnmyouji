@@ -398,7 +398,7 @@ export class UIManager {
         this.enemyIndicatorMap.clear();
     }
 
-    updateEnemyIndicators(enemies, viewDir, fovInfo, projectToNdcFunc, getEnemyWorldPosFunc) {
+    updateEnemyIndicators(enemies, viewDir, fovInfo, projectToNdcFunc, getEnemyWorldPosFunc, cameraBasis = null) {
         const container = this.elements.enemyIndicators;
         if (!container) return;
 
@@ -430,37 +430,28 @@ export class UIManager {
             // Calculate direction using Basis Vectors relative to View
             // This avoids Euler angle singularities and Left/Right confusion.
 
-            // 1. Basis Vectors
-            // ViewDir is passed (assumed Normalized).
-            // We need 'Right' and 'Up' relative to the camera view.
-            // Assuming World Up is (0, 1, 0).
-            const fwd = { x: viewDir.x, y: viewDir.y, z: viewDir.z };
+            // 1. Basis Vectors. Prefer the renderer's camera basis so roll is preserved.
+            let fwd = cameraBasis && cameraBasis.forward ? { ...cameraBasis.forward } : { x: viewDir.x, y: viewDir.y, z: viewDir.z };
+            let right = cameraBasis && cameraBasis.right ? { ...cameraBasis.right } : null;
+            let up = cameraBasis && cameraBasis.up ? { ...cameraBasis.up } : null;
 
-            // Normalize fwd just in case
             const fwdLen = Math.sqrt(fwd.x * fwd.x + fwd.y * fwd.y + fwd.z * fwd.z);
             if (fwdLen > 0) { fwd.x /= fwdLen; fwd.y /= fwdLen; fwd.z /= fwdLen; }
 
-            // Right = Cross(Fwd, WorldUp)
-            // WorldUp = (0, 1, 0)
-            // Cross((fx, fy, fz), (0, 1, 0)) = (-fz, 0, fx)
-            let right = { x: -fwd.z, y: 0, z: fwd.x };
-            let rightLen = Math.sqrt(right.x * right.x + right.y * right.y + right.z * right.z);
-
-            // Handle looking straight up/down (Singularity)
-            if (rightLen < 0.001) {
-                // If looking Up/Down, Right is +X (arbitrary but stable)
-                right = { x: 1, y: 0, z: 0 };
-                rightLen = 1;
-            } else {
-                right.x /= rightLen; right.y /= rightLen; right.z /= rightLen;
+            if (!right || !up) {
+                right = { x: -fwd.z, y: 0, z: fwd.x };
+                const rightLen = Math.sqrt(right.x * right.x + right.y * right.y + right.z * right.z);
+                if (rightLen < 0.001) {
+                    right = { x: 1, y: 0, z: 0 };
+                } else {
+                    right.x /= rightLen; right.y /= rightLen; right.z /= rightLen;
+                }
+                up = {
+                    x: right.y * fwd.z - right.z * fwd.y,
+                    y: right.z * fwd.x - right.x * fwd.z,
+                    z: right.x * fwd.y - right.y * fwd.x
+                };
             }
-
-            // Up = Cross(Right, Fwd)
-            const up = {
-                x: right.y * fwd.z - right.z * fwd.y,
-                y: right.z * fwd.x - right.x * fwd.z,
-                z: right.x * fwd.y - right.y * fwd.x
-            };
 
             // 2. Enemy Direction Relative to Camera
             // worldPos is relative to camera (since it's computed from r, azim, elev)

@@ -786,7 +786,8 @@ class AROnmyoujiGame {
                     halfVert: this.renderer.getHalfFovDegrees()
                 },
                 (pos) => this.renderer.projectToNdc(pos),
-                (enemy) => this.gameWorld.getEnemyDirection(enemy) // !!! getEnemyDirection returns DIRECTION, not Position. 
+                (enemy) => this.gameWorld.getEnemyDirection(enemy), // !!! getEnemyDirection returns DIRECTION, not Position.
+                this.renderer.getCameraBasis()
             );
         }
     }

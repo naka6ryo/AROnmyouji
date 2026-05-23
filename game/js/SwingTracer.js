@@ -8,9 +8,11 @@ import * as THREE from 'three';
 import { tracerVertexShader, tracerFragmentShader, tubeVertexShader } from './Shaders.js';
 
 export class SwingTracer {
-    constructor(scene) {
+    constructor(scene, camera = null) {
         this.scene = scene;
+        this.parent = camera || scene;
         this.mesh = null;
+        this.TRACER_CENTER_Z = -0.8;
 
         this.TRACER_RADIUS = 0.4;       // 球面半径（カメラ回転中心から）
         this.TRACER_BASE_WIDTH = 0.006 * 1.5; // 軌跡基本幅（1.5倍）
@@ -55,7 +57,7 @@ export class SwingTracer {
             const yawRad = pt.yaw * Math.PI / 180;
             const x = this.TRACER_RADIUS * Math.cos(pitchRad) * Math.sin(yawRad);
             const y = this.TRACER_RADIUS * Math.sin(pitchRad);
-            const z = -this.TRACER_RADIUS * Math.cos(pitchRad) * Math.cos(yawRad);
+            const z = this.TRACER_CENTER_Z - this.TRACER_RADIUS * Math.cos(pitchRad) * Math.cos(yawRad);
             pts.push(new THREE.Vector3(x, y, z));
         }
 
@@ -74,7 +76,7 @@ export class SwingTracer {
 
         this.mesh = new THREE.Mesh(tubeGeometry, this.material);
         this.mesh.frustumCulled = false;
-        this.scene.add(this.mesh);
+        this.parent.add(this.mesh);
     }
 
     /**
@@ -98,7 +100,7 @@ export class SwingTracer {
      */
     disposeMesh() {
         if (this.mesh) {
-            this.scene.remove(this.mesh);
+            this.parent.remove(this.mesh);
             if (this.mesh.geometry) this.mesh.geometry.dispose();
             // Do not dispose shared material here
             this.mesh = null;

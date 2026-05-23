@@ -88,7 +88,7 @@ export class Renderer {
         // --- Refactored Modules ---
 
         // 術式段階の軌跡表示
-        this.swingTracer = new SwingTracer(this.scene);
+        this.swingTracer = new SwingTracer(this.scene, this.camera);
 
         // 斬撃飛翔体の管理
         // cameraPivotのワールド位置を取得する関数を渡す

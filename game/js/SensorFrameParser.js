@@ -1,6 +1,12 @@
 /**
  * SensorFrameParser.js
- * 15バイトフレームのパース、スケール復元、seq欠落計測を行うクラス
+ * Parses controller sensor frames and tracks receive/drop statistics.
+ *
+ * Supported frames:
+ * - Legacy Euler frame, 15 bytes:
+ *   S, seq, ax, ay, az, pitch, yaw, roll, flags
+ * - Quaternion game frame, 17 bytes:
+ *   S, seq, ax, ay, az, qw, qx, qy, qz, flags
  */
 
 export class SensorFrameParser {
@@ -8,85 +14,75 @@ export class SensorFrameParser {
         this.lastSeq = null;
         this.totalFrames = 0;
         this.droppedFrames = 0;
-        
-        // 受信Hz計測用
+        this.lastQuaternion = null;
+
         this.frameTimestamps = [];
-        this.MAX_TIMESTAMP_HISTORY = 60; // 60フレーム分の履歴
+        this.MAX_TIMESTAMP_HISTORY = 60;
     }
-    
+
     /**
-     * 15バイトフレームをパースする
-     * フォーマット:
-     * - header (1byte): 0x53
-     * - seq (1byte): 0-255循環
-     * - ax, ay, az (各2bytes, int16): 加速度×100
-     * - pitch, yaw, roll (各2bytes, int16): 角度×10
-     * - flags (1byte): 予約
-     * 
-     * @param {Uint8Array} data - 15バイトのセンサーデータ
-     * @returns {Object|null} パースされたフレームまたはnull
+     * @param {Uint8Array} data
+     * @returns {Object|null}
      */
     parseFrame(data) {
-        if (data.length !== 15) {
-            console.warn('[Parser] フレームサイズ異常:', data.length);
+        if (data.length !== 15 && data.length !== 17) {
+            console.warn('[Parser] Unexpected frame size:', data.length);
             return null;
         }
-        
-        // ヘッダーチェック
-        const header = data[0];
-        if (header !== 0x53) {
-            console.warn('[Parser] ヘッダー不正:', header.toString(16));
+
+        if (data[0] !== 0x53) {
+            console.warn('[Parser] Invalid frame header:', data[0].toString(16));
             return null;
         }
-        
-        // シーケンス番号
+
         const seq = data[1];
-        
-        // 欠落計測
-        if (this.lastSeq !== null) {
-            const expectedSeq = (this.lastSeq + 1) % 256;
-            if (seq !== expectedSeq) {
-                // 欠落を検出
-                let dropped = (seq - expectedSeq + 256) % 256;
-                this.droppedFrames += dropped;
-                console.log(`[Parser] フレーム欠落検出: 期待=${expectedSeq}, 実際=${seq}, 欠落数=${dropped}`);
-            }
-        }
-        this.lastSeq = seq;
-        this.totalFrames++;
-        
-        // 加速度データ（int16, リトルエンディアン）
-        const ax_raw = this.readInt16LE(data, 2);
-        const ay_raw = this.readInt16LE(data, 4);
-        const az_raw = this.readInt16LE(data, 6);
-        
-        // 姿勢データ（int16, リトルエンディアン）
-        const pitch_raw = this.readInt16LE(data, 8);
-        const yaw_raw = this.readInt16LE(data, 10);
-        const roll_raw = this.readInt16LE(data, 12);
-        
-        // フラグ
-        const flags = data[14];
-        
-        // スケール復元
-        const ax_g = ax_raw / 100.0;
-        const ay_g = ay_raw / 100.0;
-        const az_g = az_raw / 100.0;
-        
-        const pitch_deg = -(pitch_raw / 10.0); // 符号反転（上に傾けたら上向きに飛ぶように）
-        const yaw_deg = yaw_raw / 10.0;
-        const roll_deg = roll_raw / 10.0;
-        
-        // 加速度大きさ
+        this.updateSequenceStats(seq);
+
+        const ax_g = this.readInt16LE(data, 2) / 100.0;
+        const ay_g = this.readInt16LE(data, 4) / 100.0;
+        const az_g = this.readInt16LE(data, 6) / 100.0;
         const a_mag = Math.sqrt(ax_g * ax_g + ay_g * ay_g + az_g * az_g);
-        
-        // 受信時刻を記録（Hz計測用）
+
+        let pitch_deg;
+        let yaw_deg;
+        let roll_deg;
+        let quat_w = null;
+        let quat_x = null;
+        let quat_y = null;
+        let quat_z = null;
+        let frameFormat = 'euler15';
+        let flags = 0;
+
+        if (data.length === 17) {
+            const quat = this.parseQuaternionFrame(data);
+            quat_w = quat.w;
+            quat_x = quat.x;
+            quat_y = quat.y;
+            quat_z = quat.z;
+
+            const pyr = this.quaternionToControllerPYR(quat);
+            pitch_deg = pyr.pitch;
+            yaw_deg = pyr.yaw;
+            roll_deg = pyr.roll;
+            flags = data[16];
+            frameFormat = 'quat17';
+        } else {
+            const pitch_raw = this.readInt16LE(data, 8);
+            const yaw_raw = this.readInt16LE(data, 10);
+            const roll_raw = this.readInt16LE(data, 12);
+
+            pitch_deg = -(pitch_raw / 10.0);
+            yaw_deg = yaw_raw / 10.0;
+            roll_deg = roll_raw / 10.0;
+            flags = data[14];
+        }
+
         const now = performance.now();
         this.frameTimestamps.push(now);
         if (this.frameTimestamps.length > this.MAX_TIMESTAMP_HISTORY) {
             this.frameTimestamps.shift();
         }
-        
+
         return {
             seq,
             ax_g,
@@ -96,53 +92,128 @@ export class SensorFrameParser {
             pitch_deg,
             yaw_deg,
             roll_deg,
+            quat_w,
+            quat_x,
+            quat_y,
+            quat_z,
+            frameFormat,
             flags,
             timestamp: now
         };
     }
-    
-    /**
-     * int16をリトルエンディアンで読み取る
-     */
+
+    updateSequenceStats(seq) {
+        if (this.lastSeq !== null) {
+            const expectedSeq = (this.lastSeq + 1) % 256;
+            if (seq !== expectedSeq) {
+                const dropped = (seq - expectedSeq + 256) % 256;
+                this.droppedFrames += dropped;
+                console.log(`[Parser] Frame drop detected: expected=${expectedSeq}, actual=${seq}, dropped=${dropped}`);
+            }
+        }
+
+        this.lastSeq = seq;
+        this.totalFrames++;
+    }
+
+    parseQuaternionFrame(data) {
+        let w = this.readInt16LE(data, 8) / 10000.0;
+        let x = this.readInt16LE(data, 10) / 10000.0;
+        let y = this.readInt16LE(data, 12) / 10000.0;
+        let z = this.readInt16LE(data, 14) / 10000.0;
+
+        const len = Math.sqrt(w * w + x * x + y * y + z * z);
+        if (len > 0.000001) {
+            w /= len;
+            x /= len;
+            y /= len;
+            z /= len;
+        } else {
+            w = 1;
+            x = 0;
+            y = 0;
+            z = 0;
+        }
+
+        if (this.lastQuaternion) {
+            const dot = w * this.lastQuaternion.w + x * this.lastQuaternion.x + y * this.lastQuaternion.y + z * this.lastQuaternion.z;
+            if (dot < 0) {
+                w = -w;
+                x = -x;
+                y = -y;
+                z = -z;
+            }
+        }
+
+        this.lastQuaternion = { w, x, y, z };
+        return this.lastQuaternion;
+    }
+
+    quaternionToControllerPYR(q) {
+        const { w, x, y, z } = q;
+
+        const yaw = this.normalize180(
+            Math.atan2(
+                2.0 * (x * y + z * w),
+                1.0 - 2.0 * (y * y + z * z)
+            ) * 180.0 / Math.PI
+        );
+
+        const r21 = 2.0 * (y * z + x * w);
+        const r22 = 1.0 - 2.0 * (x * x + y * y);
+        const r20 = 2.0 * (x * z - y * w);
+
+        let pitch = -this.normalize180(Math.atan2(r21, r22) * 180.0 / Math.PI);
+        let roll = -this.normalize180(
+            Math.atan2(-r20, Math.sqrt(r21 * r21 + r22 * r22)) * 180.0 / Math.PI
+        );
+
+        if (Math.abs(roll) >= 90) {
+            pitch -= 180;
+        }
+
+        return {
+            pitch: this.normalize180(pitch),
+            yaw,
+            roll: this.normalize180(roll)
+        };
+    }
+
+    normalize180(angle) {
+        while (angle > 180) angle -= 360;
+        while (angle <= -180) angle += 360;
+        return angle;
+    }
+
     readInt16LE(data, offset) {
         const low = data[offset];
         const high = data[offset + 1];
         const value = (high << 8) | low;
-        // 符号拡張
         return value > 32767 ? value - 65536 : value;
     }
-    
-    /**
-     * 受信Hzを計算（移動平均）
-     */
+
     getReceiveHz() {
         if (this.frameTimestamps.length < 2) {
             return 0;
         }
-        
+
         const duration = this.frameTimestamps[this.frameTimestamps.length - 1] - this.frameTimestamps[0];
         const frameCount = this.frameTimestamps.length - 1;
-        
+
         if (duration === 0) {
             return 0;
         }
-        
-        return (frameCount / duration) * 1000; // Hz
+
+        return (frameCount / duration) * 1000;
     }
-    
-    /**
-     * 欠落率を計算
-     */
+
     getDropRate() {
         if (this.totalFrames === 0) {
             return 0;
         }
         return (this.droppedFrames / (this.totalFrames + this.droppedFrames)) * 100;
     }
-    
-    /**
-     * 統計情報を取得
-     */
+
     getStats() {
         return {
             totalFrames: this.totalFrames,
@@ -151,14 +222,12 @@ export class SensorFrameParser {
             receiveHz: this.getReceiveHz()
         };
     }
-    
-    /**
-     * 統計をリセット
-     */
+
     resetStats() {
         this.lastSeq = null;
         this.totalFrames = 0;
         this.droppedFrames = 0;
+        this.lastQuaternion = null;
         this.frameTimestamps = [];
     }
 }

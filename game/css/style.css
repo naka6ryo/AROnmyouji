@@ -352,21 +352,6 @@ body {
     transform: translate(-50%, -50%);
 }
 
-.enemy-indicator::before,
-.enemy-indicator::after {
-    content: "";
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 74px;
-    height: 74px;
-    border: 2px solid rgba(255, 80, 28, 0.9);
-    border-radius: 50%;
-    transform: translate(-50%, -50%) scale(0.7);
-    opacity: 0;
-    pointer-events: none;
-}
-
 .enemy-indicator .arrow {
     width: 0;
     height: 0;
@@ -377,16 +362,8 @@ body {
     transition: transform 0.08s linear, border-bottom-color 0.2s, filter 0.2s;
 }
 
-.enemy-indicator.danger::before {
-    animation: enemy-danger-ring 0.85s ease-out infinite;
-}
-
-.enemy-indicator.danger::after {
-    animation: enemy-danger-ring 0.85s ease-out 0.28s infinite;
-}
-
-.enemy-indicator.danger .arrow {
-    animation: enemy-arrow-danger-pulse 0.55s ease-in-out infinite alternate;
+.enemy-indicator.critical .arrow {
+    animation: enemy-arrow-critical-blink 0.28s steps(1, end) infinite;
 }
 
 .enemy-indicator .label {
@@ -399,27 +376,14 @@ body {
     display: none;
 }
 
-@keyframes enemy-danger-ring {
+@keyframes enemy-arrow-critical-blink {
     0% {
-        opacity: 0.95;
-        transform: translate(-50%, -50%) scale(0.55);
-        box-shadow: 0 0 18px rgba(255, 72, 24, 0.95), 0 0 34px rgba(255, 190, 64, 0.45), inset 0 0 12px rgba(255, 255, 255, 0.35);
+        border-bottom-color: #ffffff;
+        filter: drop-shadow(0 0 2px rgba(255, 255, 255, 1)) drop-shadow(0 0 16px rgba(255, 255, 255, 1)) drop-shadow(0 0 36px rgba(255, 40, 24, 1));
     }
-    100% {
-        opacity: 0;
-        transform: translate(-50%, -50%) scale(1.25);
-        box-shadow: 0 0 42px rgba(255, 72, 24, 0);
-    }
-}
-
-@keyframes enemy-arrow-danger-pulse {
-    0% {
-        opacity: 0.96;
-        filter: drop-shadow(0 0 14px rgba(255, 58, 24, 1)) drop-shadow(0 0 28px rgba(255, 174, 56, 0.8));
-    }
-    100% {
-        opacity: 1;
-        filter: drop-shadow(0 0 30px rgba(255, 58, 24, 1)) drop-shadow(0 0 52px rgba(255, 190, 64, 0.95)) drop-shadow(0 0 10px rgba(255, 255, 255, 0.95));
+    50% {
+        border-bottom-color: #ff1f24;
+        filter: drop-shadow(0 0 2px rgba(255, 255, 255, 1)) drop-shadow(0 0 22px rgba(255, 31, 36, 1)) drop-shadow(0 0 46px rgba(255, 150, 42, 0.95));
     }
 }
 

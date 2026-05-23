@@ -755,6 +755,7 @@ export class UIManager {
             const minDist = 0.9;
             const maxDist = 4.0;
             const dangerDist = 1.8;
+            const criticalDist = 1.25;
             const dist = Math.max(minDist, Math.min(maxDist, enemy.distance));
             const t = Math.max(0, Math.min(1, (maxDist - dist) / (maxDist - minDist)));
             const hue = (1 - t) * 120; // 120=green, 0=red
@@ -762,16 +763,21 @@ export class UIManager {
             const color = `hsl(${hue}, 95%, ${lightness}%)`;
             const glow = 10 + t * 22;
             const coreGlow = 5 + t * 10;
+            const whiteEdge = Math.max(0, (t - 0.45) / 0.55);
+            const whiteEdgePx = 1 + whiteEdge * 3;
+            const whiteEdgeAlpha = 0.35 + whiteEdge * 0.65;
             this.setStyleIfChanged(arrow, 'borderBottomColor', color);
-            this.setStyleIfChanged(arrow, 'filter', `drop-shadow(0 0 ${coreGlow}px ${color}) drop-shadow(0 0 ${glow}px ${color})`);
+            this.setStyleIfChanged(arrow, 'filter', `drop-shadow(0 0 ${whiteEdgePx}px rgba(255, 255, 255, ${whiteEdgeAlpha})) drop-shadow(0 0 ${coreGlow}px ${color}) drop-shadow(0 0 ${glow}px ${color})`);
             this.setStyleIfChanged(el, 'zIndex', String(100 + Math.round(t * 900)));
             el.classList.toggle('danger', enemy.distance <= dangerDist);
+            el.classList.toggle('critical', enemy.distance <= criticalDist);
             if (label) {
                 this.setStyleIfChanged(label, 'color', color);
             }
         } else {
             this.setStyleIfChanged(el, 'zIndex', '100');
             el.classList.remove('danger');
+            el.classList.remove('critical');
         }
     }
 

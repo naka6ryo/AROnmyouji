@@ -362,8 +362,8 @@ body {
     transition: transform 0.08s linear, border-bottom-color 0.2s, filter 0.2s;
 }
 
-.enemy-indicator.critical .arrow {
-    animation: enemy-arrow-critical-blink 0.28s steps(1, end) infinite;
+.enemy-indicator.blinking .arrow {
+    animation: enemy-arrow-critical-blink 0.45s steps(1, end) infinite;
 }
 
 .enemy-indicator .label {

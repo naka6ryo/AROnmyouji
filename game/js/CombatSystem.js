@@ -108,6 +108,13 @@ export class CombatSystem {
     }
 
     /**
+     * 敵撃破時の軽い触覚イベント
+     */
+    sendEnemyDefeatedHaptic() {
+        this.sendHapticEvent('enemy_defeated', 120, 4);
+    }
+
+    /**
      * 被弾時の触覚イベント
      */
     sendDamageHaptic() {

@@ -747,7 +747,6 @@ class AROnmyoujiGame {
             this.lastEnemyHitTime.delete(enemy.id);
         }
 
-        this.combatSystem.sendHitHaptic(isCritical);
         this.updateHUD(undefined, { forceHud: true, forceIndicators: true }); // HUD更新
     }
 
@@ -761,7 +760,6 @@ class AROnmyoujiGame {
     onPowerMode(power) {
         if (!this.appState.isGameplay()) return;
         this.debugOverlay.logInfo('強化モード発動');
-        this.combatSystem.sendPowerModeHaptic();
     }
 
     onEnemySpawned(enemy) {
@@ -772,6 +770,7 @@ class AROnmyoujiGame {
         this.renderer.removeEnemy(data.enemy.id);
         // 敵撃破サウンド
         try { this.soundManager.play('polygon_burst', { volume: 0.9 }); } catch (e) { }
+        this.combatSystem.sendEnemyDefeatedHaptic();
         this.updateHUD(undefined, { forceHud: true, forceIndicators: true });
     }
 

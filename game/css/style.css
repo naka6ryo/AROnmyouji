@@ -1257,8 +1257,12 @@ body {
     justify-content: center;
     pointer-events: none;
     opacity: 0;
-    transform: scale(0.9);
+    transform: scale(0.92);
     transition: opacity 0.22s ease-out, transform 0.22s ease-out;
+    color: rgba(238, 252, 255, 0.96);
+    text-shadow:
+        0 0 8px rgba(130, 225, 255, 0.9),
+        0 0 24px rgba(70, 170, 255, 0.72);
 }
 
 .circle-freeze-overlay.active {
@@ -1267,38 +1271,81 @@ body {
 }
 
 .circle-freeze-sigil {
-    width: min(48vw, 220px);
+    width: min(56vw, 250px);
     aspect-ratio: 1;
-    border: 2px solid rgba(170, 235, 255, 0.95);
+    border: 2px solid rgba(218, 246, 255, 0.95);
     border-radius: 50%;
+    position: relative;
     box-shadow:
-        0 0 18px rgba(120, 220, 255, 0.9),
-        inset 0 0 32px rgba(120, 220, 255, 0.35);
+        0 0 18px rgba(130, 220, 255, 0.95),
+        0 0 46px rgba(80, 150, 255, 0.45),
+        inset 0 0 34px rgba(160, 232, 255, 0.26);
     background:
-        radial-gradient(circle, rgba(210, 250, 255, 0.28) 0 3%, transparent 4% 100%),
-        conic-gradient(from 0deg, transparent 0 18deg, rgba(180, 240, 255, 0.55) 18deg 22deg, transparent 22deg 45deg);
+        linear-gradient(36deg, transparent 45%, rgba(230, 252, 255, 0.82) 46% 48%, transparent 49%),
+        linear-gradient(108deg, transparent 45%, rgba(230, 252, 255, 0.82) 46% 48%, transparent 49%),
+        linear-gradient(180deg, transparent 45%, rgba(230, 252, 255, 0.82) 46% 48%, transparent 49%),
+        radial-gradient(circle, transparent 0 42%, rgba(210, 246, 255, 0.54) 43% 44%, transparent 45% 61%, rgba(210, 246, 255, 0.62) 62% 63%, transparent 64%),
+        conic-gradient(from 0deg, transparent 0 16deg, rgba(190, 238, 255, 0.7) 16deg 20deg, transparent 20deg 45deg);
     animation: circle-freeze-spin 0.9s ease-out both;
 }
 
+.circle-freeze-sigil::before,
+.circle-freeze-sigil::after {
+    content: "封";
+    position: absolute;
+    display: grid;
+    place-items: center;
+    width: 3.4rem;
+    height: 4.8rem;
+    left: 50%;
+    top: 50%;
+    font-family: "Yu Mincho", "Hiragino Mincho ProN", serif;
+    font-size: 1.9rem;
+    font-weight: 800;
+    color: rgba(24, 44, 64, 0.88);
+    background:
+        linear-gradient(90deg, rgba(138, 16, 28, 0.9) 48%, rgba(190, 32, 44, 0.92) 48% 52%, rgba(138, 16, 28, 0.9) 52%) top / 100% 0.32rem no-repeat,
+        linear-gradient(rgba(255, 252, 220, 0.96), rgba(238, 222, 164, 0.96));
+    border: 1px solid rgba(248, 244, 210, 0.88);
+    box-shadow: 0 0 18px rgba(210, 244, 255, 0.72);
+}
+
+.circle-freeze-sigil::before {
+    transform: translate(-50%, -50%) rotate(-12deg);
+}
+
+.circle-freeze-sigil::after {
+    transform: translate(-50%, -50%) rotate(12deg);
+    opacity: 0.7;
+}
+
 .circle-freeze-label {
-    margin-top: -128px;
-    font-family: 'Orbitron', sans-serif;
-    font-size: clamp(2rem, 12vw, 4rem);
-    font-weight: 900;
-    color: rgba(230, 252, 255, 0.96);
+    margin-top: -142px;
+    font-family: "Yu Mincho", "Hiragino Mincho ProN", serif;
+    font-size: clamp(1.9rem, 10vw, 3.6rem);
+    font-weight: 800;
     letter-spacing: 0;
-    text-shadow:
-        0 0 10px rgba(120, 220, 255, 1),
-        0 0 28px rgba(120, 220, 255, 0.95);
+    writing-mode: vertical-rl;
+    line-height: 1;
+}
+
+.circle-freeze-mantra {
+    margin-top: 68px;
+    padding: 0.2rem 0.7rem;
+    border-top: 1px solid rgba(230, 252, 255, 0.72);
+    border-bottom: 1px solid rgba(230, 252, 255, 0.72);
+    font-family: "Yu Mincho", "Hiragino Mincho ProN", serif;
+    font-size: clamp(0.92rem, 4vw, 1.25rem);
+    font-weight: 800;
+    letter-spacing: 0;
 }
 
 .circle-freeze-duration {
-    margin-top: 76px;
-    font-family: 'Orbitron', sans-serif;
-    font-size: 0.8rem;
+    margin-top: 0.5rem;
+    font-family: "Yu Gothic", "Hiragino Kaku Gothic ProN", sans-serif;
+    font-size: 0.86rem;
     font-weight: 800;
-    color: rgba(190, 240, 255, 0.9);
-    text-shadow: 0 0 10px rgba(120, 220, 255, 0.9);
+    color: rgba(214, 244, 255, 0.9);
 }
 
 @keyframes circle-freeze-spin {

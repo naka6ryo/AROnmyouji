@@ -140,6 +140,10 @@ export class CircleGestureRecognizer {
         };
     }
 
+    clearBuffer() {
+        this.buffer = [];
+    }
+
     reset() {
         this.buffer = [];
         this.lastDetectedTime = 0;

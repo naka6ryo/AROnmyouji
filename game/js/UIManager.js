@@ -414,7 +414,7 @@ export class UIManager {
             container.classList.add('freeze-screen');
 
             const overlay = this.ensureCircleFreezeOverlay(container);
-            overlay.querySelector('.circle-freeze-duration').textContent = `${(durationMs / 1000).toFixed(0)} SEC`;
+            overlay.querySelector('.circle-freeze-duration').textContent = `${(durationMs / 1000).toFixed(0)}秒`;
             overlay.classList.remove('active');
             void overlay.offsetWidth;
             overlay.classList.add('active');
@@ -444,8 +444,9 @@ export class UIManager {
         overlay.setAttribute('aria-hidden', 'true');
         overlay.innerHTML = `
             <div class="circle-freeze-sigil"></div>
-            <div class="circle-freeze-label">FREEZE</div>
-            <div class="circle-freeze-duration">3 SEC</div>
+            <div class="circle-freeze-label">氷封結界</div>
+            <div class="circle-freeze-mantra">急急如律令</div>
+            <div class="circle-freeze-duration">3秒</div>
         `;
         container.appendChild(overlay);
         this.circleFreezeOverlay = overlay;

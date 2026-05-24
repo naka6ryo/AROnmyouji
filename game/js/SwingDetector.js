@@ -32,6 +32,7 @@ export class SwingDetector {
         this.onSwingStarted = null;
         this.onSwingDetected = null;
         this.onTrajectoryUpdate = null;
+        this.onSharpTurnSwingDetected = null;
     }
 
     update(frame, now, relativePYR) {
@@ -145,6 +146,10 @@ export class SwingDetector {
     splitSwing(now, currentPoint, currentAMag) {
         const emitted = this.emitSwing(now);
         if (!emitted) return;
+
+        if (this.onSharpTurnSwingDetected) {
+            this.onSharpTurnSwingDetected({ timestamp: now });
+        }
 
         this.startTime = now;
         this.trajectory = [{ ...currentPoint }];

@@ -298,9 +298,7 @@ export class Renderer {
     }
 
     addCalibrationSlashProjectile(startPyr, endPyr, intensity) {
-        this.slashProjectileManager.addProjectile(startPyr, endPyr, intensity, {
-            direction: { x: 0, y: 0, z: -1 }
-        });
+        this.slashProjectileManager.addProjectile(startPyr, endPyr, intensity);
     }
 
     setCalibrationMode(active) {

@@ -559,45 +559,9 @@ class AROnmyoujiGame {
     fireCalibrationSlash(swing) {
         if (!swing.trajectory || swing.trajectory.length < 2 || this.isCalibrationCompleting) return;
 
-        const centeredTrajectory = this.centerTrajectoryYawOnFront(swing.trajectory);
-        const startPyr = centeredTrajectory[0];
-        const endPyr = centeredTrajectory[centeredTrajectory.length - 1];
+        const startPyr = swing.trajectory[0];
+        const endPyr = swing.trajectory[swing.trajectory.length - 1];
         this.renderer.addCalibrationSlashProjectile(startPyr, endPyr, swing.intensity);
-        this.showCalibrationSlashEffect();
-    }
-
-    showCalibrationSlashEffect() {
-        const stage = document.getElementById('calibrationStage');
-        if (!stage) return;
-
-        const slash = document.createElement('div');
-        slash.className = 'calibration-slash-fx';
-        stage.appendChild(slash);
-
-        const remove = () => {
-            if (slash.parentElement) slash.parentElement.removeChild(slash);
-        };
-        slash.addEventListener('animationend', remove, { once: true });
-        setTimeout(remove, 900);
-    }
-
-    centerTrajectoryYawOnFront(trajectory) {
-        const yaws = trajectory
-            .map(point => point.yaw)
-            .filter(value => typeof value === 'number')
-            .sort((a, b) => a - b);
-
-        if (!yaws.length) return trajectory.map(point => ({ ...point }));
-
-        const mid = Math.floor(yaws.length / 2);
-        const medianYaw = yaws.length % 2 === 0
-            ? (yaws[mid - 1] + yaws[mid]) / 2
-            : yaws[mid];
-
-        return trajectory.map(point => ({
-            ...point,
-            yaw: this.unwrapAngleDeg((point.yaw || 0) - medianYaw)
-        }));
     }
 
     onSwingTracerUpdate(trajectory) {

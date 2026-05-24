@@ -759,8 +759,14 @@ class AROnmyoujiGame {
     onCircle(circle) {
         if (!this.appState.isGameplay()) return;
         this.debugOverlay.logInfo('円ジェスチャ検出');
-        const viewDir = this.renderer.getViewDirection();
-        this.combatSystem.fireOfuda(viewDir);
+        const freezeDurationMs = 3000;
+        const result = this.gameWorld.freezeEnemies(freezeDurationMs);
+        this.debugOverlay.logInfo(`Circle freeze: ${result.affected} enemies / ${(freezeDurationMs / 1000).toFixed(0)}s`);
+
+        this.renderer.triggerEnemyFreezeEffect(freezeDurationMs);
+        this.uiManager.triggerCircleFreezeEffect(freezeDurationMs);
+        this.combatSystem.sendCircleFreezeHaptic(result.affected);
+        this.updateHUD(undefined, { forceHud: true, forceIndicators: true });
     }
 
     onPowerMode(power) {

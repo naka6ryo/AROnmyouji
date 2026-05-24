@@ -111,6 +111,10 @@ export class GameWorld {
         return false;
     }
 
+    freezeEnemies(durationMs) {
+        return this.enemyManager.freezeEnemies(durationMs);
+    }
+
     /**
      * 敵の方向ベクトルを取得（Utility Wrapper）
      */

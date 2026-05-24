@@ -134,6 +134,17 @@ export class CombatSystem {
         this.sendHapticEvent('power_mode', [{ strength: 220, duration: 10 }, { strength: 220, duration: 10 }], 80);
     }
 
+    sendCircleFreezeHaptic(affectedCount = 0) {
+        if (affectedCount > 0) {
+            this.sendHapticEvent('circle_freeze', [
+                { strength: 180, duration: 8 },
+                { strength: 120, duration: 6 }
+            ], 70);
+        } else {
+            this.sendHapticEvent('circle_freeze_empty', 80, 5);
+        }
+    }
+
     /**
      * 触覚イベント送信（汎用）
      */

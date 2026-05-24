@@ -24,9 +24,17 @@ export class Hitodama {
         this.fragments = [];
         this.shockwaves = [];
         this._tailBaseColor = new THREE.Color(0xff5500);
+        this._tailNormalColor = new THREE.Color(0xff5500);
+        this._tailFrozenColor = new THREE.Color(0x88ddff);
+        this._bodyNormalColor = new THREE.Color(0xff2200);
+        this._coreNormalColor = new THREE.Color(0xffddaa);
+        this._auraNormalColor = new THREE.Color(0xff4400);
+        this._frozenColor = new THREE.Color(0x88ddff);
         this._pureColor = new THREE.Color(0xaaddff);
         this._scratchColor = new THREE.Color();
         this._scratchVec = new THREE.Vector3();
+        this.frozenUntil = 0;
+        this.freezeRing = null;
 
         // テクスチャ取得 via AssetLoader
         const sparkTexture = assetLoader.getTexture('spark');
@@ -36,13 +44,13 @@ export class Hitodama {
         const SPAWN_SCALE_FACTOR = 0.5;
 
         // --- 1. Core ---
-        this.coreMesh = new THREE.Mesh(HitodamaResources.geometries.core, HitodamaResources.materials.core);
+        this.coreMesh = new THREE.Mesh(HitodamaResources.geometries.core, HitodamaResources.materials.core.clone());
         this.coreMesh.position.copy(this.pos);
         this.coreMesh.scale.set(0.8 * SPAWN_SCALE_FACTOR, 1.4 * SPAWN_SCALE_FACTOR, 0.8 * SPAWN_SCALE_FACTOR);
         this.scene.add(this.coreMesh);
 
         // --- 2. Body ---
-        this.mesh = new THREE.Mesh(HitodamaResources.geometries.body, HitodamaResources.materials.body);
+        this.mesh = new THREE.Mesh(HitodamaResources.geometries.body, HitodamaResources.materials.body.clone());
         this.mesh.position.copy(this.pos);
         this.mesh.position.y += 0.3;
         this.mesh.scale.set(0.75 * SPAWN_SCALE_FACTOR, 1.8 * SPAWN_SCALE_FACTOR, 0.75 * SPAWN_SCALE_FACTOR);
@@ -99,6 +107,21 @@ export class Hitodama {
 
         this.tailPoints = new THREE.Points(this.tailGeometry, tailMaterial);
         this.scene.add(this.tailPoints);
+
+        const freezeRingMaterial = new THREE.MeshBasicMaterial({
+            color: 0x88ddff,
+            transparent: true,
+            opacity: 0,
+            blending: THREE.AdditiveBlending,
+            side: THREE.DoubleSide,
+            depthWrite: false
+        });
+        this.freezeRing = new THREE.Mesh(
+            new THREE.TorusGeometry(0.95, 0.025, 10, 96),
+            freezeRingMaterial
+        );
+        this.freezeRing.visible = false;
+        this.scene.add(this.freezeRing);
 
         // コールバック
         this.onExploded = null;
@@ -220,6 +243,15 @@ export class Hitodama {
                 decay: 0.5 + Math.random() * 1.5
             });
         }
+    }
+
+    setFrozen(durationMs) {
+        this.setFrozenUntil(performance.now() + durationMs);
+    }
+
+    setFrozenUntil(frozenUntil) {
+        if (typeof frozenUntil !== 'number') return;
+        this.frozenUntil = Math.max(this.frozenUntil || 0, frozenUntil);
     }
 
     update(dt) {
@@ -387,14 +419,38 @@ export class Hitodama {
     }
 
     updateNormal(dt) {
+        const isFrozen = performance.now() < this.frozenUntil;
+
         this.mesh.position.copy(this.pos);
         this.mesh.position.y += 0.3;
         this.coreMesh.position.copy(this.pos);
         this.auraSprite.position.copy(this.pos);
         this.light.position.copy(this.pos);
 
-        const pulse = 1.0 + Math.sin(this.time * 5.0) * 0.1;
+        const pulseSpeed = isFrozen ? 1.8 : 5.0;
+        const pulseAmount = isFrozen ? 0.035 : 0.1;
+        const pulse = 1.0 + Math.sin(this.time * pulseSpeed) * pulseAmount;
         this.auraSprite.scale.set(3.0 * pulse, 5.0 * pulse, 3.0 * pulse);
+
+        const freezeBlend = isFrozen ? 1 : 0;
+        if (this.mesh.material && this.mesh.material.color) {
+            this.mesh.material.color.copy(this._bodyNormalColor).lerp(this._frozenColor, freezeBlend);
+            this.mesh.material.opacity = isFrozen ? 0.72 : 0.5;
+        }
+        if (this.coreMesh.material && this.coreMesh.material.color) {
+            this.coreMesh.material.color.copy(this._coreNormalColor).lerp(this._frozenColor, freezeBlend);
+            this.coreMesh.material.opacity = isFrozen ? 1.0 : 0.8;
+        }
+        if (this.auraSprite.material && this.auraSprite.material.color) {
+            this.auraSprite.material.color.copy(this._auraNormalColor).lerp(this._frozenColor, freezeBlend);
+            this.auraSprite.material.opacity = isFrozen ? 0.62 : 0.4;
+        }
+        if (this.light) {
+            this.light.color.copy(this._auraNormalColor).lerp(this._frozenColor, freezeBlend);
+            this.light.intensity = isFrozen ? 42 : 30;
+        }
+        this._tailBaseColor.copy(isFrozen ? this._tailFrozenColor : this._tailNormalColor);
+        this.updateFreezeRing(isFrozen, dt);
 
         // vertex wobble
         const positions = this.mesh.geometry.attributes.position;
@@ -409,9 +465,12 @@ export class Hitodama {
             const h = Math.max(0, (py + r) / (r * 2));
             const influence = Math.pow(h, 1.2);
 
-            const offsetX = (Math.sin(py * 3.0 - this.time * 8.0) * 0.6 + Math.sin(py * 12.0 - this.time * 18.0) * 0.4) * 0.12 * influence;
-            const offsetZ = (Math.cos(py * 2.5 - this.time * 7.0) * 0.6 + Math.cos(py * 14.0 - this.time * 16.0) * 0.4) * 0.12 * influence;
-            const offsetY = Math.sin(px * 8.0 + this.time * 12.0) * 0.08 * influence;
+            const wobbleScale = isFrozen ? 0.25 : 1.0;
+            const timeScale = isFrozen ? 0.35 : 1.0;
+            const t = this.time * timeScale;
+            const offsetX = (Math.sin(py * 3.0 - t * 8.0) * 0.6 + Math.sin(py * 12.0 - t * 18.0) * 0.4) * 0.12 * influence * wobbleScale;
+            const offsetZ = (Math.cos(py * 2.5 - t * 7.0) * 0.6 + Math.cos(py * 14.0 - t * 16.0) * 0.4) * 0.12 * influence * wobbleScale;
+            const offsetY = Math.sin(px * 8.0 + t * 12.0) * 0.08 * influence * wobbleScale;
 
             positions.setX(i, px + offsetX);
             positions.setY(i, py + offsetY);
@@ -423,6 +482,26 @@ export class Hitodama {
         const tailPos = this.tailPositions.pop() || new THREE.Vector3();
         tailPos.copy(this.pos);
         this.tailPositions.unshift(tailPos);
+    }
+
+    updateFreezeRing(isFrozen, dt) {
+        if (!this.freezeRing) return;
+
+        this.freezeRing.visible = isFrozen;
+        if (!isFrozen) {
+            if (this.freezeRing.material) this.freezeRing.material.opacity = 0;
+            return;
+        }
+
+        this.freezeRing.position.copy(this.pos);
+        this.freezeRing.position.y += 0.28;
+        this.freezeRing.rotation.x = Math.PI / 2;
+        this.freezeRing.rotation.z += dt * 1.6;
+        const ringPulse = 1.0 + Math.sin(this.time * 4.0) * 0.08;
+        this.freezeRing.scale.set(ringPulse, ringPulse, ringPulse);
+        if (this.freezeRing.material) {
+            this.freezeRing.material.opacity = 0.35 + Math.sin(this.time * 6.0) * 0.08;
+        }
     }
 
     finalizeDeath() {
@@ -443,11 +522,11 @@ export class Hitodama {
         if (this.mesh) {
             this.scene.remove(this.mesh);
             this.mesh.geometry.dispose(); // Dispose unique body geometry
-            // Do not dispose material if it is shared!
+            if (this.mesh.material) this.mesh.material.dispose();
         }
         if (this.coreMesh) {
             this.scene.remove(this.coreMesh);
-            // Do not dispose shared geometry/material
+            if (this.coreMesh.material) this.coreMesh.material.dispose();
         }
         if (this.auraSprite) {
             this.scene.remove(this.auraSprite);
@@ -459,6 +538,12 @@ export class Hitodama {
             this.scene.remove(this.tailPoints);
             if (this.tailGeometry) this.tailGeometry.dispose();
             if (this.tailPoints.material) this.tailPoints.material.dispose(); // This was created in constructor, not shared
+        }
+
+        if (this.freezeRing) {
+            this.scene.remove(this.freezeRing);
+            if (this.freezeRing.geometry) this.freezeRing.geometry.dispose();
+            if (this.freezeRing.material) this.freezeRing.material.dispose();
         }
 
         this.finalizeDeath();

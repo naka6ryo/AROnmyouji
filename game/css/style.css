@@ -1221,6 +1221,102 @@ body {
     animation: chaotic-shake 0.45s cubic-bezier(.36, .07, .19, .97) both;
 }
 
+@keyframes freeze-shake {
+    0% {
+        transform: translate(0, 0);
+    }
+
+    20% {
+        transform: translate(-3px, 2px);
+    }
+
+    40% {
+        transform: translate(3px, -2px);
+    }
+
+    60% {
+        transform: translate(-2px, -1px);
+    }
+
+    100% {
+        transform: translate(0, 0);
+    }
+}
+
+.freeze-screen {
+    animation: freeze-shake 0.28s ease-out both;
+}
+
+.circle-freeze-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 130;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    opacity: 0;
+    transform: scale(0.9);
+    transition: opacity 0.22s ease-out, transform 0.22s ease-out;
+}
+
+.circle-freeze-overlay.active {
+    opacity: 1;
+    transform: scale(1);
+}
+
+.circle-freeze-sigil {
+    width: min(48vw, 220px);
+    aspect-ratio: 1;
+    border: 2px solid rgba(170, 235, 255, 0.95);
+    border-radius: 50%;
+    box-shadow:
+        0 0 18px rgba(120, 220, 255, 0.9),
+        inset 0 0 32px rgba(120, 220, 255, 0.35);
+    background:
+        radial-gradient(circle, rgba(210, 250, 255, 0.28) 0 3%, transparent 4% 100%),
+        conic-gradient(from 0deg, transparent 0 18deg, rgba(180, 240, 255, 0.55) 18deg 22deg, transparent 22deg 45deg);
+    animation: circle-freeze-spin 0.9s ease-out both;
+}
+
+.circle-freeze-label {
+    margin-top: -128px;
+    font-family: 'Orbitron', sans-serif;
+    font-size: clamp(2rem, 12vw, 4rem);
+    font-weight: 900;
+    color: rgba(230, 252, 255, 0.96);
+    letter-spacing: 0;
+    text-shadow:
+        0 0 10px rgba(120, 220, 255, 1),
+        0 0 28px rgba(120, 220, 255, 0.95);
+}
+
+.circle-freeze-duration {
+    margin-top: 76px;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.8rem;
+    font-weight: 800;
+    color: rgba(190, 240, 255, 0.9);
+    text-shadow: 0 0 10px rgba(120, 220, 255, 0.9);
+}
+
+@keyframes circle-freeze-spin {
+    0% {
+        transform: rotate(-90deg) scale(0.6);
+        opacity: 0;
+    }
+
+    45% {
+        opacity: 1;
+    }
+
+    100% {
+        transform: rotate(130deg) scale(1.15);
+        opacity: 0.35;
+    }
+}
+
 /* 小さなユーティリティ: flash をすぐ戻すためのクラス */
 .flash-quick-hide {
     transition: opacity 0.15s ease-in;

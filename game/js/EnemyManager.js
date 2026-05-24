@@ -63,6 +63,11 @@ export class EnemyManager {
         for (let i = this.enemies.length - 1; i >= 0; i--) {
             const enemy = this.enemies[i];
 
+            enemy.isFrozen = typeof enemy.frozenUntil === 'number' && now < enemy.frozenUntil;
+            if (enemy.isFrozen) {
+                continue;
+            }
+
             // 接近（各敵が持つ速度を使用）
             const approachSpeed = enemy.approachSpeed || this.ENEMY_APPROACH_SPEED;
             enemy.distance -= approachSpeed * (deltaTime / 1000);
@@ -96,6 +101,8 @@ export class EnemyManager {
             azim,
             elev,
             approachSpeed,
+            frozenUntil: 0,
+            isFrozen: false,
             spawnTime: performance.now()
         };
 
@@ -127,6 +134,20 @@ export class EnemyManager {
             return { killed: true, enemy };
         }
         return { killed: false, enemy };
+    }
+
+    freezeEnemies(durationMs) {
+        const now = performance.now();
+        const frozenUntil = now + durationMs;
+        let affected = 0;
+
+        for (const enemy of this.enemies) {
+            enemy.frozenUntil = frozenUntil;
+            enemy.isFrozen = true;
+            affected++;
+        }
+
+        return { affected, frozenUntil };
     }
 
     /**

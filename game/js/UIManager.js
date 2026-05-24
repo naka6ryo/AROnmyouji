@@ -12,6 +12,8 @@ export class UIManager {
         this._textCache = new WeakMap();
         this._styleCache = new WeakMap();
         this._barActiveCountCache = new WeakMap();
+        this.circleFreezeOverlay = null;
+        this.circleFreezeTimer = null;
     }
 
     /**
@@ -387,6 +389,67 @@ export class UIManager {
             // 安全のため例外は無視
             console.warn('vibrate failed', e);
         }
+    }
+
+    triggerCircleFreezeEffect(durationMs = 3000) {
+        const flash = this.elements.flashOverlay;
+        const container = this.elements.uiContainer;
+
+        if (flash) {
+            const originalBackground = flash.style.backgroundColor;
+            const originalMixBlendMode = flash.style.mixBlendMode;
+            flash.style.backgroundColor = 'rgba(150, 230, 255, 0.95)';
+            flash.style.mixBlendMode = 'screen';
+            flash.style.opacity = '1';
+            setTimeout(() => {
+                flash.style.opacity = '0';
+                flash.style.backgroundColor = originalBackground;
+                flash.style.mixBlendMode = originalMixBlendMode;
+            }, 140);
+        }
+
+        if (container) {
+            container.classList.remove('freeze-screen');
+            void container.offsetWidth;
+            container.classList.add('freeze-screen');
+
+            const overlay = this.ensureCircleFreezeOverlay(container);
+            overlay.querySelector('.circle-freeze-duration').textContent = `${(durationMs / 1000).toFixed(0)} SEC`;
+            overlay.classList.remove('active');
+            void overlay.offsetWidth;
+            overlay.classList.add('active');
+
+            if (this.circleFreezeTimer) clearTimeout(this.circleFreezeTimer);
+            this.circleFreezeTimer = setTimeout(() => {
+                overlay.classList.remove('active');
+            }, 900);
+        }
+
+        try {
+            if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
+                navigator.vibrate([45, 35, 45]);
+            }
+        } catch (e) {
+            console.warn('freeze vibrate failed', e);
+        }
+    }
+
+    ensureCircleFreezeOverlay(container) {
+        if (this.circleFreezeOverlay && this.circleFreezeOverlay.parentElement) {
+            return this.circleFreezeOverlay;
+        }
+
+        const overlay = document.createElement('div');
+        overlay.className = 'circle-freeze-overlay';
+        overlay.setAttribute('aria-hidden', 'true');
+        overlay.innerHTML = `
+            <div class="circle-freeze-sigil"></div>
+            <div class="circle-freeze-label">FREEZE</div>
+            <div class="circle-freeze-duration">3 SEC</div>
+        `;
+        container.appendChild(overlay);
+        this.circleFreezeOverlay = overlay;
+        return overlay;
     }
 
     // --- Enemy Indicators ---

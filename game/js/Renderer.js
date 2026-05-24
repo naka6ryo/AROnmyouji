@@ -268,6 +268,17 @@ export class Renderer {
             const hitodama = this.enemyObjects.get(enemy.id);
             if (hitodama) {
                 this.updateEnemyPosition(hitodama, enemy);
+                if (typeof hitodama.setFrozenUntil === 'function' && typeof enemy.frozenUntil === 'number') {
+                    hitodama.setFrozenUntil(enemy.frozenUntil);
+                }
+            }
+        }
+    }
+
+    triggerEnemyFreezeEffect(durationMs) {
+        for (const hitodama of this.enemyObjects.values()) {
+            if (typeof hitodama.setFrozen === 'function') {
+                hitodama.setFrozen(durationMs);
             }
         }
     }

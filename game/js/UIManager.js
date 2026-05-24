@@ -748,6 +748,8 @@ export class UIManager {
         valueEl.style.fontFamily = "'Shippori Mincho', serif";
         valueEl.style.fontSize = '4rem';
         valueEl.style.color = '';
+        valueEl.style.webkitTextStroke = '2px rgba(255, 50, 50, 0.95)';
+        valueEl.style.filter = 'drop-shadow(0 0 2px rgba(255, 0, 0, 0.9)) drop-shadow(0 0 8px rgba(255, 0, 0, 0.65))';
         valueEl.classList.add('hologram-effect');
         valueEl.classList.remove('hologram-tick');
         void valueEl.offsetWidth;
@@ -760,6 +762,8 @@ export class UIManager {
             valueEl.textContent = '';
             valueEl.style.color = '';
             valueEl.style.fontSize = '';
+            valueEl.style.webkitTextStroke = '';
+            valueEl.style.filter = '';
             valueEl.classList.remove('hologram-tick');
             valueEl.classList.remove('hologram-effect');
             this._countdownTimer = null;

@@ -514,7 +514,7 @@ export class Renderer {
         if (target) target.visible = false;
 
         const ringMaterial = new THREE.MeshBasicMaterial({
-            color: 0xff1f1f,
+            color: 0x4df6ff,
             transparent: true,
             opacity: 0.9,
             blending: THREE.AdditiveBlending,
@@ -534,7 +534,7 @@ export class Renderer {
 
         for (let i = 0; i < 56; i++) {
             const material = new THREE.MeshBasicMaterial({
-                color: Math.random() > 0.35 ? 0xff2020 : 0xffffff,
+                color: Math.random() > 0.35 ? 0x4df6ff : 0xe8ffff,
                 transparent: true,
                 opacity: 1,
                 blending: THREE.AdditiveBlending,

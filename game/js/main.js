@@ -221,7 +221,51 @@ class AROnmyoujiGame {
 
     updateCalibrationTargetArrow() {
         const arrow = document.getElementById('calibrationTargetArrow');
-        if (!arrow || !this.renderer || typeof this.renderer.getCalibrationTargetGuide !== 'function') return;
+        const stage = document.getElementById('calibrationStage');
+        const reticle = stage ? stage.querySelector('.calibration-stage-reticle') : null;
+        if (!arrow || !stage || !reticle || !this.renderer) return;
+
+        if (typeof this.renderer.getCalibrationTargetViewportPoint === 'function') {
+            const point = this.renderer.getCalibrationTargetViewportPoint();
+            if (point && point.inFront && point.ndcZ >= -1 && point.ndcZ <= 1) {
+                const stageRect = stage.getBoundingClientRect();
+                const reticleRect = reticle.getBoundingClientRect();
+                const centerX = reticleRect.left + reticleRect.width / 2;
+                const centerY = reticleRect.top + reticleRect.height / 2;
+                const dx = point.x - centerX;
+                const dy = point.y - centerY;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                const reticleRadius = Math.min(reticleRect.width, reticleRect.height) / 2;
+
+                if (dist <= reticleRadius * 0.55) {
+                    arrow.classList.add('hidden');
+                    return;
+                }
+
+                const localCenterX = centerX - stageRect.left;
+                const localCenterY = centerY - stageRect.top;
+                const margin = 26;
+                const tx = dx > 0
+                    ? (stageRect.width - margin - localCenterX) / dx
+                    : (margin - localCenterX) / dx;
+                const ty = dy > 0
+                    ? (stageRect.height - margin - localCenterY) / dy
+                    : (margin - localCenterY) / dy;
+                const candidates = [tx, ty].filter(v => Number.isFinite(v) && v > 0);
+                const t = Math.max(0, Math.min(...candidates));
+                const xPct = (localCenterX + dx * t) / stageRect.width * 100;
+                const yPct = (localCenterY + dy * t) / stageRect.height * 100;
+                const rotation = Math.atan2(dx, -dy) * 180 / Math.PI;
+
+                arrow.classList.remove('hidden');
+                arrow.style.left = `${xPct}%`;
+                arrow.style.top = `${yPct}%`;
+                arrow.style.transform = `translate(-50%, -50%) rotate(${rotation}deg)`;
+                return;
+            }
+        }
+
+        if (typeof this.renderer.getCalibrationTargetGuide !== 'function') return;
 
         const guide = this.renderer.getCalibrationTargetGuide();
         if (!guide || !guide.visible) {

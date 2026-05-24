@@ -419,15 +419,7 @@ export class Renderer {
     }
 
     getCalibrationTargetGuide() {
-        const azimRad = this.calibrationTarget.azim * DEG2RAD;
-        const elevRad = this.calibrationTarget.elev * DEG2RAD;
-        const r = this.calibrationTarget.distance;
-        const targetWorld = this._projectionScratch.set(
-            r * Math.cos(elevRad) * Math.sin(azimRad),
-            r * Math.sin(elevRad),
-            -r * Math.cos(elevRad) * Math.cos(azimRad)
-        );
-
+        const targetWorld = this.getCalibrationTargetWorldPosition();
         const basis = this.getCameraBasis();
         const eLen = targetWorld.length();
         if (eLen < 0.0001) return null;
@@ -472,6 +464,40 @@ export class Renderer {
             yPct: 50 - edgeY * (50 - marginPct),
             rotation: 90 - (rad * 180 / Math.PI)
         };
+    }
+
+    getCalibrationTargetViewportPoint() {
+        const targetWorld = this.getCalibrationTargetWorldPosition(this._cameraPositionScratch);
+        const ndc = this.projectToNdc(targetWorld);
+        const basis = this.getCameraBasis();
+        const eLen = targetWorld.length();
+        if (eLen < 0.0001) return null;
+        const eVec = {
+            x: targetWorld.x / eLen,
+            y: targetWorld.y / eLen,
+            z: targetWorld.z / eLen
+        };
+        const vz = eVec.x * basis.forward.x + eVec.y * basis.forward.y + eVec.z * basis.forward.z;
+
+        return {
+            x: (ndc.x + 1) * 0.5 * window.innerWidth,
+            y: (1 - ndc.y) * 0.5 * window.innerHeight,
+            ndcX: ndc.x,
+            ndcY: ndc.y,
+            ndcZ: ndc.z,
+            inFront: vz > 0
+        };
+    }
+
+    getCalibrationTargetWorldPosition(target = this._projectionScratch) {
+        const azimRad = this.calibrationTarget.azim * DEG2RAD;
+        const elevRad = this.calibrationTarget.elev * DEG2RAD;
+        const r = this.calibrationTarget.distance;
+        return target.set(
+            r * Math.cos(elevRad) * Math.sin(azimRad),
+            r * Math.sin(elevRad),
+            -r * Math.cos(elevRad) * Math.cos(azimRad)
+        );
     }
 
     createCalibrationStage() {

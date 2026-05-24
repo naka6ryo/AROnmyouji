@@ -41,6 +41,8 @@ class AROnmyoujiGame {
         // Calibration display baseline (for reset behavior)
         this.calibrationDisplayBaseline = null;
         this.isCalibrationCompleting = false;
+        this.isCalibrationYawLocked = false;
+        this.calibrationLockedYaw = null;
         this.calibrationRenderFrame = null;
         this.lastCalibrationRenderTime = 0;
         // UI初期化
@@ -169,6 +171,8 @@ class AROnmyoujiGame {
 
     enterCalibrationStage() {
         this.isCalibrationCompleting = false;
+        this.isCalibrationYawLocked = false;
+        this.calibrationLockedYaw = null;
         this.lastCalibrationRenderTime = performance.now();
         if (this.motionInterpreter) {
             this.motionInterpreter.reset();
@@ -220,6 +224,13 @@ class AROnmyoujiGame {
             return;
         }
 
+        if (!this.isCalibrationYawLocked) {
+            this.lockCalibrationYaw(this.latestFrame.yaw_deg, 'fallback button');
+        }
+
+        this.completeCalibrationTransition();
+        return;
+
         this.isCalibrationCompleting = true;
 
         const { pitch_deg, yaw_deg, roll_deg } = this.latestFrame;
@@ -251,6 +262,33 @@ class AROnmyoujiGame {
      * ゲーム画面内のスタートボタンから呼ばれる処理。
      * カウントダウンをUIに表示してから `startGameplay()` を呼ぶ。
      */
+    lockCalibrationYaw(yawDeg, source) {
+        if (typeof yawDeg !== 'number') return false;
+
+        const yaw = this.unwrapAngleDeg(yawDeg);
+        this.calibrationDisplayBaseline = {
+            yaw,
+            onlyYaw: true
+        };
+        this.calibrationLockedYaw = yaw;
+        this.isCalibrationYawLocked = true;
+
+        try { if (this.motionInterpreter) this.motionInterpreter.isCalibrated = false; } catch (e) { }
+        this.motionInterpreter.calibrate(undefined, yaw, undefined);
+        this.debugOverlay.logInfo(`Calibration yaw locked (${source}): yaw=${yaw.toFixed(1)}`);
+        return true;
+    }
+
+    completeCalibrationTransition() {
+        if (this.isCalibrationCompleting) return;
+        this.isCalibrationCompleting = true;
+
+        this.uiManager.playScreenTransition(() => {
+            this.appState.calibrationComplete();
+            this.uiManager.toggleSceneStartButton(true);
+        });
+    }
+
     onStartInScene() {
         this.exitCalibrationStage();
         this.debugOverlay.logInfo('シーン内スタートボタン押下');
@@ -559,9 +597,31 @@ class AROnmyoujiGame {
     fireCalibrationSlash(swing) {
         if (!swing.trajectory || swing.trajectory.length < 2 || this.isCalibrationCompleting) return;
 
+        const averageYaw = this.averageCalibrationSwingYaw(swing.trajectory);
+        this.lockCalibrationYaw(averageYaw, 'swing average');
+
         const startPyr = swing.trajectory[0];
         const endPyr = swing.trajectory[swing.trajectory.length - 1];
         this.renderer.addCalibrationSlashProjectile(startPyr, endPyr, swing.intensity);
+    }
+
+    averageCalibrationSwingYaw(trajectory) {
+        const yaws = trajectory
+            .map(point => (typeof point.rawYaw === 'number' ? point.rawYaw : point.yaw))
+            .filter(value => typeof value === 'number')
+            .map(value => value * Math.PI / 180);
+
+        if (!yaws.length) {
+            return this.latestFrame ? this.latestFrame.yaw_deg : 0;
+        }
+
+        const sum = yaws.reduce((acc, rad) => {
+            acc.sin += Math.sin(rad);
+            acc.cos += Math.cos(rad);
+            return acc;
+        }, { sin: 0, cos: 0 });
+
+        return this.unwrapAngleDeg(Math.atan2(sum.sin / yaws.length, sum.cos / yaws.length) * 180 / Math.PI);
     }
 
     onSwingTracerUpdate(trajectory) {
@@ -574,7 +634,10 @@ class AROnmyoujiGame {
 
         try { this.soundManager.play('button', { volume: 0.65 }); } catch (e) { }
         this.debugOverlay.logInfo('Calibration target hit');
-        this.confirmCalibration();
+        if (!this.isCalibrationYawLocked && this.latestFrame) {
+            this.lockCalibrationYaw(this.latestFrame.yaw_deg, 'target hit fallback');
+        }
+        this.completeCalibrationTransition();
     }
 
     onRendererSlashHit(data) {

@@ -72,6 +72,9 @@ export class SwingDetector {
             pitch: relativePYR.pitch,
             yaw: relativePYR.yaw,
             roll: relativePYR.roll,
+            rawPitch: frame.pitch_deg,
+            rawYaw: frame.yaw_deg,
+            rawRoll: frame.roll_deg,
             timestamp: now
         });
 

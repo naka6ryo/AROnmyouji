@@ -91,7 +91,7 @@ export class Renderer {
             id: 'calibration-target',
             azim: 0,
             elev: 0,
-            distance: 3
+            distance: 6
         };
 
         // --- Refactored Modules ---
@@ -413,9 +413,9 @@ export class Renderer {
         const target = new THREE.Group();
         target.name = 'calibrationTarget';
         const ringMaterial = new THREE.MeshBasicMaterial({
-            color: 0xff1f1f,
+            color: 0xd40000,
             transparent: true,
-            opacity: 0.95,
+            opacity: 1,
             side: THREE.DoubleSide
         });
 
@@ -426,14 +426,14 @@ export class Renderer {
 
         const center = new THREE.Mesh(
             new THREE.CircleGeometry(0.035, 32),
-            new THREE.MeshBasicMaterial({ color: 0xff1f1f, transparent: true, opacity: 0.9, side: THREE.DoubleSide })
+            new THREE.MeshBasicMaterial({ color: 0xb80000, transparent: true, opacity: 1, side: THREE.DoubleSide })
         );
         center.position.z = 0.002;
         target.add(center);
 
         const glow = new THREE.Mesh(
             new THREE.CircleGeometry(0.5, 48),
-            new THREE.MeshBasicMaterial({ color: 0xff1f1f, transparent: true, opacity: 0.08, side: THREE.DoubleSide })
+            new THREE.MeshBasicMaterial({ color: 0xd40000, transparent: true, opacity: 0.12, side: THREE.DoubleSide })
         );
         glow.position.z = -0.004;
         target.add(glow);

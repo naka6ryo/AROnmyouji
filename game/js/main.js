@@ -288,17 +288,21 @@ class AROnmyoujiGame {
     lockCalibrationYaw(yawDeg, source) {
         if (typeof yawDeg !== 'number') return false;
 
+        const frontYaw = this.renderer && typeof this.renderer.getCalibrationFrontYaw === 'function'
+            ? this.renderer.getCalibrationFrontYaw()
+            : 0;
         const yaw = this.unwrapAngleDeg(yawDeg);
+        const calibrationYaw = this.unwrapAngleDeg(yaw - frontYaw);
         this.calibrationDisplayBaseline = {
-            yaw,
+            yaw: calibrationYaw,
             onlyYaw: true
         };
-        this.calibrationLockedYaw = yaw;
+        this.calibrationLockedYaw = calibrationYaw;
         this.isCalibrationYawLocked = true;
 
         try { if (this.motionInterpreter) this.motionInterpreter.isCalibrated = false; } catch (e) { }
-        this.motionInterpreter.calibrate(undefined, yaw, undefined);
-        this.debugOverlay.logInfo(`Calibration yaw locked (${source}): yaw=${yaw.toFixed(1)}`);
+        this.motionInterpreter.calibrate(undefined, calibrationYaw, undefined);
+        this.debugOverlay.logInfo(`Calibration yaw locked (${source}): rawYaw=${yaw.toFixed(1)} frontYaw=${frontYaw.toFixed(1)} basis=${calibrationYaw.toFixed(1)}`);
         return true;
     }
 

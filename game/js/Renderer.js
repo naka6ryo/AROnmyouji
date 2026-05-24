@@ -87,6 +87,7 @@ export class Renderer {
         this.onCalibrationTargetHit = null;
         this.calibrationMode = false;
         this.calibrationStageGroup = null;
+        this.calibrationFrontYaw = 0;
         this.calibrationTarget = {
             id: 'calibration-target',
             azim: 0,
@@ -326,9 +327,13 @@ export class Renderer {
     }
 
     showCalibrationStage() {
+        this.setCalibrationFrontToCurrentCamera();
+
         if (!this.calibrationStageGroup) {
             this.calibrationStageGroup = this.createCalibrationStage();
             this.scene.add(this.calibrationStageGroup);
+        } else {
+            this.updateCalibrationTarget();
         }
 
         this.calibrationStageGroup.visible = true;
@@ -355,6 +360,25 @@ export class Renderer {
         }
 
         this.updateRendererSize();
+    }
+
+    setCalibrationFrontToCurrentCamera() {
+        const frontYaw = this.getCameraHorizontalYawDegrees();
+        this.calibrationFrontYaw = frontYaw;
+        this.calibrationTarget.azim = frontYaw;
+    }
+
+    getCalibrationFrontYaw() {
+        return this.calibrationFrontYaw || 0;
+    }
+
+    getCameraHorizontalYawDegrees() {
+        const forward = this.getCameraForward();
+        const horizontalLen = Math.sqrt(forward.x * forward.x + forward.z * forward.z);
+        if (horizontalLen < 0.0001) {
+            return this.calibrationFrontYaw || 0;
+        }
+        return Math.atan2(forward.x, -forward.z) / DEG2RAD;
     }
 
     hideCalibrationStage() {

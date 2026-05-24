@@ -726,6 +726,47 @@ export class UIManager {
         }
     }
 
+    showDefeatedNotice(onComplete) {
+        const overlay = this.elements.countdownOverlay;
+        const valueEl = this.elements.countdownValue;
+        if (!overlay || !valueEl) {
+            if (onComplete) onComplete();
+            return;
+        }
+
+        if (this._countdownTimer) {
+            clearTimeout(this._countdownTimer);
+            this._countdownTimer = null;
+        }
+
+        overlay.classList.remove('hidden');
+        overlay.style.display = 'flex';
+        overlay.style.visibility = 'visible';
+        overlay.style.pointerEvents = 'none';
+
+        valueEl.textContent = '撃破';
+        valueEl.style.fontFamily = "'Shippori Mincho', serif";
+        valueEl.style.fontSize = '4rem';
+        valueEl.style.color = '';
+        valueEl.classList.add('hologram-effect');
+        valueEl.classList.remove('hologram-tick');
+        void valueEl.offsetWidth;
+        valueEl.classList.add('hologram-tick');
+
+        this._countdownTimer = setTimeout(() => {
+            overlay.style.display = 'none';
+            overlay.classList.add('hidden');
+            overlay.style.pointerEvents = 'none';
+            valueEl.textContent = '';
+            valueEl.style.color = '';
+            valueEl.style.fontSize = '';
+            valueEl.classList.remove('hologram-tick');
+            valueEl.classList.remove('hologram-effect');
+            this._countdownTimer = null;
+            if (onComplete) onComplete();
+        }, 900);
+    }
+
 
     createEnemyIndicator(container) {
         const wrapper = document.createElement('div');

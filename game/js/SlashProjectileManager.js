@@ -221,7 +221,7 @@ export class SlashProjectileManager {
         const distToArc = enemyWorld.distanceTo(closest);
 
         // 判定閾値
-        const enemyRadius = 0.5;
+        const enemyRadius = enemy.radius ?? 0.5;
         const margin = 0.3;
 
         return distToArc <= enemyRadius + margin;

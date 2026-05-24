@@ -92,8 +92,10 @@ export class Renderer {
             id: 'calibration-target',
             azim: 0,
             elev: 0,
-            distance: 6
+            distance: 6,
+            radius: 0.75
         };
+        this.calibrationTargetBurstEffects = [];
 
         // --- Refactored Modules ---
 
@@ -328,6 +330,7 @@ export class Renderer {
 
     showCalibrationStage() {
         this.setCalibrationFrontToCurrentCamera();
+        this.clearCalibrationTargetBurstEffects();
 
         if (!this.calibrationStageGroup) {
             this.calibrationStageGroup = this.createCalibrationStage();
@@ -337,6 +340,8 @@ export class Renderer {
         }
 
         this.calibrationStageGroup.visible = true;
+        const target = this.calibrationStageGroup.getObjectByName('calibrationTarget');
+        if (target) target.visible = true;
         this.renderer.setClearColor(0xe8edf2, 1);
 
         if (this.canvas) {
@@ -386,6 +391,7 @@ export class Renderer {
             this.calibrationStageGroup.visible = false;
         }
 
+        this.clearCalibrationTargetBurstEffects();
         this.slashProjectileManager.reset();
         this.renderer.setClearColor(0x000000, 0);
 
@@ -500,6 +506,105 @@ export class Renderer {
         );
     }
 
+    triggerCalibrationTargetBurst() {
+        const targetWorld = this.getCalibrationTargetWorldPosition(new THREE.Vector3());
+        const target = this.calibrationStageGroup
+            ? this.calibrationStageGroup.getObjectByName('calibrationTarget')
+            : null;
+        if (target) target.visible = false;
+
+        const ringMaterial = new THREE.MeshBasicMaterial({
+            color: 0xff1f1f,
+            transparent: true,
+            opacity: 0.9,
+            blending: THREE.AdditiveBlending,
+            side: THREE.DoubleSide,
+            depthWrite: false
+        });
+        const ring = new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.018, 12, 96), ringMaterial);
+        ring.position.copy(targetWorld);
+        ring.lookAt(this.camera.position);
+        this.scene.add(ring);
+        this.calibrationTargetBurstEffects.push({
+            type: 'shockwave',
+            mesh: ring,
+            life: 1,
+            speed: 7
+        });
+
+        for (let i = 0; i < 56; i++) {
+            const material = new THREE.MeshBasicMaterial({
+                color: Math.random() > 0.35 ? 0xff2020 : 0xffffff,
+                transparent: true,
+                opacity: 1,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false
+            });
+            const fragmentGeometry = new THREE.TetrahedronGeometry(0.035, 0);
+            const fragment = new THREE.Mesh(fragmentGeometry, material);
+            fragment.position.copy(targetWorld);
+            fragment.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+            this.scene.add(fragment);
+
+            const velocity = new THREE.Vector3(
+                Math.random() - 0.5,
+                Math.random() - 0.5,
+                Math.random() - 0.5
+            ).normalize().multiplyScalar(2.5 + Math.random() * 6.5);
+
+            this.calibrationTargetBurstEffects.push({
+                type: 'fragment',
+                mesh: fragment,
+                velocity,
+                rotationSpeed: new THREE.Vector3(
+                    (Math.random() - 0.5) * 14,
+                    (Math.random() - 0.5) * 14,
+                    (Math.random() - 0.5) * 14
+                ),
+                life: 1,
+                decay: 1.6 + Math.random() * 1.2
+            });
+        }
+    }
+
+    updateCalibrationTargetBurstEffects(dtSec) {
+        for (let i = this.calibrationTargetBurstEffects.length - 1; i >= 0; i--) {
+            const effect = this.calibrationTargetBurstEffects[i];
+            if (effect.type === 'shockwave') {
+                const scale = effect.mesh.scale.x + effect.speed * dtSec;
+                effect.mesh.scale.set(scale, scale, scale);
+                effect.life -= dtSec * 2.2;
+                effect.mesh.material.opacity = Math.max(0, effect.life);
+            } else {
+                effect.mesh.position.add(effect.velocity.clone().multiplyScalar(dtSec));
+                effect.mesh.rotation.x += effect.rotationSpeed.x * dtSec;
+                effect.mesh.rotation.y += effect.rotationSpeed.y * dtSec;
+                effect.mesh.rotation.z += effect.rotationSpeed.z * dtSec;
+                effect.velocity.multiplyScalar(Math.max(0.85, 1 - dtSec * 1.8));
+                effect.life -= effect.decay * dtSec;
+                effect.mesh.material.opacity = Math.max(0, effect.life);
+                const scale = Math.max(0.01, effect.life * 1.7);
+                effect.mesh.scale.set(scale, scale, scale);
+            }
+
+            if (effect.life <= 0) {
+                this.scene.remove(effect.mesh);
+                if (effect.mesh.geometry) effect.mesh.geometry.dispose();
+                if (effect.mesh.material) effect.mesh.material.dispose();
+                this.calibrationTargetBurstEffects.splice(i, 1);
+            }
+        }
+    }
+
+    clearCalibrationTargetBurstEffects() {
+        for (const effect of this.calibrationTargetBurstEffects) {
+            this.scene.remove(effect.mesh);
+            if (effect.mesh.geometry) effect.mesh.geometry.dispose();
+            if (effect.mesh.material) effect.mesh.material.dispose();
+        }
+        this.calibrationTargetBurstEffects = [];
+    }
+
     createCalibrationStage() {
         const group = new THREE.Group();
         group.name = 'calibrationStage';
@@ -528,6 +633,7 @@ export class Renderer {
 
         const target = new THREE.Group();
         target.name = 'calibrationTarget';
+        target.scale.setScalar(1.5);
         const ringMaterial = new THREE.MeshBasicMaterial({
             color: 0xff0000,
             transparent: true,
@@ -577,6 +683,8 @@ export class Renderer {
         }
 
         // 飛翔体更新
+        this.updateCalibrationTargetBurstEffects(dtSec);
+
         if (this.calibrationMode) {
             this.slashProjectileManager.update(deltaTime, [this.calibrationTarget], (data) => {
                 if (this.onCalibrationTargetHit) this.onCalibrationTargetHit(data);
@@ -768,6 +876,7 @@ export class Renderer {
 
         this.slashProjectileManager.dispose();
         this.swingTracer.dispose();
+        this.clearCalibrationTargetBurstEffects();
         if (this.calibrationStageGroup) {
             this.scene.remove(this.calibrationStageGroup);
             this.calibrationStageGroup.traverse(child => {
@@ -808,6 +917,7 @@ export class Renderer {
         // 2. Reset Sub-managers
         this.slashProjectileManager.reset();
         this.swingTracer.reset();
+        this.clearCalibrationTargetBurstEffects();
         this.setCalibrationMode(false);
 
         // 3. Clear transient scene objects

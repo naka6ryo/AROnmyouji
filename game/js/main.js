@@ -350,8 +350,8 @@ class AROnmyoujiGame {
         return true;
     }
 
-    completeCalibrationTransition() {
-        if (this.isCalibrationCompleting) return;
+    completeCalibrationTransition(force = false) {
+        if (this.isCalibrationCompleting && !force) return;
         this.isCalibrationCompleting = true;
 
         this.uiManager.playScreenTransition(() => {
@@ -712,12 +712,18 @@ class AROnmyoujiGame {
         if (this.appState.getCurrentState() !== this.appState.states.S3_CALIBRATE) return;
         if (this.isCalibrationCompleting) return;
 
-        try { this.soundManager.play('button', { volume: 0.65 }); } catch (e) { }
+        this.isCalibrationCompleting = true;
+        try { this.soundManager.play('polygon_burst', { volume: 0.9 }); } catch (e) { }
         this.debugOverlay.logInfo('Calibration target hit');
+        if (this.renderer && typeof this.renderer.triggerCalibrationTargetBurst === 'function') {
+            this.renderer.triggerCalibrationTargetBurst();
+        }
         if (!this.isCalibrationYawLocked && this.latestFrame) {
             this.lockCalibrationYaw(this.latestFrame.yaw_deg, 'target hit fallback');
         }
-        this.completeCalibrationTransition();
+        this.uiManager.showDefeatedNotice(() => {
+            this.completeCalibrationTransition(true);
+        });
     }
 
     onRendererSlashHit(data) {

@@ -320,7 +320,7 @@ export class Renderer {
         }
 
         this.calibrationStageGroup.visible = true;
-        this.renderer.setClearColor(0xffffff, 1);
+        this.renderer.setClearColor(0xe8edf2, 1);
 
         if (this.canvas) {
             this.canvas.classList.remove('hidden');
@@ -386,20 +386,20 @@ export class Renderer {
         const group = new THREE.Group();
         group.name = 'calibrationStage';
 
-        const floorGrid = new THREE.GridHelper(10, 20, 0xb8b8b8, 0xd9d9d9);
+        const floorGrid = new THREE.GridHelper(10, 20, 0x8f969e, 0xc2c9d1);
         floorGrid.position.set(0, -1.15, -3.2);
         floorGrid.material.transparent = true;
         floorGrid.material.opacity = 0.65;
         group.add(floorGrid);
 
-        const backGrid = new THREE.GridHelper(8, 16, 0xc4c4c4, 0xe0e0e0);
+        const backGrid = new THREE.GridHelper(8, 16, 0x9aa1aa, 0xcbd2da);
         backGrid.rotation.x = Math.PI / 2;
         backGrid.position.set(0, 1.0, -4.25);
         backGrid.material.transparent = true;
         backGrid.material.opacity = 0.5;
         group.add(backGrid);
 
-        const axisMaterial = new THREE.LineBasicMaterial({ color: 0x9a9a9a, transparent: true, opacity: 0.55 });
+        const axisMaterial = new THREE.LineBasicMaterial({ color: 0x707982, transparent: true, opacity: 0.58 });
         const axisGeometry = new THREE.BufferGeometry().setFromPoints([
             new THREE.Vector3(-4, 0, -3),
             new THREE.Vector3(4, 0, -3),
@@ -411,27 +411,27 @@ export class Renderer {
         const target = new THREE.Group();
         target.name = 'calibrationTarget';
         const ringMaterial = new THREE.MeshBasicMaterial({
-            color: 0xd40000,
+            color: 0xff0000,
             transparent: true,
             opacity: 1,
             side: THREE.DoubleSide
         });
 
         [0.36, 0.22, 0.08].forEach(radius => {
-            const ring = new THREE.Mesh(new THREE.TorusGeometry(radius, 0.012, 12, 72), ringMaterial);
+            const ring = new THREE.Mesh(new THREE.TorusGeometry(radius, 0.018, 12, 72), ringMaterial);
             target.add(ring);
         });
 
         const center = new THREE.Mesh(
             new THREE.CircleGeometry(0.035, 32),
-            new THREE.MeshBasicMaterial({ color: 0xb80000, transparent: true, opacity: 1, side: THREE.DoubleSide })
+            new THREE.MeshBasicMaterial({ color: 0xff0000, transparent: true, opacity: 1, side: THREE.DoubleSide })
         );
         center.position.z = 0.002;
         target.add(center);
 
         const glow = new THREE.Mesh(
             new THREE.CircleGeometry(0.5, 48),
-            new THREE.MeshBasicMaterial({ color: 0xd40000, transparent: true, opacity: 0.12, side: THREE.DoubleSide })
+            new THREE.MeshBasicMaterial({ color: 0xff0000, transparent: true, opacity: 0.18, side: THREE.DoubleSide })
         );
         glow.position.z = -0.004;
         target.add(glow);

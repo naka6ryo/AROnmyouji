@@ -45,7 +45,7 @@ body {
 
 #gameCanvas.calibration-canvas {
     z-index: 55;
-    background: #fff;
+    background: #e8edf2;
     pointer-events: none;
 }
 
@@ -55,12 +55,12 @@ body {
 }
 
 #calibrateScreen.active #calibrationCard {
-    background: rgba(255, 255, 255, 0.78) !important;
-    backdrop-filter: blur(1px);
+    background: rgba(255, 255, 255, 0.42) !important;
+    backdrop-filter: none;
 }
 
 #calibrateScreen.active #calibrationStage {
-    background: rgba(255, 255, 255, 0.34) !important;
+    background: rgba(255, 255, 255, 0.08) !important;
 }
 
 #cameraVideo.calibration-video-hidden {
@@ -76,10 +76,10 @@ body {
     position: absolute;
     inset: 0;
     background:
-        linear-gradient(rgba(140, 140, 140, 0.22) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(140, 140, 140, 0.22) 1px, transparent 1px);
+        linear-gradient(rgba(120, 128, 136, 0.12) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(120, 128, 136, 0.12) 1px, transparent 1px);
     background-size: 28px 28px;
-    opacity: 0.55;
+    opacity: 0.42;
 }
 
 .calibration-stage-reticle {
@@ -89,9 +89,9 @@ body {
     width: 84px;
     height: 84px;
     transform: translate(-50%, -50%);
-    border: 4px solid rgba(255, 31, 31, 0.38);
+    border: 3px solid rgba(150, 70, 70, 0.16);
     border-radius: 999px;
-    box-shadow: 0 0 14px rgba(255, 31, 31, 0.12);
+    box-shadow: 0 0 10px rgba(150, 70, 70, 0.08);
 }
 
 .calibration-stage-reticle::before,
@@ -99,14 +99,14 @@ body {
 .calibration-stage-reticle > div {
     content: "";
     position: absolute;
-    border: 3px solid rgba(255, 31, 31, 0.38);
+    border: 2px solid rgba(150, 70, 70, 0.16);
     border-radius: 999px;
     inset: 17px;
 }
 
 .calibration-stage-reticle::after {
     inset: 34px;
-    background: rgba(255, 31, 31, 0.38);
+    background: rgba(150, 70, 70, 0.16);
 }
 
 /* UIコンテナ */

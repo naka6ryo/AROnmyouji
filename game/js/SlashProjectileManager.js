@@ -53,7 +53,7 @@ export class SlashProjectileManager {
         );
 
         // 2点を含む円弧を作成 (Base Geometry at scale 1.0)
-        const slashGroup = this.createSlashGroup(startPos, endPos, intensity);
+        const slashGroup = this.createSlashGroup(startPos, endPos, intensity, options);
         if (!slashGroup) return;
 
         // カメラの現在位置を基準に配置
@@ -230,10 +230,11 @@ export class SlashProjectileManager {
     /**
      * 円弧メッシュ作成
      */
-    createSlashGroup(startPos, endPos, intensity) {
+    createSlashGroup(startPos, endPos, intensity, options = {}) {
         const points = this.createSlashCurvePoints(startPos, endPos, intensity);
         const curve = new THREE.CatmullRomCurve3(points);
         const strength = Math.max(0.5, Math.min(2.0, intensity || 1.0));
+        const colors = options.colors || {};
         const group = new THREE.Group();
         group.frustumCulled = false;
 
@@ -241,26 +242,26 @@ export class SlashProjectileManager {
         group.scale.set(bladeLengthBoost, bladeLengthBoost, bladeLengthBoost);
 
         const glowGeometry = this.createTaperedSlashGeometry(curve, 36, 0.026 + strength * 0.004, 10, 0.16);
-        const glowMaterial = this.createSlashMaterial(0x00c8ff, 0.18 + strength * 0.04, true);
+        const glowMaterial = this.createSlashMaterial(colors.glow ?? 0x00c8ff, 0.18 + strength * 0.04, true);
         const glowMesh = new THREE.Mesh(glowGeometry, glowMaterial);
         glowMesh.userData.role = 'glow';
         group.add(glowMesh);
 
         const edgeGeometry = this.createTaperedSlashGeometry(curve, 38, 0.017 + strength * 0.003, 9, 0.13);
-        const edgeMaterial = this.createSlashMaterial(0x64f6ff, 0.38 + strength * 0.05, true);
+        const edgeMaterial = this.createSlashMaterial(colors.edge ?? 0x64f6ff, 0.38 + strength * 0.05, true);
         const edgeMesh = new THREE.Mesh(edgeGeometry, edgeMaterial);
         edgeMesh.userData.role = 'edge';
         group.add(edgeMesh);
 
         const coreGeometry = this.createTaperedSlashGeometry(curve, 42, 0.0075 + strength * 0.0018, 8, 0.08);
-        const coreMaterial = this.createSlashMaterial(0xffffff, 0.88 + strength * 0.04, false);
+        const coreMaterial = this.createSlashMaterial(colors.core ?? 0xffffff, 0.88 + strength * 0.04, false);
         const coreMesh = new THREE.Mesh(coreGeometry, coreMaterial);
         coreMesh.userData.role = 'core';
         group.add(coreMesh);
 
         const tailCurve = new THREE.CatmullRomCurve3(this.createTailCurvePoints(points));
         const tailGeometry = this.createTaperedSlashGeometry(tailCurve, 26, 0.012 + strength * 0.002, 8, 0.1);
-        const tailMaterial = this.createSlashMaterial(0x0077ff, 0.12 + strength * 0.03, true);
+        const tailMaterial = this.createSlashMaterial(colors.tail ?? 0x0077ff, 0.12 + strength * 0.03, true);
         const tailMesh = new THREE.Mesh(tailGeometry, tailMaterial);
         tailMesh.userData.role = 'tail';
         group.add(tailMesh);

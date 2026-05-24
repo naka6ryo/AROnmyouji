@@ -298,7 +298,14 @@ export class Renderer {
     }
 
     addCalibrationSlashProjectile(startPyr, endPyr, intensity) {
-        this.slashProjectileManager.addProjectile(startPyr, endPyr, intensity);
+        this.slashProjectileManager.addProjectile(startPyr, endPyr, intensity, {
+            colors: {
+                glow: 0x006dff,
+                edge: 0x00a8ff,
+                core: 0x7fdcff,
+                tail: 0x004dff
+            }
+        });
     }
 
     setCalibrationMode(active) {

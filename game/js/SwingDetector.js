@@ -14,7 +14,7 @@ export class SwingDetector {
         this.A_MAX = 1.00;        // g
 
         // Multi-slash split thresholds
-        this.SHARP_TURN_ANGLE_DEG = 60;
+        this.SHARP_TURN_ANGLE_DEG = 90;
         this.TURN_VECTOR_MIN_DEG = 4;
         this.MIN_SPLIT_INTERVAL = 60;
 

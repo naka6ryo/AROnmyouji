@@ -300,10 +300,15 @@ export class Renderer {
     addCalibrationSlashProjectile(startPyr, endPyr, intensity) {
         this.slashProjectileManager.addProjectile(startPyr, endPyr, intensity, {
             colors: {
-                glow: 0x006dff,
-                edge: 0x00a8ff,
-                core: 0x7fdcff,
-                tail: 0x004dff
+                glow: 0x0057d9,
+                edge: 0x007cff,
+                core: 0x005eea,
+                tail: 0x003fbd
+            },
+            material: {
+                blending: 'normal',
+                opacityScale: 1.9,
+                sparks: false
             }
         });
     }
@@ -387,6 +392,62 @@ export class Renderer {
             r * Math.sin(elevRad),
             -r * Math.cos(elevRad) * Math.cos(azimRad)
         );
+    }
+
+    getCalibrationTargetGuide() {
+        const azimRad = this.calibrationTarget.azim * DEG2RAD;
+        const elevRad = this.calibrationTarget.elev * DEG2RAD;
+        const r = this.calibrationTarget.distance;
+        const targetWorld = this._projectionScratch.set(
+            r * Math.cos(elevRad) * Math.sin(azimRad),
+            r * Math.sin(elevRad),
+            -r * Math.cos(elevRad) * Math.cos(azimRad)
+        );
+
+        const basis = this.getCameraBasis();
+        const eLen = targetWorld.length();
+        if (eLen < 0.0001) return null;
+
+        const eVec = {
+            x: targetWorld.x / eLen,
+            y: targetWorld.y / eLen,
+            z: targetWorld.z / eLen
+        };
+
+        const vx = eVec.x * basis.right.x + eVec.y * basis.right.y + eVec.z * basis.right.z;
+        const vy = eVec.x * basis.up.x + eVec.y * basis.up.y + eVec.z * basis.up.z;
+        const vz = eVec.x * basis.forward.x + eVec.y * basis.forward.y + eVec.z * basis.forward.z;
+
+        const ndc = this.projectToNdc(targetWorld);
+        const centered = vz > 0 && Math.abs(ndc.x) < 0.12 && Math.abs(ndc.y) < 0.12 && ndc.z >= -1 && ndc.z <= 1;
+        if (centered) {
+            return { visible: false };
+        }
+
+        let rad = Math.atan2(vy, vx);
+        let edgeX;
+        let edgeY;
+
+        if (vz < 0) {
+            const side = Math.abs(vx) > 0.08 ? (vx < 0 ? -1 : 1) : 1;
+            edgeX = side;
+            edgeY = Math.max(-0.35, Math.min(0.35, vy * 0.6));
+            rad = Math.atan2(edgeY, edgeX);
+        } else {
+            const cosA = Math.cos(rad);
+            const sinA = Math.sin(rad);
+            const scale = 1 / Math.max(Math.abs(cosA), Math.abs(sinA), 0.0001);
+            edgeX = cosA * scale;
+            edgeY = sinA * scale;
+        }
+
+        const marginPct = 12;
+        return {
+            visible: true,
+            xPct: 50 + edgeX * (50 - marginPct),
+            yPct: 50 - edgeY * (50 - marginPct),
+            rotation: 90 - (rad * 180 / Math.PI)
+        };
     }
 
     createCalibrationStage() {

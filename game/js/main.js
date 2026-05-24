@@ -204,6 +204,7 @@ class AROnmyoujiGame {
             const deltaTime = Math.min(now - this.lastCalibrationRenderTime, 100);
             this.lastCalibrationRenderTime = now;
             this.renderer.render(deltaTime, []);
+            this.updateCalibrationTargetArrow();
             this.calibrationRenderFrame = requestAnimationFrame(tick);
         };
 
@@ -215,6 +216,28 @@ class AROnmyoujiGame {
             cancelAnimationFrame(this.calibrationRenderFrame);
             this.calibrationRenderFrame = null;
         }
+        this.hideCalibrationTargetArrow();
+    }
+
+    updateCalibrationTargetArrow() {
+        const arrow = document.getElementById('calibrationTargetArrow');
+        if (!arrow || !this.renderer || typeof this.renderer.getCalibrationTargetGuide !== 'function') return;
+
+        const guide = this.renderer.getCalibrationTargetGuide();
+        if (!guide || !guide.visible) {
+            arrow.classList.add('hidden');
+            return;
+        }
+
+        arrow.classList.remove('hidden');
+        arrow.style.left = `${guide.xPct}%`;
+        arrow.style.top = `${guide.yPct}%`;
+        arrow.style.transform = `translate(-50%, -50%) rotate(${guide.rotation}deg)`;
+    }
+
+    hideCalibrationTargetArrow() {
+        const arrow = document.getElementById('calibrationTargetArrow');
+        if (arrow) arrow.classList.add('hidden');
     }
 
     confirmCalibration() {

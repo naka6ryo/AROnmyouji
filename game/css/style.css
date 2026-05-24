@@ -110,6 +110,22 @@ body {
 }
 
 /* UIコンテナ */
+.calibration-target-arrow {
+    position: absolute;
+    left: 50%;
+    top: 12%;
+    width: 0;
+    height: 0;
+    border-left: 18px solid transparent;
+    border-right: 18px solid transparent;
+    border-bottom: 36px solid #ff0000;
+    filter: drop-shadow(0 0 8px rgba(255, 0, 0, 0.55));
+    transform: translate(-50%, -50%);
+    transform-origin: 50% 66%;
+    z-index: 6;
+    pointer-events: none;
+}
+
 #uiContainer {
     position: fixed;
     top: 0;

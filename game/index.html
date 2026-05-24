@@ -1524,7 +1524,7 @@
                 </div>
             </div>
 
-            <div
+            <div id="calibrationCard"
                 class="w-full max-w-md relative bg-white border-[3px] border-ink-black p-4 md:p-10 shadow-2xl scale-95 md:scale-100 origin-center">
                 <div class="absolute top-0 left-0 w-4 h-4 border-l-4 border-t-4 border-primary -ml-[3px] -mt-[3px]">
                 </div>
@@ -1536,17 +1536,28 @@
                 </div>
 
                 <div class="text-center mb-4 md:mb-8">
-                    <p
+                    <p id="calibrationInstructionText"
                         class="font-sans font-bold !text-[18px] md:!text-[18px] leading-relaxed tracking-[0.02em] text-ink-black">
+                        正面の的を斬れ
+                    </p>
+                    <p class="hidden">
                         端末を正面に向け、グローブも<br class="md:hidden">正面へ構えてください
                     </p>
                     <p
                         class="font-display !text-[8px] md:!text-[10px] text-tech-gray mt-1 tracking-widest uppercase opacity-70">
-                        Face the device forward and ready the glove
+                        CUT THE FRONT TARGET
                     </p>
                 </div>
 
-                <div class="bg-ink-black/5 p-4 mb-4 md:mb-8 border border-ink-black/10 relative">
+                <div id="calibrationStage"
+                    class="calibration-stage-panel relative overflow-hidden mb-4 md:mb-8 border border-ink-black/15 bg-white">
+                    <div class="calibration-stage-grid"></div>
+                    <div class="calibration-stage-reticle">
+                        <div></div>
+                    </div>
+                </div>
+
+                <div class="hidden bg-ink-black/5 p-4 mb-4 md:mb-8 border border-ink-black/10 relative">
                     <div
                         class="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-primary to-transparent opacity-30">
                     </div>
@@ -1632,7 +1643,7 @@
                     </div>
                 </div>
 
-                <div class="flex gap-3 md:gap-4">
+                <div class="hidden gap-3 md:gap-4">
                     <button id="startCalibrationButton" class="flex-1 h-12 md:h-14 relative group/btn overflow-hidden">
                         <div
                             class="absolute inset-0 bg-primary transform -skew-x-[20deg] transition-transform group-hover/btn:scale-[1.02] shadow-[2px_2px_0px_0px_rgba(13,13,13,0.8)] md:shadow-[4px_4px_0px_0px_rgba(13,13,13,0.8)]">

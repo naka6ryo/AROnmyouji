@@ -84,6 +84,15 @@ export class Renderer {
 
         // コールバック
         this.onSlashHitEnemy = null; // 斬撃が敵に当たった時
+        this.onCalibrationTargetHit = null;
+        this.calibrationMode = false;
+        this.calibrationStageGroup = null;
+        this.calibrationTarget = {
+            id: 'calibration-target',
+            azim: 0,
+            elev: 0,
+            distance: 3
+        };
 
         // --- Refactored Modules ---
 
@@ -288,6 +297,156 @@ export class Renderer {
         this.slashProjectileManager.addProjectile(startPyr, endPyr, intensity);
     }
 
+    addCalibrationSlashProjectile(startPyr, endPyr, intensity) {
+        this.slashProjectileManager.addProjectile(startPyr, endPyr, intensity, {
+            direction: { x: 0, y: 0, z: -1 }
+        });
+    }
+
+    setCalibrationMode(active) {
+        const next = !!active;
+        if (this.calibrationMode === next) return;
+        this.calibrationMode = next;
+
+        if (next) {
+            this.showCalibrationStage();
+        } else {
+            this.hideCalibrationStage();
+        }
+    }
+
+    showCalibrationStage() {
+        if (!this.calibrationStageGroup) {
+            this.calibrationStageGroup = this.createCalibrationStage();
+            this.scene.add(this.calibrationStageGroup);
+        }
+
+        this.calibrationStageGroup.visible = true;
+        this.renderer.setClearColor(0xffffff, 1);
+
+        if (this.canvas) {
+            this.canvas.classList.remove('hidden');
+            this.canvas.classList.add('calibration-canvas');
+            this.canvas.style.display = '';
+            this.canvas.style.opacity = '1';
+        }
+
+        const crtDisplay = document.getElementById('crt-main-display');
+        if (crtDisplay) {
+            crtDisplay.classList.remove('hidden');
+            crtDisplay.classList.remove('opacity-0');
+            crtDisplay.style.display = '';
+            crtDisplay.style.opacity = '1';
+        }
+
+        if (this.videoElement) {
+            this.videoElement.classList.add('calibration-video-hidden');
+            this.videoElement.style.display = 'none';
+        }
+
+        this.updateRendererSize();
+    }
+
+    hideCalibrationStage() {
+        if (this.calibrationStageGroup) {
+            this.calibrationStageGroup.visible = false;
+        }
+
+        this.slashProjectileManager.reset();
+        this.renderer.setClearColor(0x000000, 0);
+
+        if (this.canvas) {
+            this.canvas.classList.remove('calibration-canvas');
+        }
+
+        if (this.videoElement) {
+            this.videoElement.classList.remove('calibration-video-hidden');
+            this.videoElement.style.display = '';
+        }
+    }
+
+    updateCalibrationTarget() {
+        if (!this.calibrationStageGroup) return;
+        const target = this.calibrationStageGroup.getObjectByName('calibrationTarget');
+        if (!target) return;
+
+        const azimRad = this.calibrationTarget.azim * DEG2RAD;
+        const elevRad = this.calibrationTarget.elev * DEG2RAD;
+        const r = this.calibrationTarget.distance;
+
+        target.position.set(
+            r * Math.cos(elevRad) * Math.sin(azimRad),
+            r * Math.sin(elevRad),
+            -r * Math.cos(elevRad) * Math.cos(azimRad)
+        );
+    }
+
+    createCalibrationStage() {
+        const group = new THREE.Group();
+        group.name = 'calibrationStage';
+
+        const floorGrid = new THREE.GridHelper(10, 20, 0xb8b8b8, 0xd9d9d9);
+        floorGrid.position.set(0, -1.15, -3.2);
+        floorGrid.material.transparent = true;
+        floorGrid.material.opacity = 0.65;
+        group.add(floorGrid);
+
+        const backGrid = new THREE.GridHelper(8, 16, 0xc4c4c4, 0xe0e0e0);
+        backGrid.rotation.x = Math.PI / 2;
+        backGrid.position.set(0, 1.0, -4.25);
+        backGrid.material.transparent = true;
+        backGrid.material.opacity = 0.5;
+        group.add(backGrid);
+
+        const axisMaterial = new THREE.LineBasicMaterial({ color: 0x9a9a9a, transparent: true, opacity: 0.55 });
+        const axisGeometry = new THREE.BufferGeometry().setFromPoints([
+            new THREE.Vector3(-4, 0, -3),
+            new THREE.Vector3(4, 0, -3),
+            new THREE.Vector3(0, -1.8, -3),
+            new THREE.Vector3(0, 1.8, -3)
+        ]);
+        group.add(new THREE.LineSegments(axisGeometry, axisMaterial));
+
+        const target = new THREE.Group();
+        target.name = 'calibrationTarget';
+        const ringMaterial = new THREE.MeshBasicMaterial({
+            color: 0xff1f1f,
+            transparent: true,
+            opacity: 0.95,
+            side: THREE.DoubleSide
+        });
+
+        [0.36, 0.22, 0.08].forEach(radius => {
+            const ring = new THREE.Mesh(new THREE.TorusGeometry(radius, 0.012, 12, 72), ringMaterial);
+            target.add(ring);
+        });
+
+        const center = new THREE.Mesh(
+            new THREE.CircleGeometry(0.035, 32),
+            new THREE.MeshBasicMaterial({ color: 0xff1f1f, transparent: true, opacity: 0.9, side: THREE.DoubleSide })
+        );
+        center.position.z = 0.002;
+        target.add(center);
+
+        const glow = new THREE.Mesh(
+            new THREE.CircleGeometry(0.5, 48),
+            new THREE.MeshBasicMaterial({ color: 0xff1f1f, transparent: true, opacity: 0.08, side: THREE.DoubleSide })
+        );
+        glow.position.z = -0.004;
+        target.add(glow);
+
+        const azimRad = this.calibrationTarget.azim * DEG2RAD;
+        const elevRad = this.calibrationTarget.elev * DEG2RAD;
+        const r = this.calibrationTarget.distance;
+        target.position.set(
+            r * Math.cos(elevRad) * Math.sin(azimRad),
+            r * Math.sin(elevRad),
+            -r * Math.cos(elevRad) * Math.cos(azimRad)
+        );
+        group.add(target);
+        return group;
+    }
+
     /**
      * 描画（敵情報を受け取って衝突判定）
      */
@@ -299,7 +458,13 @@ export class Renderer {
         }
 
         // 飛翔体更新
-        this.slashProjectileManager.update(deltaTime, enemies, this.onSlashHitEnemy);
+        if (this.calibrationMode) {
+            this.slashProjectileManager.update(deltaTime, [this.calibrationTarget], (data) => {
+                if (this.onCalibrationTargetHit) this.onCalibrationTargetHit(data);
+            });
+        } else {
+            this.slashProjectileManager.update(deltaTime, enemies, this.onSlashHitEnemy);
+        }
 
         // シェーダー軌跡の時間更新
         this.swingTracer.updateTime();
@@ -484,6 +649,17 @@ export class Renderer {
 
         this.slashProjectileManager.dispose();
         this.swingTracer.dispose();
+        if (this.calibrationStageGroup) {
+            this.scene.remove(this.calibrationStageGroup);
+            this.calibrationStageGroup.traverse(child => {
+                if (child.geometry) child.geometry.dispose();
+                if (child.material) {
+                    const materials = Array.isArray(child.material) ? child.material : [child.material];
+                    materials.forEach(material => material.dispose());
+                }
+            });
+            this.calibrationStageGroup = null;
+        }
 
         // Texture
         if (this.videoTexture) {
@@ -513,13 +689,16 @@ export class Renderer {
         // 2. Reset Sub-managers
         this.slashProjectileManager.reset();
         this.swingTracer.reset();
+        this.setCalibrationMode(false);
 
         // 3. Clear transient scene objects
         // We preserve cameraPivot and Lights.
         // Remove other children if any remain (safety net)
         // Hitodama and Projectiles attach to scene, so their dispose/reset should remove them.
         // We double check scene children just in case.
-        const preserved = new Set([this.cameraPivot, ...this.scene.children.filter(c => c.isLight)]);
+        const preservedItems = [this.cameraPivot, ...this.scene.children.filter(c => c.isLight)];
+        if (this.calibrationStageGroup) preservedItems.push(this.calibrationStageGroup);
+        const preserved = new Set(preservedItems);
 
         // Remove anything else
         for (let i = this.scene.children.length - 1; i >= 0; i--) {

@@ -43,6 +43,72 @@ body {
     z-index: 2;
 }
 
+#gameCanvas.calibration-canvas {
+    z-index: 55;
+    background: #fff;
+    pointer-events: none;
+}
+
+#calibrateScreen.active {
+    z-index: 60 !important;
+    background: transparent !important;
+}
+
+#calibrateScreen.active #calibrationCard {
+    background: rgba(255, 255, 255, 0.78) !important;
+    backdrop-filter: blur(1px);
+}
+
+#calibrateScreen.active #calibrationStage {
+    background: rgba(255, 255, 255, 0.34) !important;
+}
+
+#cameraVideo.calibration-video-hidden {
+    display: none !important;
+}
+
+.calibration-stage-panel {
+    height: min(42vh, 340px);
+    min-height: 220px;
+}
+
+.calibration-stage-grid {
+    position: absolute;
+    inset: 0;
+    background:
+        linear-gradient(rgba(140, 140, 140, 0.22) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(140, 140, 140, 0.22) 1px, transparent 1px);
+    background-size: 28px 28px;
+    opacity: 0.55;
+}
+
+.calibration-stage-reticle {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 84px;
+    height: 84px;
+    transform: translate(-50%, -50%);
+    border: 4px solid #ff1f1f;
+    border-radius: 999px;
+    box-shadow: 0 0 18px rgba(255, 31, 31, 0.22);
+}
+
+.calibration-stage-reticle::before,
+.calibration-stage-reticle::after,
+.calibration-stage-reticle > div {
+    content: "";
+    position: absolute;
+    border: 3px solid #ff1f1f;
+    border-radius: 999px;
+    inset: 17px;
+}
+
+.calibration-stage-reticle::after {
+    inset: 34px;
+    background: #ff1f1f;
+}
+
 /* UIコンテナ */
 #uiContainer {
     position: fixed;

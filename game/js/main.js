@@ -40,6 +40,9 @@ class AROnmyoujiGame {
 
         // Calibration display baseline (for reset behavior)
         this.calibrationDisplayBaseline = null;
+        this.isCalibrationCompleting = false;
+        this.calibrationRenderFrame = null;
+        this.lastCalibrationRenderTime = 0;
         // UI初期化
         this.uiManager.init();
 
@@ -103,6 +106,12 @@ class AROnmyoujiGame {
                     try { perm.style.pointerEvents = 'auto'; } catch (e) { }
                 }
             }
+
+            if (newState === this.appState.states.S3_CALIBRATE) {
+                this.enterCalibrationStage();
+            } else {
+                this.exitCalibrationStage();
+            }
         } catch (e) {
             console.warn('[AppStateHandler] onAppStateChanged error', e);
         }
@@ -135,6 +144,7 @@ class AROnmyoujiGame {
 
         // Renderer コールバック
         this.renderer.onSlashHitEnemy = (data) => this.onRendererSlashHit(data);
+        this.renderer.onCalibrationTargetHit = (data) => this.onCalibrationTargetHit(data);
 
         // Motion Interpreter コールバック
         this.motionInterpreter.onSwingDetected = (swing) => this.onSwing(swing);
@@ -157,11 +167,60 @@ class AROnmyoujiGame {
         this.deviceOrientationHandler = (e) => this.renderer.updateDeviceOrientation(e);
     }
 
+    enterCalibrationStage() {
+        this.isCalibrationCompleting = false;
+        this.lastCalibrationRenderTime = performance.now();
+        if (this.motionInterpreter) {
+            this.motionInterpreter.reset();
+            this.motionInterpreter.isCalibrated = false;
+        }
+        if (this.renderer) {
+            this.renderer.setCalibrationMode(true);
+        }
+        this.startCalibrationRenderLoop();
+    }
+
+    exitCalibrationStage() {
+        this.stopCalibrationRenderLoop();
+        if (this.renderer) {
+            this.renderer.setCalibrationMode(false);
+        }
+    }
+
+    startCalibrationRenderLoop() {
+        if (this.calibrationRenderFrame) return;
+
+        const tick = () => {
+            if (this.appState.getCurrentState() !== this.appState.states.S3_CALIBRATE) {
+                this.calibrationRenderFrame = null;
+                return;
+            }
+
+            const now = performance.now();
+            const deltaTime = Math.min(now - this.lastCalibrationRenderTime, 100);
+            this.lastCalibrationRenderTime = now;
+            this.renderer.render(deltaTime, []);
+            this.calibrationRenderFrame = requestAnimationFrame(tick);
+        };
+
+        this.calibrationRenderFrame = requestAnimationFrame(tick);
+    }
+
+    stopCalibrationRenderLoop() {
+        if (this.calibrationRenderFrame) {
+            cancelAnimationFrame(this.calibrationRenderFrame);
+            this.calibrationRenderFrame = null;
+        }
+    }
+
     confirmCalibration() {
+        if (this.isCalibrationCompleting) return;
         if (!this.latestFrame) {
             this.debugOverlay.logWarn('キャリブレーション: フレームデータなし');
             return;
         }
+
+        this.isCalibrationCompleting = true;
 
         const { pitch_deg, yaw_deg, roll_deg } = this.latestFrame;
 
@@ -446,17 +505,7 @@ class AROnmyoujiGame {
         this.latestFrame = frame;
 
         if (this.appState.getCurrentState() === 'calibrate') {
-            // If a display baseline was set by reset, show angles relative to that baseline.
-            // Support yaw-only baseline for front-reset UX.
-            if (this.calibrationDisplayBaseline) {
-                const onlyYaw = !!this.calibrationDisplayBaseline.onlyYaw;
-                const dp = onlyYaw ? frame.pitch_deg : this.unwrapAngleDeg(frame.pitch_deg - (this.calibrationDisplayBaseline.pitch ?? 0));
-                const dy = this.unwrapAngleDeg(frame.yaw_deg - (this.calibrationDisplayBaseline.yaw ?? 0));
-                const dr = onlyYaw ? frame.roll_deg : this.unwrapAngleDeg(frame.roll_deg - (this.calibrationDisplayBaseline.roll ?? 0));
-                this.uiManager.updateCalibrationValues(dp, dy, dr);
-            } else {
-                this.uiManager.updateCalibrationValues(frame.pitch_deg, frame.yaw_deg, frame.roll_deg);
-            }
+            this.motionInterpreter.update(frame);
         }
 
         if (this.appState.isGameplay()) {
@@ -491,6 +540,12 @@ class AROnmyoujiGame {
             const rate = Math.min(1.6, 0.9 + swing.intensity * 0.25);
             this.soundManager.play('attack_swipe', { volume: 0.7, playbackRate: rate });
         } catch (e) { }
+
+        if (this.appState.getCurrentState() === this.appState.states.S3_CALIBRATE) {
+            this.fireCalibrationSlash(swing);
+            return;
+        }
+
         if (swing.trajectory && swing.trajectory.length >= 2) {
             const startPyr = swing.trajectory[0];
             const endPyr = swing.trajectory[swing.trajectory.length - 1];
@@ -498,8 +553,45 @@ class AROnmyoujiGame {
         }
     }
 
+    fireCalibrationSlash(swing) {
+        if (!swing.trajectory || swing.trajectory.length < 2 || this.isCalibrationCompleting) return;
+
+        const centeredTrajectory = this.centerTrajectoryYawOnFront(swing.trajectory);
+        const startPyr = centeredTrajectory[0];
+        const endPyr = centeredTrajectory[centeredTrajectory.length - 1];
+        this.renderer.addCalibrationSlashProjectile(startPyr, endPyr, swing.intensity);
+    }
+
+    centerTrajectoryYawOnFront(trajectory) {
+        const yaws = trajectory
+            .map(point => point.yaw)
+            .filter(value => typeof value === 'number')
+            .sort((a, b) => a - b);
+
+        if (!yaws.length) return trajectory.map(point => ({ ...point }));
+
+        const mid = Math.floor(yaws.length / 2);
+        const medianYaw = yaws.length % 2 === 0
+            ? (yaws[mid - 1] + yaws[mid]) / 2
+            : yaws[mid];
+
+        return trajectory.map(point => ({
+            ...point,
+            yaw: this.unwrapAngleDeg((point.yaw || 0) - medianYaw)
+        }));
+    }
+
     onSwingTracerUpdate(trajectory) {
         this.renderer.updateSwingTracer(trajectory);
+    }
+
+    onCalibrationTargetHit(data) {
+        if (this.appState.getCurrentState() !== this.appState.states.S3_CALIBRATE) return;
+        if (this.isCalibrationCompleting) return;
+
+        try { this.soundManager.play('button', { volume: 0.65 }); } catch (e) { }
+        this.debugOverlay.logInfo('Calibration target hit');
+        this.confirmCalibration();
     }
 
     onRendererSlashHit(data) {
@@ -534,12 +626,14 @@ class AROnmyoujiGame {
     }
 
     onCircle(circle) {
+        if (!this.appState.isGameplay()) return;
         this.debugOverlay.logInfo('円ジェスチャ検出');
         const viewDir = this.renderer.getViewDirection();
         this.combatSystem.fireOfuda(viewDir);
     }
 
     onPowerMode(power) {
+        if (!this.appState.isGameplay()) return;
         this.debugOverlay.logInfo('強化モード発動');
         this.combatSystem.sendPowerModeHaptic();
     }

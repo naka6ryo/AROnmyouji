@@ -32,7 +32,7 @@ export class SlashProjectileManager {
     /**
      * 円弧飛翔体を追加
      */
-    addProjectile(startPyr, endPyr, intensity) {
+    addProjectile(startPyr, endPyr, intensity, options = {}) {
         // 始点と終点の3D位置を計算（半径0.3m -> 1.5倍）
         const baseRadius = 0.3 * 1.5;
 
@@ -71,7 +71,9 @@ export class SlashProjectileManager {
             speed: this.SLASH_SPEED,
             spawnTime: performance.now(),
             intensity,
-            direction: this.camera.getWorldDirection(new THREE.Vector3()).normalize(),
+            direction: options.direction
+                ? new THREE.Vector3(options.direction.x || 0, options.direction.y || 0, options.direction.z || 0).normalize()
+                : this.camera.getWorldDirection(new THREE.Vector3()).normalize(),
             hitEnemies: new Set(),
             baseOpacity: 0.75 + intensity * 0.2,
             visualScale: 1.0 + Math.max(0.5, Math.min(2.0, intensity || 1.0)) * 0.04

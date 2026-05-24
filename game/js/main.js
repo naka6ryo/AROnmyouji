@@ -600,9 +600,18 @@ class AROnmyoujiGame {
         const averageYaw = this.averageCalibrationSwingYaw(swing.trajectory);
         this.lockCalibrationYaw(averageYaw, 'swing average');
 
-        const startPyr = swing.trajectory[0];
-        const endPyr = swing.trajectory[swing.trajectory.length - 1];
+        const correctedTrajectory = this.applyLockedCalibrationYawToTrajectory(swing.trajectory);
+        const startPyr = correctedTrajectory[0];
+        const endPyr = correctedTrajectory[correctedTrajectory.length - 1];
         this.renderer.addCalibrationSlashProjectile(startPyr, endPyr, swing.intensity);
+    }
+
+    applyLockedCalibrationYawToTrajectory(trajectory) {
+        const yawBase = typeof this.calibrationLockedYaw === 'number' ? this.calibrationLockedYaw : 0;
+        return trajectory.map(point => ({
+            ...point,
+            yaw: this.unwrapAngleDeg((typeof point.rawYaw === 'number' ? point.rawYaw : point.yaw) - yawBase)
+        }));
     }
 
     averageCalibrationSwingYaw(trajectory) {

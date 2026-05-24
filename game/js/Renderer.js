@@ -357,12 +357,15 @@ export class Renderer {
 
         if (this.canvas) {
             this.canvas.classList.remove('calibration-canvas');
+            this.canvas.style.opacity = '';
         }
 
         if (this.videoElement) {
             this.videoElement.classList.remove('calibration-video-hidden');
             this.videoElement.style.display = '';
         }
+
+        this.renderer.clear();
     }
 
     updateCalibrationTarget() {

@@ -1740,10 +1740,12 @@ export class UIManager {
         } else {
             // Ensure camera/canvas are visible if starting game
             if (videoEl) {
+                videoEl.classList.remove('calibration-video-hidden');
                 videoEl.style.display = '';
                 videoEl.style.opacity = ''; // Reset opacity
             }
             if (canvasEl) {
+                canvasEl.classList.remove('calibration-canvas');
                 canvasEl.style.display = '';
                 canvasEl.style.opacity = ''; // Reset opacity
                 canvasEl.classList.remove('hidden');
@@ -1773,10 +1775,12 @@ export class UIManager {
         if (showCamera) {
             setTimeout(() => {
                 if (videoEl) {
+                    videoEl.classList.remove('calibration-video-hidden');
                     videoEl.style.display = '';
                     videoEl.style.opacity = '';
                 }
                 if (canvasEl) {
+                    canvasEl.classList.remove('calibration-canvas');
                     canvasEl.style.display = '';
                     canvasEl.style.opacity = '';
                     canvasEl.classList.remove('hidden');
@@ -1814,10 +1818,12 @@ export class UIManager {
                 // Ensure camera/canvas are visible if starting game (redundant safety)
                 if (showCamera) {
                     if (videoEl) {
+                        videoEl.classList.remove('calibration-video-hidden');
                         videoEl.style.display = '';
                         videoEl.style.opacity = '';
                     }
                     if (canvasEl) {
+                        canvasEl.classList.remove('calibration-canvas');
                         canvasEl.style.display = '';
                         canvasEl.style.opacity = '';
                         canvasEl.classList.remove('hidden');

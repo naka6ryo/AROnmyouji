@@ -252,6 +252,7 @@ class AROnmyoujiGame {
      * カウントダウンをUIに表示してから `startGameplay()` を呼ぶ。
      */
     onStartInScene() {
+        this.exitCalibrationStage();
         this.debugOverlay.logInfo('シーン内スタートボタン押下');
 
         // スタートボタンを隠す
@@ -461,6 +462,8 @@ class AROnmyoujiGame {
      * ゲームプレイ開始
      */
     startGameplay() {
+        this.exitCalibrationStage();
+
         // 念のためスタートボタンを隠す
         this.uiManager.toggleSceneStartButton(false);
 
@@ -560,6 +563,22 @@ class AROnmyoujiGame {
         const startPyr = centeredTrajectory[0];
         const endPyr = centeredTrajectory[centeredTrajectory.length - 1];
         this.renderer.addCalibrationSlashProjectile(startPyr, endPyr, swing.intensity);
+        this.showCalibrationSlashEffect();
+    }
+
+    showCalibrationSlashEffect() {
+        const stage = document.getElementById('calibrationStage');
+        if (!stage) return;
+
+        const slash = document.createElement('div');
+        slash.className = 'calibration-slash-fx';
+        stage.appendChild(slash);
+
+        const remove = () => {
+            if (slash.parentElement) slash.parentElement.removeChild(slash);
+        };
+        slash.addEventListener('animationend', remove, { once: true });
+        setTimeout(remove, 900);
     }
 
     centerTrajectoryYawOnFront(trajectory) {

@@ -139,7 +139,7 @@ export class DebugOverlay {
             const circle = data.circleDebug;
             if (circle.valid) {
                 this.debugElements.circle.textContent = 
-                    `L=${circle.length.toFixed(0)}, C=${circle.closure.toFixed(0)}, R=${circle.rotation.toFixed(0)}`;
+                    `C=${circle.closure.toFixed(0)}, P=${circle.pitchRange.toFixed(0)}, Y=${circle.yawRange.toFixed(0)}, A=${circle.area.toFixed(0)}`;
             } else {
                 this.debugElements.circle.textContent = '未検出';
             }

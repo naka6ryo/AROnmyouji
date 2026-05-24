@@ -1045,11 +1045,7 @@ class AROnmyoujiGame {
         });
 
         const circleInfo = this.motionInterpreter.getCircleDebugInfo();
-        if (circleInfo.valid) {
-            this.debugOverlay.update({
-                circle: `L:${circleInfo.length.toFixed(1)} C:${circleInfo.closure.toFixed(1)} R:${circleInfo.rotation.toFixed(1)}`
-            });
-        }
+        this.debugOverlay.update({ circleDebug: circleInfo });
     }
 }
 

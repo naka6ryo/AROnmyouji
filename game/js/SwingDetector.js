@@ -144,12 +144,13 @@ export class SwingDetector {
     }
 
     splitSwing(now, currentPoint, currentAMag) {
+        if (this.onSharpTurnSwingDetected) {
+            const shouldContinue = this.onSharpTurnSwingDetected({ timestamp: now });
+            if (shouldContinue === false) return;
+        }
+
         const emitted = this.emitSwing(now);
         if (!emitted) return;
-
-        if (this.onSharpTurnSwingDetected) {
-            this.onSharpTurnSwingDetected({ timestamp: now });
-        }
 
         this.startTime = now;
         this.trajectory = [{ ...currentPoint }];

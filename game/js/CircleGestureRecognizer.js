@@ -11,7 +11,7 @@ export class CircleGestureRecognizer {
         this.A_START = 0.60;
         this.A_END = 0.60;
         this.DA_START = 0.10;
-        this.CIRCLE_MAX_CLOSURE = 25;
+        this.CIRCLE_MAX_CLOSURE = 35;
         this.CIRCLE_MIN_AXIS_RANGE = 7;
         this.CIRCLE_MIN_AXIS_BALANCE = 0.30;
         this.CIRCLE_MIN_AREA = 80;

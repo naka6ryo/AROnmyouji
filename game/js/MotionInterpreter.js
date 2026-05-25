@@ -51,9 +51,11 @@ export class MotionInterpreter {
         };
 
         this.swingDetector.onSharpTurnSwingDetected = () => {
-            if (!this.circleRecognizer.isPotentialCircle()) {
-                this.circleRecognizer.clearBuffer();
+            if (this.circleRecognizer.isPotentialCircle()) {
+                return false;
             }
+            this.circleRecognizer.clearBuffer();
+            return true;
         };
 
         this.swingDetector.onSwingDetected = (swing) => {
@@ -64,6 +66,10 @@ export class MotionInterpreter {
             if (this.circleRecognizer.tryDetectFromTrajectory(swing.trajectory, swing.timestamp)) {
                 this.circleDetectedThisFrame = true;
                 this.pendingSwingReset = true;
+                return;
+            }
+
+            if (this.circleRecognizer.isPotentialCircle()) {
                 return;
             }
 

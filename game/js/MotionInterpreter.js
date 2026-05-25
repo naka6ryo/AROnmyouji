@@ -47,7 +47,6 @@ export class MotionInterpreter {
         };
 
         this.swingDetector.onTrajectoryUpdate = (trajectory) => {
-            if (this.circleRecognizer.isPotentialCircle()) return;
             if (this.onSwingTracerUpdate) this.onSwingTracerUpdate(trajectory);
         };
 

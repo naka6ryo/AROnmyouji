@@ -96,6 +96,16 @@ export class Renderer {
             radius: 0.75
         };
         this.calibrationTargetBurstEffects = [];
+        this.freezeDomainEffects = [];
+        this.freezeDomainGeometry = new THREE.RingGeometry(0.85, 1.0, 96);
+        this.freezeDomainMaterial = new THREE.MeshBasicMaterial({
+            color: 0x9eefff,
+            transparent: true,
+            opacity: 0.42,
+            blending: THREE.AdditiveBlending,
+            side: THREE.DoubleSide,
+            depthWrite: false
+        });
 
         // --- Refactored Modules ---
 
@@ -281,6 +291,27 @@ export class Renderer {
                 hitodama.setFrozen(durationMs);
             }
         }
+    }
+
+    triggerFreezeDomainEffect() {
+        const cameraWorld = this._cameraPositionScratch;
+        this.cameraPivot.updateMatrixWorld(true);
+        this.camera.updateMatrixWorld(true);
+        this.camera.getWorldPosition(cameraWorld);
+
+        const ring = new THREE.Mesh(this.freezeDomainGeometry, this.freezeDomainMaterial.clone());
+        ring.position.copy(cameraWorld);
+        ring.position.y -= 0.55;
+        ring.rotation.x = Math.PI / 2;
+        ring.scale.setScalar(0.08);
+        ring.frustumCulled = false;
+        this.scene.add(ring);
+
+        this.freezeDomainEffects.push({
+            mesh: ring,
+            life: 1,
+            maxScale: 7.5
+        });
     }
 
     /**
@@ -607,6 +638,26 @@ export class Renderer {
         }
     }
 
+    updateFreezeDomainEffects(dtSec) {
+        for (let i = this.freezeDomainEffects.length - 1; i >= 0; i--) {
+            const effect = this.freezeDomainEffects[i];
+            effect.life -= dtSec * 1.65;
+
+            const t = Math.max(0, 1 - effect.life);
+            const scale = 0.08 + effect.maxScale * (1 - Math.pow(1 - t, 2.2));
+            effect.mesh.scale.set(scale, scale, scale);
+            if (effect.mesh.material) {
+                effect.mesh.material.opacity = Math.max(0, effect.life) * 0.42;
+            }
+
+            if (effect.life <= 0) {
+                this.scene.remove(effect.mesh);
+                if (effect.mesh.material) effect.mesh.material.dispose();
+                this.freezeDomainEffects.splice(i, 1);
+            }
+        }
+    }
+
     clearCalibrationTargetBurstEffects() {
         for (const effect of this.calibrationTargetBurstEffects) {
             this.scene.remove(effect.mesh);
@@ -614,6 +665,14 @@ export class Renderer {
             if (effect.mesh.material) effect.mesh.material.dispose();
         }
         this.calibrationTargetBurstEffects = [];
+    }
+
+    clearFreezeDomainEffects() {
+        for (const effect of this.freezeDomainEffects) {
+            this.scene.remove(effect.mesh);
+            if (effect.mesh.material) effect.mesh.material.dispose();
+        }
+        this.freezeDomainEffects = [];
     }
 
     createCalibrationStage() {
@@ -695,6 +754,7 @@ export class Renderer {
 
         // 飛翔体更新
         this.updateCalibrationTargetBurstEffects(dtSec);
+        this.updateFreezeDomainEffects(dtSec);
 
         if (this.calibrationMode) {
             this.slashProjectileManager.update(deltaTime, [this.calibrationTarget], (data) => {
@@ -888,6 +948,9 @@ export class Renderer {
         this.slashProjectileManager.dispose();
         this.swingTracer.dispose();
         this.clearCalibrationTargetBurstEffects();
+        this.clearFreezeDomainEffects();
+        if (this.freezeDomainGeometry) this.freezeDomainGeometry.dispose();
+        if (this.freezeDomainMaterial) this.freezeDomainMaterial.dispose();
         if (this.calibrationStageGroup) {
             this.scene.remove(this.calibrationStageGroup);
             this.calibrationStageGroup.traverse(child => {

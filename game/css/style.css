@@ -1262,43 +1262,9 @@ body {
         0 0 24px rgba(70, 170, 255, 0.72);
 }
 
-.circle-freeze-overlay::before,
-.circle-freeze-overlay::after {
-    content: "";
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    border-radius: 50%;
-    pointer-events: none;
-    opacity: 0;
-    transform: translate(-50%, -50%) scale(0.12);
-}
-
-.circle-freeze-overlay::before {
-    width: max(128vw, 128vh);
-    height: min(26vh, 180px);
-    border: 3px solid rgba(170, 235, 255, 0.32);
-    background:
-        radial-gradient(ellipse, transparent 0 44%, rgba(160, 232, 255, 0.08) 45% 47%, transparent 48%),
-        rgba(160, 232, 255, 0.028);
-}
-
-.circle-freeze-overlay::after {
-    display: none;
-}
-
 .circle-freeze-overlay.active {
     opacity: 1;
     transform: scale(1);
-}
-
-.circle-freeze-overlay.active::before {
-    will-change: transform, opacity;
-    animation: circle-freeze-domain-expand 0.72s ease-out both;
-}
-
-.circle-freeze-overlay.active::after {
-    animation: none;
 }
 
 .circle-freeze-sigil {
@@ -1385,22 +1351,6 @@ body {
 
     100% {
         opacity: 0.9;
-        transform: translate(-50%, -50%) scale(1);
-    }
-}
-
-@keyframes circle-freeze-domain-expand {
-    0% {
-        opacity: 0;
-        transform: translate(-50%, -50%) scale(0.02);
-    }
-
-    18% {
-        opacity: 0.82;
-    }
-
-    100% {
-        opacity: 0;
         transform: translate(-50%, -50%) scale(1);
     }
 }

@@ -773,6 +773,7 @@ class AROnmyoujiGame {
             try { this.soundManager.play('circle_freeze', { volume: 0.9 }); } catch (e) { }
             this.lastCircleFreezeSoundTime = now;
         }
+        this.renderer.triggerFreezeDomainEffect();
         this.uiManager.triggerCircleFreezeEffect(freezeDurationMs);
         this.combatSystem.sendCircleFreezeHaptic(result.affected);
         this.updateHUD(undefined, { forceHud: true, forceIndicators: true });

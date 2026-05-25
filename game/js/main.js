@@ -762,6 +762,7 @@ class AROnmyoujiGame {
     onCircle(circle) {
         if (!this.appState.isGameplay()) return;
         this.debugOverlay.logInfo('円ジェスチャ検出');
+        this.renderer.endSwingTracer();
         const freezeDurationMs = 3000;
         const result = this.gameWorld.freezeEnemies(freezeDurationMs);
         this.debugOverlay.logInfo(`Circle freeze: ${result.affected} enemies / ${(freezeDurationMs / 1000).toFixed(0)}s`);

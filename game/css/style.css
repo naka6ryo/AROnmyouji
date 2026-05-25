@@ -1262,9 +1262,47 @@ body {
         0 0 24px rgba(70, 170, 255, 0.72);
 }
 
+.circle-freeze-overlay::before,
+.circle-freeze-overlay::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    pointer-events: none;
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.12);
+}
+
+.circle-freeze-overlay::before {
+    width: max(140vw, 140vh);
+    border: 3px solid rgba(170, 235, 255, 0.34);
+    box-shadow:
+        0 0 42px rgba(120, 220, 255, 0.34),
+        inset 0 0 70px rgba(120, 220, 255, 0.18);
+    background:
+        radial-gradient(circle, transparent 0 34%, rgba(160, 232, 255, 0.12) 35% 36%, transparent 37% 49%, rgba(160, 232, 255, 0.10) 50% 51%, transparent 52%),
+        radial-gradient(circle, rgba(160, 232, 255, 0.12) 0 2%, transparent 3% 100%);
+}
+
+.circle-freeze-overlay::after {
+    width: max(108vw, 108vh);
+    border: 2px solid rgba(230, 252, 255, 0.42);
+    box-shadow: 0 0 34px rgba(120, 220, 255, 0.28);
+}
+
 .circle-freeze-overlay.active {
     opacity: 1;
     transform: scale(1);
+}
+
+.circle-freeze-overlay.active::before {
+    animation: circle-freeze-domain-expand 0.72s ease-out both;
+}
+
+.circle-freeze-overlay.active::after {
+    animation: circle-freeze-domain-expand 0.58s ease-out 0.06s both;
 }
 
 .circle-freeze-sigil {
@@ -1283,6 +1321,10 @@ body {
         radial-gradient(circle, rgba(210, 250, 255, 0.28) 0 3%, transparent 4% 100%),
         radial-gradient(circle, transparent 0 41%, rgba(210, 246, 255, 0.42) 42% 45%, transparent 46% 60%, rgba(210, 246, 255, 0.52) 61% 64%, transparent 65%),
         conic-gradient(from 0deg, transparent 0 16deg, rgba(180, 240, 255, 0.58) 16deg 24deg, transparent 24deg 45deg);
+}
+
+.circle-freeze-overlay.active .circle-freeze-sigil {
+    animation: circle-freeze-sigil-expand 0.7s ease-out both;
 }
 
 .circle-freeze-label {
@@ -1328,6 +1370,42 @@ body {
     font-weight: 800;
     color: rgba(214, 244, 255, 0.9);
     text-shadow: 0 0 10px rgba(120, 220, 255, 0.9);
+}
+
+@keyframes circle-freeze-sigil-expand {
+    0% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.25);
+        box-shadow:
+            0 0 6px rgba(120, 220, 255, 0.35),
+            inset 0 0 8px rgba(120, 220, 255, 0.2);
+    }
+
+    38% {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1.16);
+    }
+
+    100% {
+        opacity: 0.9;
+        transform: translate(-50%, -50%) scale(1);
+    }
+}
+
+@keyframes circle-freeze-domain-expand {
+    0% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.02);
+    }
+
+    18% {
+        opacity: 0.82;
+    }
+
+    100% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(1);
+    }
 }
 
 /* 小さなユーティリティ: flash をすぐ戻すためのクラス */

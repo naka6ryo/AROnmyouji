@@ -51,9 +51,6 @@ export class MotionInterpreter {
         };
 
         this.swingDetector.onSharpTurnSwingDetected = () => {
-            if (this.circleRecognizer.isPotentialCircle()) {
-                return false;
-            }
             this.circleRecognizer.clearBuffer();
             return true;
         };

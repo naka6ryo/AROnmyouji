@@ -1250,7 +1250,7 @@ body {
 .circle-freeze-overlay {
     position: fixed;
     inset: 0;
-    z-index: 130;
+    z-index: 220;
     display: block;
     pointer-events: none;
     opacity: 0;

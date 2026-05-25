@@ -413,7 +413,7 @@ export class UIManager {
             void container.offsetWidth;
             container.classList.add('freeze-screen');
 
-            const overlay = this.ensureCircleFreezeOverlay(container);
+            const overlay = this.ensureCircleFreezeOverlay();
             overlay.querySelector('.circle-freeze-duration').textContent = `${(durationMs / 1000).toFixed(0)}秒`;
             overlay.classList.remove('active');
             void overlay.offsetWidth;
@@ -434,7 +434,7 @@ export class UIManager {
         }
     }
 
-    ensureCircleFreezeOverlay(container) {
+    ensureCircleFreezeOverlay() {
         if (this.circleFreezeOverlay && this.circleFreezeOverlay.parentElement) {
             return this.circleFreezeOverlay;
         }
@@ -448,7 +448,7 @@ export class UIManager {
             <div class="circle-freeze-mantra">急急如律令</div>
             <div class="circle-freeze-duration">3秒</div>
         `;
-        container.appendChild(overlay);
+        document.body.appendChild(overlay);
         this.circleFreezeOverlay = overlay;
         return overlay;
     }

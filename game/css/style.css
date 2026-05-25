@@ -1251,10 +1251,7 @@ body {
     position: fixed;
     inset: 0;
     z-index: 130;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
+    display: block;
     pointer-events: none;
     opacity: 0;
     transform: scale(0.9);
@@ -1273,51 +1270,27 @@ body {
 .circle-freeze-sigil {
     width: min(48vw, 220px);
     aspect-ratio: 1;
-    border: 2px solid rgba(170, 235, 255, 0.95);
+    border: 4px solid rgba(170, 235, 255, 0.95);
     border-radius: 50%;
-    position: relative;
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
     box-shadow:
         0 0 18px rgba(120, 220, 255, 0.9),
         inset 0 0 32px rgba(120, 220, 255, 0.35);
     background:
         radial-gradient(circle, rgba(210, 250, 255, 0.28) 0 3%, transparent 4% 100%),
-        radial-gradient(circle, transparent 0 42%, rgba(210, 246, 255, 0.38) 43% 44%, transparent 45% 61%, rgba(210, 246, 255, 0.48) 62% 63%, transparent 64%),
-        conic-gradient(from 0deg, transparent 0 18deg, rgba(180, 240, 255, 0.55) 18deg 22deg, transparent 22deg 45deg);
-    animation: circle-freeze-spin 0.9s ease-out both;
-}
-
-.circle-freeze-sigil::before,
-.circle-freeze-sigil::after {
-    content: "封";
-    position: absolute;
-    display: grid;
-    place-items: center;
-    width: 3.4rem;
-    height: 4.8rem;
-    left: 50%;
-    top: 50%;
-    font-family: "Yu Mincho", "Hiragino Mincho ProN", serif;
-    font-size: 1.9rem;
-    font-weight: 800;
-    color: rgba(24, 44, 64, 0.88);
-    background:
-        linear-gradient(90deg, rgba(138, 16, 28, 0.9) 48%, rgba(190, 32, 44, 0.92) 48% 52%, rgba(138, 16, 28, 0.9) 52%) top / 100% 0.32rem no-repeat,
-        linear-gradient(rgba(255, 252, 220, 0.96), rgba(238, 222, 164, 0.96));
-    border: 1px solid rgba(248, 244, 210, 0.88);
-    box-shadow: 0 0 18px rgba(210, 244, 255, 0.72);
-}
-
-.circle-freeze-sigil::before {
-    transform: translate(-50%, -50%) rotate(-12deg);
-}
-
-.circle-freeze-sigil::after {
-    transform: translate(-50%, -50%) rotate(12deg);
-    opacity: 0.7;
+        radial-gradient(circle, transparent 0 41%, rgba(210, 246, 255, 0.42) 42% 45%, transparent 46% 60%, rgba(210, 246, 255, 0.52) 61% 64%, transparent 65%),
+        conic-gradient(from 0deg, transparent 0 16deg, rgba(180, 240, 255, 0.58) 16deg 24deg, transparent 24deg 45deg);
 }
 
 .circle-freeze-label {
-    margin-top: -128px;
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    margin-top: 0;
     font-family: "Yu Mincho", "Hiragino Mincho ProN", serif;
     font-size: clamp(2rem, 11vw, 3.8rem);
     font-weight: 900;
@@ -1330,7 +1303,11 @@ body {
 }
 
 .circle-freeze-mantra {
-    margin-top: 0.55rem;
+    position: absolute;
+    left: 50%;
+    top: calc(50% + 3.2rem);
+    transform: translateX(-50%);
+    margin-top: 0;
     padding: 0.2rem 0.7rem;
     border-top: 1px solid rgba(230, 252, 255, 0.72);
     border-bottom: 1px solid rgba(230, 252, 255, 0.72);
@@ -1341,28 +1318,16 @@ body {
 }
 
 .circle-freeze-duration {
-    margin-top: 48px;
+    position: absolute;
+    left: 50%;
+    top: calc(50% + min(24vw, 110px) + 32px);
+    transform: translateX(-50%);
+    margin-top: 0;
     font-family: "Yu Mincho", "Hiragino Mincho ProN", serif;
     font-size: 0.86rem;
     font-weight: 800;
     color: rgba(214, 244, 255, 0.9);
     text-shadow: 0 0 10px rgba(120, 220, 255, 0.9);
-}
-
-@keyframes circle-freeze-spin {
-    0% {
-        transform: rotate(-90deg) scale(0.6);
-        opacity: 0;
-    }
-
-    45% {
-        opacity: 1;
-    }
-
-    100% {
-        transform: rotate(130deg) scale(1.15);
-        opacity: 0.35;
-    }
 }
 
 /* 小さなユーティリティ: flash をすぐ戻すためのクラス */

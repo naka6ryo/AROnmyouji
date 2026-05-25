@@ -379,6 +379,7 @@ class AROnmyoujiGame {
                     polygon_burst: 'assets/sfx/polygon_burst.mp3',
                     explosion: 'assets/sfx/explosion.mp3',
                     attack_swipe: 'assets/sfx/atttack.mp3',
+                    circle_freeze: 'assets/sfx/聖魔法.mp3',
                     button: 'assets/sfx/Button.mp3',
                     tv_turn_off: 'assets/sfx/TV-Turn_Off01-2(Reverb).mp3'
                 }).then(() => this.debugOverlay.logInfo('SFXロード完了')).catch(e => console.warn('sound load failed', e));
@@ -425,6 +426,7 @@ class AROnmyoujiGame {
                 polygon_burst: 'assets/sfx/polygon_burst.mp3',
                 explosion: 'assets/sfx/explosion.mp3',
                 attack_swipe: 'assets/sfx/atttack.mp3',
+                circle_freeze: 'assets/sfx/聖魔法.mp3',
                 button: 'assets/sfx/Button.mp3',
                 tv_turn_off: 'assets/sfx/TV-Turn_Off01-2(Reverb).mp3'
             }).then(() => this.debugOverlay.logInfo('SFXロード完了')).catch(e => console.warn('sound load failed', e));
@@ -589,6 +591,7 @@ class AROnmyoujiGame {
                     polygon_burst: 'assets/sfx/polygon_burst.mp3',
                     explosion: 'assets/sfx/explosion.mp3',
                     attack_swipe: 'assets/sfx/atttack.mp3',
+                    circle_freeze: 'assets/sfx/聖魔法.mp3',
                     button: 'assets/sfx/Button.mp3',
                     tv_turn_off: 'assets/sfx/TV-Turn_Off01-2(Reverb).mp3'
                 }).then(() => this.debugOverlay.logInfo('SFXロード完了')).catch(e => console.warn('sound load failed', e));
@@ -763,6 +766,7 @@ class AROnmyoujiGame {
         const result = this.gameWorld.freezeEnemies(freezeDurationMs);
         this.debugOverlay.logInfo(`Circle freeze: ${result.affected} enemies / ${(freezeDurationMs / 1000).toFixed(0)}s`);
 
+        try { this.soundManager.play('circle_freeze', { volume: 0.9 }); } catch (e) { }
         this.renderer.triggerEnemyFreezeEffect(freezeDurationMs);
         this.uiManager.triggerCircleFreezeEffect(freezeDurationMs);
         this.combatSystem.sendCircleFreezeHaptic(result.affected);

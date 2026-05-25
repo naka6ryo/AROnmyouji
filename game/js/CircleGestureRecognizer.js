@@ -8,6 +8,9 @@ export class CircleGestureRecognizer {
         this.buffer = [];
         this.GESTURE_WINDOW = 1500;
         this.GESTURE_MIN_DURATION = 600;
+        this.A_START = 0.60;
+        this.A_END = 0.60;
+        this.DA_START = 0.10;
         this.CIRCLE_MAX_CLOSURE = 25;
         this.CIRCLE_MIN_AXIS_RANGE = 7;
         this.CIRCLE_MIN_AXIS_BALANCE = 0.30;
@@ -15,12 +18,53 @@ export class CircleGestureRecognizer {
         this.CIRCLE_MIN_ANGLE_COVERAGE = 240;
         this.CIRCLE_COOLDOWN = 700;
 
-        this.lastDetectedTime = 0;
+        this.state = 'Idle';
+        this.startTime = 0;
+        this.prevAMag = 0;
+        this.peakAMag = 0;
+        this.lastDetectedTime = -Infinity;
 
         this.onCircleDetected = null;
     }
 
     update(frame, now) {
+        const aMag = frame.a_mag ?? 0;
+        const daMag = aMag - this.prevAMag;
+
+        switch (this.state) {
+            case 'Idle':
+                if (
+                    aMag >= this.A_START &&
+                    daMag >= this.DA_START &&
+                    now - this.lastDetectedTime >= this.CIRCLE_COOLDOWN
+                ) {
+                    this.startGesture(frame, now, aMag);
+                }
+                break;
+
+            case 'Recording':
+                this.recordPoint(frame, now);
+                this.peakAMag = Math.max(this.peakAMag, aMag);
+                if (now - this.startTime > this.GESTURE_WINDOW) {
+                    this.finishGesture(now);
+                } else if (aMag <= this.A_END && now - this.startTime >= this.GESTURE_MIN_DURATION) {
+                    this.finishGesture(now);
+                }
+                break;
+        }
+
+        this.prevAMag = aMag;
+    }
+
+    startGesture(frame, now, aMag) {
+        this.state = 'Recording';
+        this.startTime = now;
+        this.peakAMag = aMag;
+        this.buffer = [];
+        this.recordPoint(frame, now);
+    }
+
+    recordPoint(frame, now) {
         this.buffer.push({
             pitch: frame.pitch_deg,
             yaw: frame.yaw_deg,
@@ -28,11 +72,20 @@ export class CircleGestureRecognizer {
         });
 
         this.buffer = this.buffer.filter(p => now - p.timestamp <= this.GESTURE_WINDOW);
+    }
 
-        if (this.buffer.length < 2) return;
-        const duration = now - this.buffer[0].timestamp;
-        if (duration < this.GESTURE_MIN_DURATION) return;
-        if (now - this.lastDetectedTime < this.CIRCLE_COOLDOWN) return;
+    finishGesture(now) {
+        const duration = now - this.startTime;
+        if (this.buffer.length < 2 || duration < this.GESTURE_MIN_DURATION) {
+            this.clearBuffer();
+            this.state = 'Idle';
+            return;
+        }
+
+        if (now - this.lastDetectedTime < this.CIRCLE_COOLDOWN) {
+            this.clearBuffer();
+            return;
+        }
 
         const metrics = this.calculateMetrics();
         const { closure, pitchRange, yawRange, axisBalance, area, angleCoverage } = metrics;
@@ -53,6 +106,11 @@ export class CircleGestureRecognizer {
                 this.onCircleDetected({ timestamp: now, ...metrics });
             }
         }
+
+        this.clearBuffer();
+        this.state = 'Idle';
+        this.startTime = 0;
+        this.peakAMag = 0;
     }
 
     calculateMetrics() {
@@ -203,11 +261,15 @@ export class CircleGestureRecognizer {
 
     clearBuffer() {
         this.buffer = [];
+        this.state = 'Idle';
+        this.startTime = 0;
+        this.peakAMag = 0;
     }
 
     reset() {
-        this.buffer = [];
-        this.lastDetectedTime = 0;
+        this.clearBuffer();
+        this.prevAMag = 0;
+        this.lastDetectedTime = -Infinity;
         console.log('[CircleGestureRecognizer] Reset executed');
     }
 }

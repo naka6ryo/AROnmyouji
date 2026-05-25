@@ -9,6 +9,7 @@ export const HitodamaResources = {
         explosionFragment: null,
         shockwaveSmall: null,
         shockwaveLarge: null,
+        freezeRing: null,
         tail: null // Initialized per instance or shared buffer? Shared buffer is hard if length varies, but here length is fixed (40).
     },
     materials: {
@@ -17,7 +18,8 @@ export const HitodamaResources = {
         aura: null,
         tail: null,
         fragment: null,
-        shockwave: null
+        shockwave: null,
+        freezeRing: null
     },
 
     init() {
@@ -39,6 +41,7 @@ export const HitodamaResources = {
         // Shockwaves
         this.geometries.shockwaveSmall = new THREE.RingGeometry(0.2, 0.5, 32);
         this.geometries.shockwaveLarge = new THREE.RingGeometry(0.2, 0.8, 32);
+        this.geometries.freezeRing = new THREE.TorusGeometry(0.95, 0.025, 8, 48);
 
         // --- Materials ---
         // Core
@@ -76,6 +79,15 @@ export const HitodamaResources = {
             opacity: 0.9,
             side: THREE.DoubleSide,
             blending: THREE.AdditiveBlending
+        });
+
+        this.materials.freezeRing = new THREE.MeshBasicMaterial({
+            color: 0x88ddff,
+            transparent: true,
+            opacity: 0.36,
+            blending: THREE.AdditiveBlending,
+            side: THREE.DoubleSide,
+            depthWrite: false
         });
     }
 };

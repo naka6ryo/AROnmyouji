@@ -37,6 +37,7 @@ class AROnmyoujiGame {
         this.renderer = new Renderer('gameCanvas', this.debugOverlay);
         this.uiManager = new UIManager();
         this.soundManager = soundManager;
+        this.lastCircleFreezeSoundTime = -Infinity;
 
         // Calibration display baseline (for reset behavior)
         this.calibrationDisplayBaseline = null;
@@ -767,8 +768,11 @@ class AROnmyoujiGame {
         const result = this.gameWorld.freezeEnemies(freezeDurationMs);
         this.debugOverlay.logInfo(`Circle freeze: ${result.affected} enemies / ${(freezeDurationMs / 1000).toFixed(0)}s`);
 
-        try { this.soundManager.play('circle_freeze', { volume: 0.9 }); } catch (e) { }
-        this.renderer.triggerEnemyFreezeEffect(freezeDurationMs);
+        const now = performance.now();
+        if (now - this.lastCircleFreezeSoundTime >= 450) {
+            try { this.soundManager.play('circle_freeze', { volume: 0.9 }); } catch (e) { }
+            this.lastCircleFreezeSoundTime = now;
+        }
         this.uiManager.triggerCircleFreezeEffect(freezeDurationMs);
         this.combatSystem.sendCircleFreezeHaptic(result.affected);
         this.updateHUD(undefined, { forceHud: true, forceIndicators: true });

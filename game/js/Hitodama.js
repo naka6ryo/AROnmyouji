@@ -108,17 +108,9 @@ export class Hitodama {
         this.tailPoints = new THREE.Points(this.tailGeometry, tailMaterial);
         this.scene.add(this.tailPoints);
 
-        const freezeRingMaterial = new THREE.MeshBasicMaterial({
-            color: 0x88ddff,
-            transparent: true,
-            opacity: 0,
-            blending: THREE.AdditiveBlending,
-            side: THREE.DoubleSide,
-            depthWrite: false
-        });
         this.freezeRing = new THREE.Mesh(
-            new THREE.TorusGeometry(0.95, 0.025, 10, 96),
-            freezeRingMaterial
+            HitodamaResources.geometries.freezeRing,
+            HitodamaResources.materials.freezeRing
         );
         this.freezeRing.visible = false;
         this.scene.add(this.freezeRing);
@@ -488,20 +480,12 @@ export class Hitodama {
         if (!this.freezeRing) return;
 
         this.freezeRing.visible = isFrozen;
-        if (!isFrozen) {
-            if (this.freezeRing.material) this.freezeRing.material.opacity = 0;
-            return;
-        }
+        if (!isFrozen) return;
 
         this.freezeRing.position.copy(this.pos);
         this.freezeRing.position.y += 0.28;
         this.freezeRing.rotation.x = Math.PI / 2;
-        this.freezeRing.rotation.z += dt * 1.6;
-        const ringPulse = 1.0 + Math.sin(this.time * 4.0) * 0.08;
-        this.freezeRing.scale.set(ringPulse, ringPulse, ringPulse);
-        if (this.freezeRing.material) {
-            this.freezeRing.material.opacity = 0.35 + Math.sin(this.time * 6.0) * 0.08;
-        }
+        this.freezeRing.scale.setScalar(1);
     }
 
     finalizeDeath() {
@@ -542,8 +526,6 @@ export class Hitodama {
 
         if (this.freezeRing) {
             this.scene.remove(this.freezeRing);
-            if (this.freezeRing.geometry) this.freezeRing.geometry.dispose();
-            if (this.freezeRing.material) this.freezeRing.material.dispose();
         }
 
         this.finalizeDeath();

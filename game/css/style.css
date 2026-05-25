@@ -1268,7 +1268,6 @@ body {
     position: absolute;
     left: 50%;
     top: 50%;
-    aspect-ratio: 1;
     border-radius: 50%;
     pointer-events: none;
     opacity: 0;
@@ -1276,20 +1275,16 @@ body {
 }
 
 .circle-freeze-overlay::before {
-    width: max(140vw, 140vh);
-    border: 3px solid rgba(170, 235, 255, 0.34);
-    box-shadow:
-        0 0 42px rgba(120, 220, 255, 0.34),
-        inset 0 0 70px rgba(120, 220, 255, 0.18);
+    width: max(128vw, 128vh);
+    height: min(26vh, 180px);
+    border: 3px solid rgba(170, 235, 255, 0.32);
     background:
-        radial-gradient(circle, transparent 0 34%, rgba(160, 232, 255, 0.12) 35% 36%, transparent 37% 49%, rgba(160, 232, 255, 0.10) 50% 51%, transparent 52%),
-        radial-gradient(circle, rgba(160, 232, 255, 0.12) 0 2%, transparent 3% 100%);
+        radial-gradient(ellipse, transparent 0 44%, rgba(160, 232, 255, 0.08) 45% 47%, transparent 48%),
+        rgba(160, 232, 255, 0.028);
 }
 
 .circle-freeze-overlay::after {
-    width: max(108vw, 108vh);
-    border: 2px solid rgba(230, 252, 255, 0.42);
-    box-shadow: 0 0 34px rgba(120, 220, 255, 0.28);
+    display: none;
 }
 
 .circle-freeze-overlay.active {
@@ -1298,11 +1293,12 @@ body {
 }
 
 .circle-freeze-overlay.active::before {
+    will-change: transform, opacity;
     animation: circle-freeze-domain-expand 0.72s ease-out both;
 }
 
 .circle-freeze-overlay.active::after {
-    animation: circle-freeze-domain-expand 0.58s ease-out 0.06s both;
+    animation: none;
 }
 
 .circle-freeze-sigil {
@@ -1324,6 +1320,7 @@ body {
 }
 
 .circle-freeze-overlay.active .circle-freeze-sigil {
+    will-change: transform, opacity;
     animation: circle-freeze-sigil-expand 0.7s ease-out both;
 }
 

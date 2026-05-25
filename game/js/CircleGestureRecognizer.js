@@ -16,6 +16,8 @@ export class CircleGestureRecognizer {
         this.CIRCLE_MIN_AXIS_BALANCE = 0.30;
         this.CIRCLE_MIN_AREA = 80;
         this.CIRCLE_MIN_ANGLE_COVERAGE = 240;
+        this.CIRCLE_CANDIDATE_MIN_AREA = 40;
+        this.CIRCLE_CANDIDATE_MIN_ANGLE_COVERAGE = 120;
         this.CIRCLE_COOLDOWN = 700;
 
         this.state = 'Idle';
@@ -87,24 +89,8 @@ export class CircleGestureRecognizer {
         }
 
         const metrics = this.calculateMetrics();
-        const { closure, pitchRange, yawRange, axisBalance, area, angleCoverage } = metrics;
 
-        if (
-            closure <= this.CIRCLE_MAX_CLOSURE &&
-            pitchRange >= this.CIRCLE_MIN_AXIS_RANGE &&
-            yawRange >= this.CIRCLE_MIN_AXIS_RANGE &&
-            axisBalance >= this.CIRCLE_MIN_AXIS_BALANCE &&
-            area >= this.CIRCLE_MIN_AREA &&
-            angleCoverage >= this.CIRCLE_MIN_ANGLE_COVERAGE
-        ) {
-            console.log(`[Circle] Detected: C=${closure.toFixed(1)}, P=${pitchRange.toFixed(1)}, Y=${yawRange.toFixed(1)}, B=${axisBalance.toFixed(2)}, A=${area.toFixed(1)}, G=${angleCoverage.toFixed(0)}`);
-            this.lastDetectedTime = now;
-            this.buffer = [];
-
-            if (this.onCircleDetected) {
-                this.onCircleDetected({ timestamp: now, ...metrics });
-            }
-        }
+        this.emitIfCircle(metrics, now);
 
         this.clearBuffer();
         this.state = 'Idle';
@@ -114,6 +100,10 @@ export class CircleGestureRecognizer {
 
     calculateMetrics() {
         const points = this.getUnwrappedPoints();
+        return this.calculateMetricsForPoints(points);
+    }
+
+    calculateMetricsForPoints(points) {
         if (points.length < 2) {
             return {
                 closure: Infinity,
@@ -135,19 +125,62 @@ export class CircleGestureRecognizer {
         };
     }
 
+    tryDetectFromTrajectory(trajectory, now) {
+        if (!trajectory || trajectory.length < 2) return false;
+        if (now - this.lastDetectedTime < this.CIRCLE_COOLDOWN) return false;
+
+        const rawPoints = trajectory.map(point => ({
+            pitch: typeof point.rawPitch === 'number' ? point.rawPitch : point.pitch,
+            yaw: typeof point.rawYaw === 'number' ? point.rawYaw : point.yaw,
+            timestamp: point.timestamp
+        }));
+        const points = this.unwrapPoints(rawPoints);
+        const metrics = this.calculateMetricsForPoints(points);
+        return this.emitIfCircle(metrics, now);
+    }
+
+    emitIfCircle(metrics, now) {
+        if (!this.isCircleMetrics(metrics)) return false;
+
+        console.log(`[Circle] Detected: C=${metrics.closure.toFixed(1)}, P=${metrics.pitchRange.toFixed(1)}, Y=${metrics.yawRange.toFixed(1)}, B=${metrics.axisBalance.toFixed(2)}, A=${metrics.area.toFixed(1)}, G=${metrics.angleCoverage.toFixed(0)}`);
+        this.lastDetectedTime = now;
+        this.buffer = [];
+
+        if (this.onCircleDetected) {
+            this.onCircleDetected({ timestamp: now, ...metrics });
+        }
+
+        return true;
+    }
+
+    isCircleMetrics(metrics) {
+        return (
+            metrics.closure <= this.CIRCLE_MAX_CLOSURE &&
+            metrics.pitchRange >= this.CIRCLE_MIN_AXIS_RANGE &&
+            metrics.yawRange >= this.CIRCLE_MIN_AXIS_RANGE &&
+            metrics.axisBalance >= this.CIRCLE_MIN_AXIS_BALANCE &&
+            metrics.area >= this.CIRCLE_MIN_AREA &&
+            metrics.angleCoverage >= this.CIRCLE_MIN_ANGLE_COVERAGE
+        );
+    }
+
     getUnwrappedPoints() {
-        if (this.buffer.length === 0) return [];
+        return this.unwrapPoints(this.buffer);
+    }
+
+    unwrapPoints(rawPoints) {
+        if (rawPoints.length === 0) return [];
 
         const points = [{
-            pitch: this.buffer[0].pitch,
-            yaw: this.buffer[0].yaw,
-            timestamp: this.buffer[0].timestamp
+            pitch: rawPoints[0].pitch,
+            yaw: rawPoints[0].yaw,
+            timestamp: rawPoints[0].timestamp
         }];
 
-        for (let i = 1; i < this.buffer.length; i++) {
+        for (let i = 1; i < rawPoints.length; i++) {
             const prev = points[i - 1];
-            const current = this.buffer[i];
-            const rawPrev = this.buffer[i - 1];
+            const current = rawPoints[i];
+            const rawPrev = rawPoints[i - 1];
             points.push({
                 pitch: current.pitch,
                 yaw: prev.yaw + this.unwrapAngle(current.yaw - rawPrev.yaw),
@@ -256,6 +289,19 @@ export class CircleGestureRecognizer {
             ...this.calculateMetrics(),
             bufferSize: this.buffer.length
         };
+    }
+
+    isPotentialCircle() {
+        if (this.state !== 'Recording' || this.buffer.length < 3) return false;
+
+        const metrics = this.calculateMetrics();
+        return (
+            metrics.pitchRange >= this.CIRCLE_MIN_AXIS_RANGE &&
+            metrics.yawRange >= this.CIRCLE_MIN_AXIS_RANGE &&
+            metrics.axisBalance >= this.CIRCLE_MIN_AXIS_BALANCE &&
+            metrics.area >= this.CIRCLE_CANDIDATE_MIN_AREA &&
+            metrics.angleCoverage >= this.CIRCLE_CANDIDATE_MIN_ANGLE_COVERAGE
+        );
     }
 
     clearBuffer() {

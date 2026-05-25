@@ -34,6 +34,7 @@ export class MotionInterpreter {
         this.onSwingTracerUpdate = null;
         this.onSwingStarted = null;
         this.circleDetectedThisFrame = false;
+        this.pendingSwingReset = false;
 
         // Internal wiring
         this.setupDetectorCallbacks();
@@ -50,10 +51,18 @@ export class MotionInterpreter {
         };
 
         this.swingDetector.onSharpTurnSwingDetected = () => {
-            this.circleRecognizer.clearBuffer();
+            if (!this.circleRecognizer.isPotentialCircle()) {
+                this.circleRecognizer.clearBuffer();
+            }
         };
 
         this.swingDetector.onSwingDetected = (swing) => {
+            if (this.circleRecognizer.tryDetectFromTrajectory(swing.trajectory, swing.timestamp)) {
+                this.circleDetectedThisFrame = true;
+                this.pendingSwingReset = true;
+                return;
+            }
+
             // Power Mode Check
             this.recordSwingForPowerMode(swing.intensity, swing.timestamp);
 
@@ -90,11 +99,15 @@ export class MotionInterpreter {
 
         // Detectors update
         this.circleDetectedThisFrame = false;
+        this.pendingSwingReset = false;
         this.circleRecognizer.update(frame, now);
         if (this.circleDetectedThisFrame) {
             this.swingDetector.reset();
         } else {
             this.swingDetector.update(frame, now, relativePYR);
+            if (this.pendingSwingReset) {
+                this.swingDetector.reset();
+            }
         }
 
         // Power Mode Update

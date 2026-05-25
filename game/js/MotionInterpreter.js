@@ -57,6 +57,10 @@ export class MotionInterpreter {
         };
 
         this.swingDetector.onSwingDetected = (swing) => {
+            if (this.circleDetectedThisFrame) {
+                return;
+            }
+
             if (this.circleRecognizer.tryDetectFromTrajectory(swing.trajectory, swing.timestamp)) {
                 this.circleDetectedThisFrame = true;
                 this.pendingSwingReset = true;

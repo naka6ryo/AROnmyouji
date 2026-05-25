@@ -47,7 +47,7 @@ export class CircleGestureRecognizer {
                 this.peakAMag = Math.max(this.peakAMag, aMag);
                 if (now - this.startTime > this.GESTURE_WINDOW) {
                     this.finishGesture(now);
-                } else if (aMag <= this.A_END && now - this.startTime >= this.GESTURE_MIN_DURATION) {
+                } else if (aMag <= this.A_END) {
                     this.finishGesture(now);
                 }
                 break;
@@ -75,8 +75,7 @@ export class CircleGestureRecognizer {
     }
 
     finishGesture(now) {
-        const duration = now - this.startTime;
-        if (this.buffer.length < 2 || duration < this.GESTURE_MIN_DURATION) {
+        if (this.buffer.length < 2) {
             this.clearBuffer();
             this.state = 'Idle';
             return;

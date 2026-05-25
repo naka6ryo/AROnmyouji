@@ -32,12 +32,12 @@ export class SensorFrameParser {
      */
     parseFrame(data) {
         if (data.length !== 15 && data.length !== 17) {
-            console.warn('[Parser] Unexpected frame size:', data.length);
+            
             return null;
         }
 
         if (data[0] !== 0x53) {
-            console.warn('[Parser] Invalid frame header:', data[0].toString(16));
+            
             return null;
         }
 
@@ -114,7 +114,7 @@ export class SensorFrameParser {
             if (seq !== expectedSeq) {
                 const dropped = (seq - expectedSeq + 256) % 256;
                 this.droppedFrames += dropped;
-                console.log(`[Parser] Frame drop detected: expected=${expectedSeq}, actual=${seq}, dropped=${dropped}`);
+                
             }
         }
 

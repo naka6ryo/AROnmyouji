@@ -142,7 +142,7 @@ export class CircleGestureRecognizer {
     emitIfCircle(metrics, now) {
         if (!this.isCircleMetrics(metrics)) return false;
 
-        console.log(`[Circle] Detected: C=${metrics.closure.toFixed(1)}, P=${metrics.pitchRange.toFixed(1)}, Y=${metrics.yawRange.toFixed(1)}, B=${metrics.axisBalance.toFixed(2)}, A=${metrics.area.toFixed(1)}, G=${metrics.angleCoverage.toFixed(0)}`);
+        
         this.lastDetectedTime = now;
         this.buffer = [];
 
@@ -315,6 +315,6 @@ export class CircleGestureRecognizer {
         this.clearBuffer();
         this.prevAMag = 0;
         this.lastDetectedTime = -Infinity;
-        console.log('[CircleGestureRecognizer] Reset executed');
+        
     }
 }

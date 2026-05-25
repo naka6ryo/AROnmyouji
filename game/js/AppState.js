@@ -35,7 +35,7 @@ export class AppState {
      * 状態を変更
      */
     changeState(newState) {
-        console.log(`[AppState] 状態遷移: ${this.currentState} -> ${newState}`);
+        
         
         // 現在の画面を非表示
         const prevEl = this.screens[this.currentState];

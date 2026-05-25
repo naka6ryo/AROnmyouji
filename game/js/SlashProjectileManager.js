@@ -6,6 +6,12 @@
 
 import * as THREE from 'three';
 
+const PERFORMANCE_PROFILES = {
+    normal: { tubeScale: 1, radialScale: 1, sparkScale: 1 },
+    warm: { tubeScale: 0.68, radialScale: 0.75, sparkScale: 0.5 },
+    hot: { tubeScale: 0.45, radialScale: 0.55, sparkScale: 0 }
+};
+
 export class SlashProjectileManager {
     constructor(scene, camera, getPivotWorldPosition, debugOverlay = null) {
         this.scene = scene;
@@ -14,6 +20,8 @@ export class SlashProjectileManager {
         this.debugOverlay = debugOverlay;
 
         this.projectiles = [];
+        this.performanceMode = 'normal';
+        this.performanceProfile = PERFORMANCE_PROFILES.normal;
         this.SLASH_SPEED = 8.0; // m/s
         this.SLASH_LIFETIME = 1500; // ms
         this._cameraPos = new THREE.Vector3();
@@ -27,6 +35,11 @@ export class SlashProjectileManager {
         this._slashNormal = new THREE.Vector3();
         this._slashTangent = new THREE.Vector3();
         this._slashSparkOffset = new THREE.Vector3();
+    }
+
+    setPerformanceMode(mode) {
+        this.performanceMode = PERFORMANCE_PROFILES[mode] ? mode : 'normal';
+        this.performanceProfile = PERFORMANCE_PROFILES[this.performanceMode];
     }
 
     /**
@@ -81,7 +94,7 @@ export class SlashProjectileManager {
 
         this.projectiles.push(projectile);
 
-        console.log(`[SlashManager] 円弧飛翔体生成: intensity=${intensity.toFixed(2)}`);
+        
     }
 
     /**
@@ -119,10 +132,6 @@ export class SlashProjectileManager {
                             enemy: enemy,
                             intensity: proj.intensity
                         });
-
-                        if (this.debugOverlay) {
-                            this.debugOverlay.logInfo(`斬撃命中: id=${enemy.id}`);
-                        }
 
                         break; // 1フレーム1体
                     }
@@ -238,32 +247,33 @@ export class SlashProjectileManager {
         const materialOptions = options.material || {};
         const opacityScale = materialOptions.opacityScale ?? 1;
         const useSparks = materialOptions.sparks !== false;
+        const profile = this.performanceProfile || PERFORMANCE_PROFILES.normal;
         const group = new THREE.Group();
         group.frustumCulled = false;
 
         const bladeLengthBoost = 1.0 + strength * 0.04;
         group.scale.set(bladeLengthBoost, bladeLengthBoost, bladeLengthBoost);
 
-        const glowGeometry = this.createTaperedSlashGeometry(curve, 36, 0.026 + strength * 0.004, 10, 0.16);
+        const glowGeometry = this.createTaperedSlashGeometry(curve, this.scaleSegments(36, profile.tubeScale), 0.026 + strength * 0.004, this.scaleSegments(10, profile.radialScale), 0.16);
         const glowMaterial = this.createSlashMaterial(colors.glow ?? 0x00c8ff, (0.18 + strength * 0.04) * opacityScale, true, materialOptions);
         const glowMesh = new THREE.Mesh(glowGeometry, glowMaterial);
         glowMesh.userData.role = 'glow';
         group.add(glowMesh);
 
-        const edgeGeometry = this.createTaperedSlashGeometry(curve, 38, 0.017 + strength * 0.003, 9, 0.13);
+        const edgeGeometry = this.createTaperedSlashGeometry(curve, this.scaleSegments(38, profile.tubeScale), 0.017 + strength * 0.003, this.scaleSegments(9, profile.radialScale), 0.13);
         const edgeMaterial = this.createSlashMaterial(colors.edge ?? 0x64f6ff, (0.38 + strength * 0.05) * opacityScale, true, materialOptions);
         const edgeMesh = new THREE.Mesh(edgeGeometry, edgeMaterial);
         edgeMesh.userData.role = 'edge';
         group.add(edgeMesh);
 
-        const coreGeometry = this.createTaperedSlashGeometry(curve, 42, 0.0075 + strength * 0.0018, 8, 0.08);
+        const coreGeometry = this.createTaperedSlashGeometry(curve, this.scaleSegments(42, profile.tubeScale), 0.0075 + strength * 0.0018, this.scaleSegments(8, profile.radialScale), 0.08);
         const coreMaterial = this.createSlashMaterial(colors.core ?? 0xffffff, (0.88 + strength * 0.04) * opacityScale, false, materialOptions);
         const coreMesh = new THREE.Mesh(coreGeometry, coreMaterial);
         coreMesh.userData.role = 'core';
         group.add(coreMesh);
 
         const tailCurve = new THREE.CatmullRomCurve3(this.createTailCurvePoints(points));
-        const tailGeometry = this.createTaperedSlashGeometry(tailCurve, 26, 0.012 + strength * 0.002, 8, 0.1);
+        const tailGeometry = this.createTaperedSlashGeometry(tailCurve, this.scaleSegments(26, profile.tubeScale), 0.012 + strength * 0.002, this.scaleSegments(8, profile.radialScale), 0.1);
         const tailMaterial = this.createSlashMaterial(colors.tail ?? 0x0077ff, (0.12 + strength * 0.03) * opacityScale, true, materialOptions);
         const tailMesh = new THREE.Mesh(tailGeometry, tailMaterial);
         tailMesh.userData.role = 'tail';
@@ -274,6 +284,10 @@ export class SlashProjectileManager {
         }
 
         return group;
+    }
+
+    scaleSegments(base, scale) {
+        return Math.max(4, Math.round(base * scale));
     }
 
     createSlashCurvePoints(startPos, endPos, intensity) {
@@ -381,7 +395,9 @@ export class SlashProjectileManager {
             slashDir.normalize();
         }
         const slashNormal = this._slashNormal.set(-slashDir.y, slashDir.x, slashDir.z * 0.2).normalize();
-        const sparkCount = Math.round(4 + strength * 5);
+        const profile = this.performanceProfile || PERFORMANCE_PROFILES.normal;
+        const sparkCount = Math.round((4 + strength * 5) * profile.sparkScale);
+        if (sparkCount <= 0) return;
 
         for (let i = 0; i < sparkCount; i++) {
             const t = (i + 0.5) / sparkCount;

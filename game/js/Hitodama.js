@@ -8,6 +8,12 @@ import * as THREE from 'three';
 import { assetLoader } from './AssetLoader.js';
 import { HitodamaResources } from './HitodamaResources.js';
 
+const PERFORMANCE_PROFILES = {
+    normal: { purifyFragments: 50, explodeFragments: 100, tailStep: 1, wobbleEvery: 1, lightScale: 1 },
+    warm: { purifyFragments: 25, explodeFragments: 45, tailStep: 2, wobbleEvery: 2, lightScale: 0.75 },
+    hot: { purifyFragments: 10, explodeFragments: 18, tailStep: 4, wobbleEvery: 0, lightScale: 0.45 }
+};
+
 export class Hitodama {
     constructor(scene, position = new THREE.Vector3(0, 0, 0)) {
         // Ensure shared resources are ready
@@ -20,6 +26,9 @@ export class Hitodama {
         this.isPurifying = false;
         this.isExploding = false;
         this.isDead = false;
+        this.performanceMode = 'normal';
+        this.performanceProfile = PERFORMANCE_PROFILES.normal;
+        this.updateFrame = 0;
 
         this.fragments = [];
         this.shockwaves = [];
@@ -120,6 +129,11 @@ export class Hitodama {
         this.onPurified = null;
     }
 
+    setPerformanceMode(mode) {
+        this.performanceMode = PERFORMANCE_PROFILES[mode] ? mode : 'normal';
+        this.performanceProfile = PERFORMANCE_PROFILES[this.performanceMode];
+    }
+
     // ... (purify/explode logic needs update to use shared geometries for fragments)
 
     purify() {
@@ -130,9 +144,9 @@ export class Hitodama {
         this.coreMesh.visible = false;
         this.auraSprite.visible = false;
 
-        this.light.intensity = 20;
+        this.light.intensity = 20 * this.performanceProfile.lightScale;
 
-        const fragmentCount = 50;
+        const fragmentCount = this.performanceProfile.purifyFragments;
         // Reuse shared geometry
         const fragGeo = HitodamaResources.geometries.fragment;
 
@@ -178,7 +192,7 @@ export class Hitodama {
         this.coreMesh.visible = false;
         this.auraSprite.visible = false;
 
-        this.light.intensity = 300;
+        this.light.intensity = 300 * this.performanceProfile.lightScale;
         this.light.distance = 50;
         this.light.color.setHex(0xffaa55);
 
@@ -199,7 +213,7 @@ export class Hitodama {
         this.shockwaves.push({ mesh: ring2, speed: 20.0, opacity: 1.0 });
 
         // 破片
-        const fragmentCount = 100;
+        const fragmentCount = this.performanceProfile.explodeFragments;
         const fragGeo = HitodamaResources.geometries.explosionFragment;
 
         for (let i = 0; i < fragmentCount; i++) {
@@ -248,6 +262,7 @@ export class Hitodama {
 
     update(dt) {
         this.time += dt;
+        this.updateFrame++;
 
         if (this.isExploding) {
             this.updateExplosion(dt);
@@ -262,7 +277,9 @@ export class Hitodama {
         } else {
             this.updateNormal(dt);
             // Update Tail Particle System
-            this.updateTailPoints();
+            if (this.updateFrame % this.performanceProfile.tailStep === 0) {
+                this.updateTailPoints();
+            }
         }
     }
 
@@ -439,12 +456,18 @@ export class Hitodama {
         }
         if (this.light) {
             this.light.color.copy(this._auraNormalColor).lerp(this._frozenColor, freezeBlend);
-            this.light.intensity = isFrozen ? 42 : 30;
+            this.light.intensity = (isFrozen ? 42 : 30) * this.performanceProfile.lightScale;
         }
         this._tailBaseColor.copy(isFrozen ? this._tailFrozenColor : this._tailNormalColor);
         this.updateFreezeRing(isFrozen, dt);
 
         // vertex wobble
+        if (this.performanceProfile.wobbleEvery === 0 || this.updateFrame % this.performanceProfile.wobbleEvery !== 0) {
+            const tailPos = this.tailPositions.pop() || new THREE.Vector3();
+            tailPos.copy(this.pos);
+            this.tailPositions.unshift(tailPos);
+            return;
+        }
         const positions = this.mesh.geometry.attributes.position;
         // Check if originalPositions exists (it should, we cloned it in constructor)
         if (!this.originalPositions) return;

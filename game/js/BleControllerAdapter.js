@@ -61,11 +61,11 @@ export class BleControllerAdapter {
             });
             
             this.isConnected = true;
-            console.log('[BLE] 接続成功');
+            
             
             return true;
         } catch (error) {
-            console.error('[BLE] 接続エラー:', error);
+            
             throw error;
         }
     }
@@ -85,7 +85,7 @@ export class BleControllerAdapter {
      * 切断ハンドラ
      */
     handleDisconnect() {
-        console.log('[BLE] 切断されました');
+        
         this.isConnected = false;
         
         if (this.onDisconnectCallback) {
@@ -114,14 +114,14 @@ export class BleControllerAdapter {
      */
     async sendHapticCommand(strength, duration) {
         if (!this.isConnected || !this.hapticCharacteristic) {
-            console.warn('[BLE] 触覚コマンド送信失敗: 未接続');
+            
             return false;
         }
         
         // レート制限チェック
         const now = performance.now();
         if (now - this.lastHapticSendTime < this.HAPTIC_MIN_INTERVAL) {
-            if (this.DEBUG_LOGS) console.log('[BLE] 触覚コマンド: レート制限によりスキップ');
+            if (this.DEBUG_LOGS) 
             return false;
         }
         
@@ -135,10 +135,10 @@ export class BleControllerAdapter {
             await this.hapticCharacteristic.writeValue(command);
             this.lastHapticSendTime = now;
             
-            if (this.DEBUG_LOGS) console.log(`[BLE] 触覚コマンド送信: strength=${strength}, duration=${duration * 10}ms`);
+            if (this.DEBUG_LOGS) 
             return true;
         } catch (error) {
-            console.error('[BLE] 触覚コマンド送信エラー:', error);
+            
             return false;
         }
     }
@@ -150,7 +150,7 @@ export class BleControllerAdapter {
      */
     async sendHapticPulses(pulses, interval) {
         if (!this.isConnected || !this.hapticCharacteristic) {
-            console.warn('[BLE] sendHapticPulses: 未接続またはCharacteristic未取得');
+            
             return false;
         }
 
@@ -171,7 +171,7 @@ export class BleControllerAdapter {
             }
             return true;
         } catch (error) {
-            console.error('[BLE] sendHapticPulses エラー:', error);
+            
             return false;
         }
     }

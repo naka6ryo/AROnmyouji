@@ -112,7 +112,7 @@ export class EnemyManager {
             this.onEnemySpawned(enemy);
         }
 
-        console.log(`[EnemyManager] Spawn: id=${enemy.id}`);
+        
     }
 
     /**

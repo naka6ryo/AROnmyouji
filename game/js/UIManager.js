@@ -225,7 +225,7 @@ export class UIManager {
 
     addPermissionLog(message) {
         // Log to console
-        console.log(`[Permission] ${message}`);
+        
 
         // Update footer status text (single line only)
         const statusEl = this.elements.permissionDebugLogStatus;
@@ -387,7 +387,7 @@ export class UIManager {
             }
         } catch (e) {
             // 安全のため例外は無視
-            console.warn('vibrate failed', e);
+            
         }
     }
 
@@ -430,7 +430,7 @@ export class UIManager {
                 navigator.vibrate([45, 35, 45]);
             }
         } catch (e) {
-            console.warn('freeze vibrate failed', e);
+            
         }
     }
 
@@ -641,12 +641,12 @@ export class UIManager {
         const overlay = this.elements.countdownOverlay;
         const valueEl = this.elements.countdownValue;
         if (!overlay || !valueEl) {
-            console.warn('[UIManager] Countdown elements not found');
+            
             if (onComplete) onComplete();
             return;
         }
 
-        console.log('[UIManager] Starting countdown:', countFrom);
+        
 
         // IMPERATIVE: Remove 'hidden' class first because CSS has !important
         overlay.classList.remove('hidden');
@@ -711,9 +711,9 @@ export class UIManager {
             try {
                 if (mgr && typeof mgr.play === 'function') {
                     mgr.play(audioKey, { volume: 0.95 });
-                    console.log('[UIManager] countdown sound played via soundManager.play');
+                    
                 } else if (mgr && typeof mgr.load === 'function') {
-                    mgr.load({ [audioKey]: assetPath }).then(() => { try { mgr.play(audioKey, { volume: 0.95 }); console.log('[UIManager] countdown loaded then played'); } catch (e) { } }).catch(e => { console.warn('[UIManager] countdown load failed', e); });
+                    mgr.load({ [audioKey]: assetPath }).then(() => { try { mgr.play(audioKey, { volume: 0.95 });  } catch (e) { } }).catch(e => {  });
                 } else {
                     const a = document.createElement('audio');
                     a.src = assetPath;
@@ -721,8 +721,8 @@ export class UIManager {
                     a.volume = 0.95;
                     a.play().catch(() => { });
                 }
-            } catch (e) { console.warn('[UIManager] countdown play error', e); }
-        } catch (e) { console.warn('[UIManager] countdown outer error', e); }
+            } catch (e) {  }
+        } catch (e) {  }
 
         // clear any existing countdown timer
         if (this._countdownTimer) {
@@ -731,11 +731,11 @@ export class UIManager {
         }
 
         const tick = () => {
-            console.log('[UIManager] Countdown tick:', current);
+            
             current -= 1;
             if (current <= 0) {
                 // Show "状況開始"
-                console.log('[UIManager] Showing SITUATION START');
+                
                 updateText('状況開始');
 
                 // Color override for "situation start" is redundant if we use hologram-effect (transparent with stroke)
@@ -749,7 +749,7 @@ export class UIManager {
 
                 // Hold for 1 second then finish
                 this._countdownTimer = setTimeout(() => {
-                    console.log('[UIManager] Countdown finished');
+                    
                     overlay.style.display = 'none';
                     overlay.classList.add('hidden'); // Add hidden back
                     overlay.style.pointerEvents = 'none';
@@ -991,7 +991,7 @@ export class UIManager {
                 if (mgr && typeof mgr.play === 'function') {
                     mgr.play(audioKey, { volume: 0.55 });
                 } else if (mgr && typeof mgr.load === 'function') {
-                    mgr.load({ [audioKey]: assetPath }).then(() => { try { mgr.play(audioKey, { volume: 0.55 }); } catch (e) { } }).catch(e => { console.warn('[UIManager] fluorescent_crackle load failed', e); });
+                    mgr.load({ [audioKey]: assetPath }).then(() => { try { mgr.play(audioKey, { volume: 0.55 }); } catch (e) { } }).catch(e => {  });
                 } else {
                     const a = document.createElement('audio');
                     a.src = assetPath;
@@ -999,7 +999,7 @@ export class UIManager {
                     a.volume = 0.55;
                     a.play().catch(() => { });
                 }
-            } catch (e) { console.warn('[UIManager] fluorescent_crackle play failed', e); }
+            } catch (e) {  }
         } catch (e) { }
 
         // Show success screen
@@ -1072,7 +1072,7 @@ export class UIManager {
                     });
                 } catch (e) {
                     // fall back silently if reparenting fails
-                    console.warn('reparent titleScreen2 failed', e);
+                    
                 }
             }
             // We use an <img> element for the title background to avoid
@@ -1167,7 +1167,7 @@ export class UIManager {
                     } catch (e) { }
                 }
             } catch (e) {
-                console.warn('failed to insert crt-side title img', e);
+                
                 crtImg = null;
             }
 
@@ -1185,9 +1185,9 @@ export class UIManager {
                     // If available, use playTest which resolves when playback ends
                     if (typeof soundManager.playTest === 'function') {
                         try {
-                            tvPlayPromise = soundManager.playTest(audioKey, { volume: 0.9 }).catch(err => { console.warn('[UIManager] playTest failed', err); });
+                            tvPlayPromise = soundManager.playTest(audioKey, { volume: 0.9 }).catch(err => {  });
                         } catch (e) {
-                            console.warn('[UIManager] playTest threw', e);
+                            
                             tvPlayPromise = Promise.resolve();
                         }
                     } else {
@@ -1204,7 +1204,7 @@ export class UIManager {
                         tvPlayPromise = new Promise(resolve => setTimeout(resolve, 1200));
                     }
                 }
-            } catch (e) { console.warn('[UIManager] tv_turn_off play outer exception', e); }
+            } catch (e) {  }
 
             this.playBootSequence(() => {
                 // Ensure background color doesn't block image
@@ -1237,21 +1237,15 @@ export class UIManager {
                                 try {
                                     if (typeof soundManager !== 'undefined' && typeof soundManager.masterGain === 'number') {
                                         soundManager.masterGain = soundManager.masterGain * 0.5;
-                                        console.log('[UIManager] soundManager.masterGain halved for title');
+                                        
                                     }
-                                } catch (e) { console.warn('[UIManager] failed to adjust masterGain', e); }
+                                } catch (e) {  }
 
                                 // Try WebAudio loop if buffer available
                                 try {
                                     const mgr = (typeof window !== 'undefined' && window.soundManager) ? window.soundManager : (typeof soundManager !== 'undefined' ? soundManager : null);
                                     try {
-                                        console.log('[UIManager] titleSignal debug', {
-                                            _titleSignalStarted: !!this._titleSignalStarted,
-                                            mgrExists: !!mgr,
-                                            audioContextState: mgr && mgr.audioContext ? mgr.audioContext.state : 'no-audioContext',
-                                            hasBuffer: !!(mgr && mgr.buffers && typeof mgr.buffers.has === 'function' && mgr.buffers.has(audioKey)),
-                                            hasAudio: !!(mgr && mgr.sounds && typeof mgr.sounds.has === 'function' && mgr.sounds.has(audioKey))
-                                        });
+                                        
                                     } catch (e) { }
                                     try { if (mgr && typeof mgr.unlock === 'function') { mgr.unlock(); } } catch (e) { }
                                     if (mgr && mgr.buffers && mgr.buffers.has && mgr.buffers.has(audioKey) && mgr.audioContext) {
@@ -1272,9 +1266,9 @@ export class UIManager {
                                             try { src.start(0); } catch (e) { try { src.start(); } catch (e) { } }
                                             this._titleLoopSource = src;
                                             this._titleLoopGain = loopGain;
-                                            console.log('[UIManager] title signal loop started via WebAudio');
+                                            
                                         } catch (e) {
-                                            console.warn('[UIManager] failed to start WebAudio loop', e);
+                                            
                                         }
                                     } else {
                                         // HTMLAudio fallback: if manager has original audio element, clone and loop it, otherwise create a fresh element
@@ -1287,10 +1281,10 @@ export class UIManager {
                                                 instance.preload = 'auto';
                                                 instance.volume = 1.0;
                                                 const p = instance.play();
-                                                if (p && typeof p.then === 'function') p.catch(err => console.warn('[UIManager] title signal HTMLAudio play failed (clone)', err));
+                                                if (p && typeof p.then === 'function') p.catch(() => {});
                                                 document.body.appendChild(instance);
                                                 this._titleHtmlAudio = instance;
-                                                console.log('[UIManager] title signal loop started via HTMLAudio (clone)');
+                                                
                                             } else {
                                                 const a = document.createElement('audio');
                                                 a.id = 'title-signal-audio';
@@ -1299,18 +1293,18 @@ export class UIManager {
                                                 a.preload = 'auto';
                                                 a.volume = 1.0; // play at full relative level; other sounds were halved
                                                 const p = a.play();
-                                                if (p && typeof p.then === 'function') p.catch(err => { console.warn('[UIManager] title signal HTMLAudio play failed', err); });
+                                                if (p && typeof p.then === 'function') p.catch(err => {  });
                                                 document.body.appendChild(a);
                                                 this._titleHtmlAudio = a;
-                                                console.log('[UIManager] title signal loop started via HTMLAudio (new)');
+                                                
                                             }
-                                        } catch (e) { console.warn('[UIManager] failed to start HTMLAudio loop', e); }
+                                        } catch (e) {  }
                                     }
-                                } catch (e) { console.warn('[UIManager] title loop error', e); }
+                                } catch (e) {  }
                             }
-                        } catch (e) { console.warn('[UIManager] title signal outer error', e); }
-                    }).catch(e => { console.warn('[UIManager] tvPlayPromise rejected', e); });
-                } catch (e) { console.warn('[UIManager] title signal setup error', e); }
+                        } catch (e) {  }
+                    }).catch(e => {  });
+                } catch (e) {  }
 
                 // Make UI minimal: hide all buttons/labels except invisible hit areas
                 try {
@@ -1359,7 +1353,7 @@ export class UIManager {
                         reconnectHit.onclick = () => { reconnectBtn.click(); };
                     }
                 } catch (e) {
-                    console.warn('failed to simplify title UI', e);
+                    
                 }
 
                 // Remove temporary CRT image now that UI title is visible
@@ -1540,7 +1534,7 @@ export class UIManager {
             let tvPlayPromise = Promise.resolve();
             try {
                 if (mgr && typeof mgr.playTest === 'function') {
-                    tvPlayPromise = mgr.playTest(audioKey, { volume: 0.9 }).catch(err => { console.warn('[UIManager] splash playTest failed', err); });
+                    tvPlayPromise = mgr.playTest(audioKey, { volume: 0.9 }).catch(err => {  });
                 } else {
                     // fallback: attempt to play then resolve after short delay
                     try {
@@ -1558,7 +1552,7 @@ export class UIManager {
 
             // After tv turn-off ends, attempt to start title signal loop (use same helper as title screen)
             this._ensureTitleSignalStarted(tvPlayPromise);
-        } catch (e) { console.warn('[UIManager] splash sfx outer error', e); }
+        } catch (e) {  }
 
         this.playBootSequence(() => {
             // If revealTimer still pending, clear it and ensure image is shown
@@ -1811,10 +1805,10 @@ export class UIManager {
                 try {
                     if (mgr && typeof mgr.play === 'function') {
                         mgr.play(audioKey, { volume: 0.9 });
-                        console.log('[UIManager] playBootSequence played tv_turn_off');
+                        
                         return true;
                     }
-                } catch (e) { console.warn('[UIManager] playBootSequence sound play failed', e); }
+                } catch (e) {  }
                 return false;
             };
 
@@ -1822,9 +1816,9 @@ export class UIManager {
                 try {
                     const loader = (mgr && typeof mgr.load === 'function') ? mgr : (typeof soundManager !== 'undefined' ? soundManager : null);
                     if (loader && typeof loader.load === 'function') {
-                        loader.load({ [audioKey]: assetPath }).then(() => { try { playViaMgr(); } catch (e) { } }).catch(e => { console.warn('[UIManager] boot sfx load failed', e); });
+                        loader.load({ [audioKey]: assetPath }).then(() => { try { playViaMgr(); } catch (e) { } }).catch(e => {  });
                     }
-                } catch (e) { console.warn('[UIManager] boot sfx load threw', e); }
+                } catch (e) {  }
 
                 // HTMLAudio fallback in case WebAudio is blocked
                 setTimeout(() => {
@@ -1835,12 +1829,12 @@ export class UIManager {
                         a.volume = 0.9;
                         const p = a.play();
                         if (p && typeof p.then === 'function') {
-                            p.then(() => console.log('[UIManager] boot HTMLAudio played')).catch(err => console.warn('[UIManager] boot HTMLAudio failed', err));
+                            p.catch(() => {});
                         }
-                    } catch (e) { console.warn('[UIManager] boot HTMLAudio exception', e); }
+                    } catch (e) {  }
                 }, 300);
             }
-        } catch (e) { console.warn('[UIManager] boot sfx outer error', e); }
+        } catch (e) {  }
 
         // Control camera / canvas visibility according to caller intent
         if (!showCamera) {
@@ -1967,21 +1961,15 @@ export class UIManager {
                     try {
                         if (typeof soundManager !== 'undefined' && typeof soundManager.masterGain === 'number') {
                             soundManager.masterGain = soundManager.masterGain * 0.5;
-                            console.log('[UIManager] soundManager.masterGain halved for title');
+                            
                         }
-                    } catch (e) { console.warn('[UIManager] failed to adjust masterGain', e); }
+                    } catch (e) {  }
 
                     // Try WebAudio loop if buffer available
                     try {
                         const mgr = (typeof window !== 'undefined' && window.soundManager) ? window.soundManager : (typeof soundManager !== 'undefined' ? soundManager : null);
                         try {
-                            console.log('[UIManager] titleSignal debug', {
-                                _titleSignalStarted: !!this._titleSignalStarted,
-                                mgrExists: !!mgr,
-                                audioContextState: mgr && mgr.audioContext ? mgr.audioContext.state : 'no-audioContext',
-                                hasBuffer: !!(mgr && mgr.buffers && typeof mgr.buffers.has === 'function' && mgr.buffers.has(audioKey)),
-                                hasAudio: !!(mgr && mgr.sounds && typeof mgr.sounds.has === 'function' && mgr.sounds.has(audioKey))
-                            });
+                            
                         } catch (e) { }
                         try { if (mgr && typeof mgr.unlock === 'function') { mgr.unlock(); } } catch (e) { }
                         if (mgr && mgr.buffers && mgr.buffers.has && mgr.buffers.has(audioKey) && mgr.audioContext) {
@@ -1999,9 +1987,9 @@ export class UIManager {
                                 try { src.start(0); } catch (e) { try { src.start(); } catch (e) { } }
                                 this._titleLoopSource = src;
                                 this._titleLoopGain = loopGain;
-                                console.log('[UIManager] title signal loop started via WebAudio');
+                                
                             } catch (e) {
-                                console.warn('[UIManager] failed to start WebAudio loop', e);
+                                
                             }
                         } else {
                             try {
@@ -2013,10 +2001,10 @@ export class UIManager {
                                     instance.preload = 'auto';
                                     instance.volume = 1.0;
                                     const p = instance.play();
-                                    if (p && typeof p.then === 'function') p.catch(err => console.warn('[UIManager] title signal HTMLAudio play failed (clone)', err));
+                                    if (p && typeof p.then === 'function') p.catch(() => {});
                                     document.body.appendChild(instance);
                                     this._titleHtmlAudio = instance;
-                                    console.log('[UIManager] title signal loop started via HTMLAudio (clone)');
+                                    
                                 } else {
                                     const a = document.createElement('audio');
                                     a.id = 'title-signal-audio';
@@ -2025,17 +2013,17 @@ export class UIManager {
                                     a.preload = 'auto';
                                     a.volume = 1.0;
                                     const p = a.play();
-                                    if (p && typeof p.then === 'function') p.catch(err => { console.warn('[UIManager] title signal HTMLAudio play failed', err); });
+                                    if (p && typeof p.then === 'function') p.catch(err => {  });
                                     document.body.appendChild(a);
                                     this._titleHtmlAudio = a;
-                                    console.log('[UIManager] title signal loop started via HTMLAudio (new)');
+                                    
                                 }
-                            } catch (e) { console.warn('[UIManager] failed to start HTMLAudio loop', e); }
+                            } catch (e) {  }
                         }
-                    } catch (e) { console.warn('[UIManager] title loop error', e); }
-                } catch (e) { console.warn('[UIManager] title signal outer error', e); }
-            }).catch(e => { console.warn('[UIManager] tvPlayPromise rejected', e); });
-        } catch (e) { console.warn('[UIManager] _ensureTitleSignalStarted error', e); }
+                    } catch (e) {  }
+                } catch (e) {  }
+            }).catch(e => {  });
+        } catch (e) {  }
     }
 
     /**
@@ -2044,7 +2032,7 @@ export class UIManager {
     startTitleSignalNow() {
         try {
             this._ensureTitleSignalStarted(Promise.resolve());
-        } catch (e) { console.warn('[UIManager] startTitleSignalNow failed', e); }
+        } catch (e) {  }
     }
 
     /**
@@ -2070,10 +2058,10 @@ export class UIManager {
                 try {
                     if (mgr && typeof mgr.play === 'function') {
                         mgr.play(audioKey, { volume: 0.95 });
-                        console.log('[UIManager] playTvTurnOffAnimation played tv_turn_off_2');
+                        
                         return true;
                     }
-                } catch (e) { console.warn('[UIManager] playTvTurnOffAnimation play failed', e); }
+                } catch (e) {  }
                 return false;
             };
 
@@ -2081,9 +2069,9 @@ export class UIManager {
                 try {
                     const loader = (mgr && typeof mgr.load === 'function') ? mgr : (typeof soundManager !== 'undefined' ? soundManager : null);
                     if (loader && typeof loader.load === 'function') {
-                        loader.load({ [audioKey]: assetPath }).then(() => { try { playViaMgr(); } catch (e) { } }).catch(e => { console.warn('[UIManager] tv_turn_off_2 load failed', e); });
+                        loader.load({ [audioKey]: assetPath }).then(() => { try { playViaMgr(); } catch (e) { } }).catch(e => {  });
                     }
-                } catch (e) { console.warn('[UIManager] tv_turn_off_2 load threw', e); }
+                } catch (e) {  }
 
                 // HTMLAudio fallback
                 setTimeout(() => {
@@ -2094,12 +2082,12 @@ export class UIManager {
                         a.volume = 0.95;
                         const p = a.play();
                         if (p && typeof p.then === 'function') {
-                            p.then(() => console.log('[UIManager] playTvTurnOffAnimation HTMLAudio played')).catch(err => console.warn('[UIManager] playTvTurnOffAnimation HTMLAudio failed', err));
+                            p.catch(() => {});
                         }
-                    } catch (e) { console.warn('[UIManager] playTvTurnOffAnimation HTMLAudio exception', e); }
+                    } catch (e) {  }
                 }, 200);
             }
-        } catch (e) { console.warn('[UIManager] playTvTurnOffAnimation outer error', e); }
+        } catch (e) {  }
 
         // Apply animation class
         targets.forEach(el => {
@@ -2145,9 +2133,9 @@ export class UIManager {
             try {
                 if (mgr && typeof mgr.play === 'function') {
                     mgr.play(audioKey, { volume: 0.55 });
-                    console.log('[UIManager] playScreenTransition played fluorescent_crackle');
+                    
                 } else if (mgr && typeof mgr.load === 'function') {
-                    mgr.load({ [audioKey]: assetPath }).then(() => { try { mgr.play(audioKey, { volume: 0.55 }); } catch (e) { } }).catch(e => { console.warn('[UIManager] fluorescent_crackle load failed', e); });
+                    mgr.load({ [audioKey]: assetPath }).then(() => { try { mgr.play(audioKey, { volume: 0.55 }); } catch (e) { } }).catch(e => {  });
                 } else {
                     // HTMLAudio fallback
                     const a = document.createElement('audio');
@@ -2156,7 +2144,7 @@ export class UIManager {
                     a.volume = 0.55;
                     a.play().catch(() => { });
                 }
-            } catch (e) { console.warn('[UIManager] fluorescent_crackle play failed', e); }
+            } catch (e) {  }
         } catch (e) { }
 
         // 既存のクラスをリセット

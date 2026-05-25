@@ -39,7 +39,7 @@ export class GameWorld {
         this.damageCount = 0;
         this.gameTime = 0;
         this.playerHP = this.maxPlayerHP;
-        console.log('[GameWorld] リセット完了');
+        
     }
 
     /**
@@ -52,7 +52,7 @@ export class GameWorld {
             if (this.onEnemySpawned) this.onEnemySpawned(enemy);
         };
 
-        console.log('[GameWorld] ゲーム開始');
+        
     }
 
     /**
@@ -86,7 +86,7 @@ export class GameWorld {
         this.playerHP = Math.max(0, this.playerHP - 1);
         this.damageCount++;
 
-        console.log(`[GameWorld] 被弾: HP=${this.playerHP}`);
+        
 
         if (this.onPlayerDamaged) {
             this.onPlayerDamaged({ hp: this.playerHP, enemy });
@@ -101,7 +101,7 @@ export class GameWorld {
 
         if (result.killed) {
             this.killCount++;
-            console.log(`[GameWorld] 撃破: count=${this.killCount}`);
+            
 
             if (this.onEnemyKilled) {
                 this.onEnemyKilled({ enemy: result.enemy, killCount: this.killCount });

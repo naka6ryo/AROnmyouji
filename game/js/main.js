@@ -21,7 +21,30 @@ const PERFORMANCE_CONFIG = {
     DEBUG_UPDATE_INTERVAL_MS: 250,
     CAMERA_MAX_WIDTH: 1280,
     CAMERA_MAX_HEIGHT: 720,
-    CAMERA_MAX_FPS: 30
+    CAMERA_MAX_FPS: 30,
+    THERMAL_MODES: {
+        normal: {
+            targetFrameMs: 1000 / 60,
+            hudIntervalMs: 100,
+            indicatorIntervalMs: 66
+        },
+        warm: {
+            targetFrameMs: 1000 / 45,
+            hudIntervalMs: 140,
+            indicatorIntervalMs: 110
+        },
+        hot: {
+            targetFrameMs: 1000 / 30,
+            hudIntervalMs: 200,
+            indicatorIntervalMs: 160
+        }
+    },
+    FRAME_AVERAGE_ALPHA: 0.08,
+    WARM_FRAME_MS: 22,
+    HOT_FRAME_MS: 33,
+    LONG_FRAME_MS: 80,
+    LONG_FRAME_LIMIT: 3,
+    RECOVERY_DELAY_MS: 3000
 };
 
 class AROnmyoujiGame {
@@ -66,6 +89,11 @@ class AROnmyoujiGame {
         this.lastHudUpdateTime = 0;
         this.lastIndicatorUpdateTime = 0;
         this.lastDebugUpdateTime = 0;
+        this.lastRenderTime = 0;
+        this.frameAverageMs = 1000 / 60;
+        this.longFrameCount = 0;
+        this.performanceMode = 'normal';
+        this.performanceModeChangedAt = 0;
 
         // ダブルヒット防止用
         this.lastEnemyHitTime = new Map();
@@ -74,8 +102,7 @@ class AROnmyoujiGame {
         // イベントハンドラ設定
         this.setupEventHandlers();
 
-        console.log('[Game] 初期化完了');
-        this.debugOverlay.logInfo('ゲーム初期化完了');
+        
     }
 
     /**
@@ -116,7 +143,7 @@ class AROnmyoujiGame {
                 this.exitCalibrationStage();
             }
         } catch (e) {
-            console.warn('[AppStateHandler] onAppStateChanged error', e);
+            
         }
     }
 
@@ -288,7 +315,6 @@ class AROnmyoujiGame {
     confirmCalibration() {
         if (this.isCalibrationCompleting) return;
         if (!this.latestFrame) {
-            this.debugOverlay.logWarn('キャリブレーション: フレームデータなし');
             return;
         }
 
@@ -316,7 +342,6 @@ class AROnmyoujiGame {
 
         // Calibrate motion interpreter for yaw only (pitch/roll unchanged)
         this.motionInterpreter.calibrate(undefined, yaw_deg, undefined);
-        this.debugOverlay.logInfo(`キャリブレーション完了 (ヨーのみ補正): yaw=${yaw_deg.toFixed(1)} (front yaw reset applied)`);
 
         // 校正完了 -> ゲーム画面へ遷移するが、ゲームはまだ開始しない
         this.uiManager.playScreenTransition(() => {
@@ -347,7 +372,6 @@ class AROnmyoujiGame {
 
         try { if (this.motionInterpreter) this.motionInterpreter.isCalibrated = false; } catch (e) { }
         this.motionInterpreter.calibrate(undefined, calibrationYaw, undefined);
-        this.debugOverlay.logInfo(`Calibration yaw locked (${source}): rawYaw=${yaw.toFixed(1)} frontYaw=${frontYaw.toFixed(1)} basis=${calibrationYaw.toFixed(1)}`);
         return true;
     }
 
@@ -363,7 +387,6 @@ class AROnmyoujiGame {
 
     onStartInScene() {
         this.exitCalibrationStage();
-        this.debugOverlay.logInfo('シーン内スタートボタン押下');
 
         // スタートボタンを隠す
         this.uiManager.toggleSceneStartButton(false);
@@ -383,10 +406,10 @@ class AROnmyoujiGame {
                     circle_freeze: 'assets/sfx/聖魔法.mp3',
                     button: 'assets/sfx/Button.mp3',
                     tv_turn_off: 'assets/sfx/TV-Turn_Off01-2(Reverb).mp3'
-                }).then(() => this.debugOverlay.logInfo('SFXロード完了')).catch(e => console.warn('sound load failed', e));
+                }).catch(() => {});
             }
         } catch (e) {
-            console.warn('sound init/load failed', e);
+            
         }
 
         // Play CRT Boot Sequence, then Countdown, then Start
@@ -404,7 +427,6 @@ class AROnmyoujiGame {
      * キャンセルボタン（任務完了扱い）
      */
     onCancel() {
-        this.debugOverlay.logInfo('キャンセルボタン押下: 任務完了扱い');
         // Treat as game clear
         const data = {
             killCount: this.gameWorld.getGameStats().killCount,
@@ -418,7 +440,6 @@ class AROnmyoujiGame {
      */
     onStartGame() {
         // ... (unchanged)
-        this.debugOverlay.logInfo('ゲーム開始ボタン押下');
         try {
             // unlock を最優先で呼ぶ（ユーザージェスチャに紐付ける）
             this.soundManager.unlock();
@@ -430,9 +451,9 @@ class AROnmyoujiGame {
                 circle_freeze: 'assets/sfx/聖魔法.mp3',
                 button: 'assets/sfx/Button.mp3',
                 tv_turn_off: 'assets/sfx/TV-Turn_Off01-2(Reverb).mp3'
-            }).then(() => this.debugOverlay.logInfo('SFXロード完了')).catch(e => console.warn('sound load failed', e));
+            }).catch(() => {});
         } catch (e) {
-            console.warn('sound init/load failed', e);
+            
         }
         this.uiManager.playScreenTransition(() => {
             this.appState.startGame();
@@ -443,7 +464,6 @@ class AROnmyoujiGame {
      * 権限要求
      */
     async requestPermissions() {
-        this.debugOverlay.logInfo('権限要求開始');
         this.uiManager.addPermissionLog('権限要求開始...');
 
         try {
@@ -488,19 +508,17 @@ class AROnmyoujiGame {
                 const settings = track.getSettings();
                 if (settings.facingMode === 'environment') {
                     this.videoElement.classList.remove('scale-x-[-1]');
-                    this.debugOverlay.logInfo('背面カメラ検出: ミラーリング解除');
                 }
             } catch (e) {
-                console.warn('Camera settings check failed', e);
+                
             }
 
             const tryPlay = async () => {
                 try {
                     await this.videoElement.play();
-                    this.debugOverlay.logInfo('カメラ映像再生開始');
                     return true;
                 } catch (err) {
-                    console.warn('video.play failed', err);
+                    
                     return false;
                 }
             };
@@ -524,7 +542,7 @@ class AROnmyoujiGame {
             });
 
         } catch (error) {
-            console.error(error);
+            
             this.uiManager.showPermissionError(error.message);
             this.uiManager.addPermissionLog(`✗ エラー: ${error.message}`);
         }
@@ -546,7 +564,7 @@ class AROnmyoujiGame {
         try {
             return await navigator.mediaDevices.getUserMedia(optimizedConstraints);
         } catch (error) {
-            console.warn('[Camera] optimized constraints failed; falling back', error);
+            
             return navigator.mediaDevices.getUserMedia({
                 video: { facingMode: 'environment' }
             });
@@ -554,19 +572,16 @@ class AROnmyoujiGame {
     }
 
     async connectBLE() {
-        this.debugOverlay.logInfo('BLE接続開始');
         this.uiManager.updateBLEStatus('接続中...');
 
         try {
             await this.bleAdapter.connect();
             this.uiManager.updateBLEStatus('接続成功');
-            this.debugOverlay.logInfo('BLE接続成功');
             this.uiManager.playScreenTransition(() => {
                 this.appState.bleConnected();
             });
         } catch (error) {
             this.uiManager.showBLEError(error.message);
-            this.debugOverlay.logError(`BLE接続エラー: ${error.message}`);
         }
     }
 
@@ -595,10 +610,10 @@ class AROnmyoujiGame {
                     circle_freeze: 'assets/sfx/聖魔法.mp3',
                     button: 'assets/sfx/Button.mp3',
                     tv_turn_off: 'assets/sfx/TV-Turn_Off01-2(Reverb).mp3'
-                }).then(() => this.debugOverlay.logInfo('SFXロード完了')).catch(e => console.warn('sound load failed', e));
+                }).catch(() => {});
             }
         } catch (e) {
-            console.warn('sound init/load in startGameplay failed', e);
+            
         }
 
         this.gameWorld.startGame();
@@ -607,8 +622,11 @@ class AROnmyoujiGame {
         this.lastHudUpdateTime = 0;
         this.lastIndicatorUpdateTime = 0;
         this.lastDebugUpdateTime = 0;
+        this.lastRenderTime = 0;
+        this.frameAverageMs = 1000 / 60;
+        this.longFrameCount = 0;
+        this.setPerformanceMode('normal', performance.now());
         this.gameLoop();
-        this.debugOverlay.logInfo('ゲームプレイ開始');
     }
 
     /**
@@ -635,7 +653,6 @@ class AROnmyoujiGame {
      * BLE切断
      */
     onBLEDisconnect() {
-        this.debugOverlay.logWarn('BLE切断検出');
     }
 
     unwrapAngleDeg(angle) {
@@ -649,7 +666,6 @@ class AROnmyoujiGame {
     }
 
     onSwing(swing) {
-        this.debugOverlay.logInfo(`斬撃: intensity=${swing.intensity.toFixed(2)}`);
         this.renderer.endSwingTracer();
         // 攻撃（スイング）音を再生
         try {
@@ -718,7 +734,6 @@ class AROnmyoujiGame {
 
         this.isCalibrationCompleting = true;
         try { this.soundManager.play('polygon_burst', { volume: 0.9 }); } catch (e) { }
-        this.debugOverlay.logInfo('Calibration target hit');
         if (this.renderer && typeof this.renderer.triggerCalibrationTargetBurst === 'function') {
             this.renderer.triggerCalibrationTargetBurst();
         }
@@ -762,11 +777,9 @@ class AROnmyoujiGame {
 
     onCircle(circle) {
         if (!this.appState.isGameplay()) return;
-        this.debugOverlay.logInfo('円ジェスチャ検出');
         this.renderer.endSwingTracer();
         const freezeDurationMs = 3000;
         const result = this.gameWorld.freezeEnemies(freezeDurationMs);
-        this.debugOverlay.logInfo(`Circle freeze: ${result.affected} enemies / ${(freezeDurationMs / 1000).toFixed(0)}s`);
 
         const now = performance.now();
         if (now - this.lastCircleFreezeSoundTime >= 450) {
@@ -781,7 +794,6 @@ class AROnmyoujiGame {
 
     onPowerMode(power) {
         if (!this.appState.isGameplay()) return;
-        this.debugOverlay.logInfo('強化モード発動');
     }
 
     onEnemySpawned(enemy) {
@@ -848,7 +860,6 @@ class AROnmyoujiGame {
 
     onReturnToTitle() {
         // Result -> Title Screen 2
-        this.debugOverlay.logInfo('タイトル2へ移動');
 
         // Stop game loop and clear gameplay visuals
         try {
@@ -880,7 +891,7 @@ class AROnmyoujiGame {
                         this.renderer.canvas.style.pointerEvents = 'none';
                     }
                 }
-            } catch (e) { console.warn('renderer reset failed', e); }
+            } catch (e) {  }
 
             // Clear in-memory enemies and indicators
 
@@ -894,7 +905,7 @@ class AROnmyoujiGame {
             // Hide gameplay HUD overlays if present
             try { this.uiManager.toggleSceneStartButton(false); } catch (e) { }
         } catch (e) {
-            console.warn('onReturnToTitle cleanup error', e);
+            
         }
 
         // Finally, show Title Screen 2
@@ -903,7 +914,6 @@ class AROnmyoujiGame {
 
     onTitleStartGame() {
         // Title Screen 2 -> Game Start Sequence
-        this.debugOverlay.logInfo('タイトル2からゲーム開始');
         this.uiManager.hideTitleScreen2();
 
         // Use existing start sequence logic
@@ -914,12 +924,10 @@ class AROnmyoujiGame {
         if (!this.isRunning) return;
 
         const now = performance.now();
-        // Calculate actual delta time in ms
         const actualDelta = now - this.lastUpdateTime;
         this.lastUpdateTime = now;
+        this.updatePerformanceMode(actualDelta, now);
 
-        // Cap delta to prevent massive jumps (e.g., max 100ms = 10fps min)
-        // This prevents "spiral of death" or physics explosions on resume.
         const safeDelta = Math.min(actualDelta, 100);
 
         this.gameWorld.update(safeDelta);
@@ -928,12 +936,52 @@ class AROnmyoujiGame {
 
         const enemies = this.gameWorld.getEnemies();
         this.updateHUD(viewDir);
-        this.renderer.updateEnemies(enemies);
-
-        // Renderer expects seconds usually? No, passed FIXED_DELTA_TIME which is ms (16.66).
-        // Let's verify usage in Renderer.render
-        this.renderer.render(safeDelta, enemies);
+        if (this.shouldRenderFrame(now)) {
+            this.renderer.updateEnemies(enemies);
+            this.renderer.render(Math.min(now - this.lastRenderTime || safeDelta, 100), enemies);
+            this.lastRenderTime = now;
+        }
         requestAnimationFrame(() => this.gameLoop());
+    }
+
+    updatePerformanceMode(frameMs, now) {
+        const alpha = PERFORMANCE_CONFIG.FRAME_AVERAGE_ALPHA;
+        this.frameAverageMs = this.frameAverageMs * (1 - alpha) + frameMs * alpha;
+        this.longFrameCount = frameMs >= PERFORMANCE_CONFIG.LONG_FRAME_MS
+            ? this.longFrameCount + 1
+            : Math.max(0, this.longFrameCount - 1);
+
+        if (this.frameAverageMs >= PERFORMANCE_CONFIG.HOT_FRAME_MS ||
+            this.longFrameCount >= PERFORMANCE_CONFIG.LONG_FRAME_LIMIT) {
+            this.setPerformanceMode('hot', now);
+            return;
+        }
+
+        if (this.frameAverageMs >= PERFORMANCE_CONFIG.WARM_FRAME_MS) {
+            if (this.performanceMode === 'normal') this.setPerformanceMode('warm', now);
+            return;
+        }
+
+        if (now - this.performanceModeChangedAt < PERFORMANCE_CONFIG.RECOVERY_DELAY_MS) return;
+        if (this.performanceMode === 'hot') {
+            this.setPerformanceMode('warm', now);
+        } else if (this.performanceMode === 'warm') {
+            this.setPerformanceMode('normal', now);
+        }
+    }
+
+    setPerformanceMode(mode, now = performance.now()) {
+        if (!PERFORMANCE_CONFIG.THERMAL_MODES[mode] || this.performanceMode === mode) return;
+        this.performanceMode = mode;
+        this.performanceModeChangedAt = now;
+        if (this.renderer && typeof this.renderer.setPerformanceMode === 'function') {
+            this.renderer.setPerformanceMode(mode);
+        }
+    }
+
+    shouldRenderFrame(now) {
+        const modeConfig = PERFORMANCE_CONFIG.THERMAL_MODES[this.performanceMode] || PERFORMANCE_CONFIG.THERMAL_MODES.normal;
+        return !this.lastRenderTime || now - this.lastRenderTime >= modeConfig.targetFrameMs;
     }
 
     // ... (updateHUD, updateDebugInfo unchanged)
@@ -966,7 +1014,6 @@ class AROnmyoujiGame {
         // Play transition effect + SFX, then switch to Calibration screen
         this.uiManager.playScreenTransition(() => {
             this.appState.recalibrate();
-            this.debugOverlay.logInfo('再キャリブレーションモードへ移行');
         });
     }
 
@@ -974,7 +1021,6 @@ class AROnmyoujiGame {
         // Reset: set display baseline to current device orientation so displayed euler
         // angles become relative to device pose at reset time.
         if (!this.latestFrame) {
-            this.debugOverlay.logWarn('リセット: フレームデータなし');
             return;
         }
 
@@ -992,19 +1038,19 @@ class AROnmyoujiGame {
 
         // Update UI immediately to show zeros (or very small residuals)
         this.uiManager.updateCalibrationValues(0, 0, 0);
-        this.debugOverlay.logInfo('キャリブレーション表示基準をリセットしました');
     }
 
     updateHUD(viewDir, options = {}) {
         const now = performance.now();
         const forceHud = !!options.forceHud;
         const forceIndicators = !!options.forceIndicators;
+        const modeConfig = PERFORMANCE_CONFIG.THERMAL_MODES[this.performanceMode] || PERFORMANCE_CONFIG.THERMAL_MODES.normal;
         if (!viewDir && forceIndicators) {
             viewDir = this.renderer.getViewDirection();
         }
 
         // Stats
-        if (forceHud || now - this.lastHudUpdateTime >= PERFORMANCE_CONFIG.HUD_UPDATE_INTERVAL_MS) {
+        if (forceHud || now - this.lastHudUpdateTime >= modeConfig.hudIntervalMs) {
             this.lastHudUpdateTime = now;
             this.uiManager.updateHUD(
                 this.gameWorld.getGameStats(),
@@ -1017,7 +1063,7 @@ class AROnmyoujiGame {
         }
 
         // Enemy Indicators
-        if (viewDir && (forceIndicators || now - this.lastIndicatorUpdateTime >= PERFORMANCE_CONFIG.INDICATOR_UPDATE_INTERVAL_MS)) {
+        if (viewDir && (forceIndicators || now - this.lastIndicatorUpdateTime >= modeConfig.indicatorIntervalMs)) {
             this.lastIndicatorUpdateTime = now;
             this.uiManager.updateEnemyIndicators(
                 this.gameWorld.getEnemies(),

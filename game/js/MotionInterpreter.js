@@ -95,7 +95,7 @@ export class MotionInterpreter {
         if (typeof yaw_deg === 'number') this.pyr0.yaw = yaw_deg;
         if (typeof roll_deg === 'number') this.pyr0.roll = roll_deg;
         this.isCalibrated = true;
-        console.log('[MotionInterpreter] Calibrated (partial ok):', this.pyr0);
+        
     }
 
     update(frame) {
@@ -120,7 +120,7 @@ export class MotionInterpreter {
         // Power Mode Update
         if (this.isPowerMode && now >= this.powerModeEndTime) {
             this.isPowerMode = false;
-            console.log('[MotionInterpreter] Power Mode Ended');
+            
         }
     }
 
@@ -187,6 +187,6 @@ export class MotionInterpreter {
         this.isPowerMode = false;
         this.powerModeEndTime = 0;
         // Do not reset "isCalibrated" or "pyr0" as calibration is usually persistent until explicitly recalibrated
-        console.log('[MotionInterpreter] Reset executed');
+        
     }
 }

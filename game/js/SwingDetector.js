@@ -53,7 +53,7 @@ export class SwingDetector {
             case 'Cooldown':
                 if (now >= this.cooldownEndTime) {
                     this.state = 'Idle';
-                    console.log('[Swing] Returned to Idle');
+                    
                 }
                 break;
         }
@@ -71,7 +71,7 @@ export class SwingDetector {
             this.onSwingStarted();
         }
 
-        console.log('[Swing] SwingActive started');
+        
     }
 
     updateActive(frame, now, relativePYR, a_mag) {
@@ -214,7 +214,7 @@ export class SwingDetector {
             this.onTrajectoryUpdate(this.trajectory);
         }
 
-        console.log(`[Swing] Split at sharp turn: angle=${(sharpTurn?.turnAngle ?? 0).toFixed(1)}`);
+        
     }
 
     finishSwing(now) {
@@ -224,7 +224,7 @@ export class SwingDetector {
         this.cooldownEndTime = now + this.T_COOLDOWN;
         this.trajectory = [];
         this.peakAMag = 0;
-        console.log(`[Swing] Swing detected: intensity=${this.lastIntensity.toFixed(2)}`);
+        
     }
 
     emitSwing(now) {
@@ -277,6 +277,6 @@ export class SwingDetector {
         this.trajectory = [];
         this.prevAMag = 0;
         this.peakAMag = 0;
-        console.log('[SwingDetector] Reset executed');
+        
     }
 }

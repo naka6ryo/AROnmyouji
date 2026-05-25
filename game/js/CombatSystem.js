@@ -71,7 +71,7 @@ export class CombatSystem {
      */
     fireOfuda(viewDirection) {
         const ofuda = this.ofudaManager.fire(viewDirection);
-        console.log(`[Combat] 札発射`);
+        
 
         this.sendHapticEvent('ofuda_success', 180, 15);
     }
@@ -83,7 +83,7 @@ export class CombatSystem {
         const damage = this.motionInterpreter.isPowerMode ? this.powerDamage : this.normalDamage;
         const killed = this.gameWorld.damageEnemy(enemy.id, damage);
 
-        console.log(`[Combat] 札命中: 敵id=${enemy.id}, ダメージ=${damage}`);
+        
 
         if (this.onHit) {
             this.onHit({ enemy, damage, killed, isCritical: false });

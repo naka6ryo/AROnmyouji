@@ -46,7 +46,7 @@ export class SoundManager {
             // initAudioContext() はコンテキスト作成のみを行い、resume() は行わない。
             // 実際の再生許可解除は unlock() で行う。
         } catch (e) {
-            console.warn('[SoundManager] initAudioContext failed', e);
+            
         }
     }
 
@@ -61,7 +61,7 @@ export class SoundManager {
             // Ensure the AudioContext is resumed inside the user gesture.
             if (this.audioContext.state === 'suspended') {
                 this.audioContext.resume().catch(e => {
-                    console.warn('[SoundManager] resume failed in unlock', e);
+                    
                 });
             }
 
@@ -80,7 +80,7 @@ export class SoundManager {
                 try { osc.disconnect(); g.disconnect(); } catch (e) {}
             };
         } catch (e) {
-            console.warn('[SoundManager] unlock failed', e);
+            
         }
     }
 
@@ -114,17 +114,17 @@ export class SoundManager {
                                 const normGain = (peak > 0) ? Math.min(4.0, 0.95 / peak) : 1.0;
                                 this.buffersGain.set(key, normGain);
                             } catch (gerr) {
-                                console.warn('[SoundManager] compute gain failed', key, gerr);
+                                
                             }
                             this.buffers.set(key, decoded);
-                            console.log('[SoundManager] decoded and stored buffer for', key);
+                            
                             continue; // decoded OK
                         } catch (err) {
-                            console.warn('[SoundManager] decodeAudioData failed', key, err);
+                            
                         }
                 }
             } catch (e) {
-                console.warn('[SoundManager] webaudio fetch/decode failed', key, url, e);
+                
             }
 
             // Fallback: HTMLAudioElement
@@ -133,9 +133,9 @@ export class SoundManager {
                 audio.preload = 'auto';
                 audio.load();
                 this.sounds.set(key, audio);
-                console.log('[SoundManager] html audio element stored for', key);
+                
             } catch (e) {
-                console.warn('[SoundManager] load failed (audio element)', key, url, e);
+                
             }
         }
     }
@@ -164,14 +164,14 @@ export class SoundManager {
                 };
                 return;
             } catch (e) {
-                console.warn('[SoundManager] webaudio play failed', key, e);
+                
             }
         }
 
         // Fallback to HTMLAudioElement clone
         const audio = this.sounds.get(key);
         if (!audio) {
-            console.warn('[SoundManager] sound not loaded:', key);
+            
             return;
         }
 
@@ -181,10 +181,10 @@ export class SoundManager {
             if (opts.volume !== undefined) instance.volume = Math.min(1.0, opts.volume * (this.buffersGain.get(key) || 1.0) * this.masterGain);
             if (opts.playbackRate !== undefined) instance.playbackRate = opts.playbackRate;
             instance.play().catch(err => {
-                console.warn('[SoundManager] play failed', key, err);
+                
             });
         } catch (e) {
-            console.warn('[SoundManager] play exception', e);
+            
         }
     }
 
@@ -230,7 +230,7 @@ export class SoundManager {
                         return;
                     } catch (e) {
                         // fallthrough to try HTMLAudio fallback
-                        console.warn('[SoundManager] webaudio playTest failed', key, e);
+                        
                     }
                 }
 

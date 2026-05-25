@@ -11,6 +11,11 @@ import { SlashProjectileManager } from './SlashProjectileManager.js';
 const MOBILE_MAX_PIXEL_RATIO = 1.5;
 const DEFAULT_CAMERA_FOV_DEG = 60;
 const DEG2RAD = Math.PI / 180;
+const PERFORMANCE_PROFILES = {
+    normal: { pixelRatioScale: 1, freezeSegments: 128, effectUpdateStride: 1 },
+    warm: { pixelRatioScale: 0.8, freezeSegments: 72, effectUpdateStride: 1 },
+    hot: { pixelRatioScale: 0.6, freezeSegments: 40, effectUpdateStride: 2 }
+};
 
 export class Renderer {
     constructor(canvasId, debugOverlay = null) {
@@ -27,7 +32,7 @@ export class Renderer {
                 this.videoTexture.minFilter = THREE.LinearFilter;
                 this.videoTexture.magFilter = THREE.LinearFilter;
             } catch (e) {
-                console.warn('[Renderer] VideoTexture の作成に失敗:', e);
+                
             }
         }
         this.camera = new THREE.PerspectiveCamera(
@@ -45,15 +50,19 @@ export class Renderer {
         this.cameraPivot.add(this.camera);
         this.camera.position.set(0, 0, 0);
 
+        this.isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent || '');
+        this.performanceMode = 'normal';
+        this.performanceProfile = PERFORMANCE_PROFILES.normal;
+        this._renderFrameCount = 0;
+
         this.renderer = new THREE.WebGLRenderer({
             canvas: this.canvas,
             alpha: true, // 背景透過
-            antialias: true,
+            antialias: !this.isMobile,
             premultipliedAlpha: false
         });
-        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent || '');
-        this.maxPixelRatio = isMobile ? MOBILE_MAX_PIXEL_RATIO : 2;
-        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, this.maxPixelRatio));
+        this.maxPixelRatio = this.isMobile ? MOBILE_MAX_PIXEL_RATIO : 2;
+        this.renderer.setPixelRatio(this.getTargetPixelRatio());
         this.renderer.setClearColor(0x000000, 0);
         this.renderer.toneMapping = THREE.ReinhardToneMapping;
         this.renderer.autoClear = false;
@@ -97,7 +106,8 @@ export class Renderer {
         };
         this.calibrationTargetBurstEffects = [];
         this.freezeDomainEffects = [];
-        this.freezeDomainGeometry = new THREE.RingGeometry(0.74, 1.08, 128);
+        this.freezeDomainGeometry = new THREE.RingGeometry(0.74, 1.08, this.performanceProfile.freezeSegments);
+        this.freezeDomainGeometry.userData.segments = this.performanceProfile.freezeSegments;
         this.freezeDomainMaterial = new THREE.MeshBasicMaterial({
             color: 0x1f5dff,
             transparent: true,
@@ -150,7 +160,42 @@ export class Renderer {
         this.updateRendererSize();
         this.renderer.clear();
 
-        console.log('[Renderer] 初期化完了');
+        
+    }
+
+    setPerformanceMode(mode) {
+        const profile = PERFORMANCE_PROFILES[mode] || PERFORMANCE_PROFILES.normal;
+        if (this.performanceMode === mode) return;
+
+        this.performanceMode = mode;
+        this.performanceProfile = profile;
+        this._lastPixelRatio = 0;
+        this.updateRendererSize();
+
+        if (this.slashProjectileManager && typeof this.slashProjectileManager.setPerformanceMode === 'function') {
+            this.slashProjectileManager.setPerformanceMode(mode);
+        }
+
+        for (const hitodama of this.enemyObjects.values()) {
+            if (typeof hitodama.setPerformanceMode === 'function') {
+                hitodama.setPerformanceMode(mode);
+            }
+        }
+
+        this.rebuildFreezeDomainGeometry(profile.freezeSegments);
+    }
+
+    getTargetPixelRatio() {
+        const profile = this.performanceProfile || PERFORMANCE_PROFILES.normal;
+        return Math.max(0.5, Math.min(window.devicePixelRatio || 1, this.maxPixelRatio || 1) * profile.pixelRatioScale);
+    }
+
+    rebuildFreezeDomainGeometry(segments) {
+        const nextSegments = Math.max(16, Math.round(segments || 128));
+        if (this.freezeDomainGeometry && this.freezeDomainGeometry.userData.segments === nextSegments) return;
+        if (this.freezeDomainGeometry) this.freezeDomainGeometry.dispose();
+        this.freezeDomainGeometry = new THREE.RingGeometry(0.74, 1.08, nextSegments);
+        this.freezeDomainGeometry.userData.segments = nextSegments;
     }
 
     /**
@@ -208,9 +253,12 @@ export class Renderer {
      */
     addEnemy(enemy) {
         const hitodama = new Hitodama(this.scene);
+        if (typeof hitodama.setPerformanceMode === 'function') {
+            hitodama.setPerformanceMode(this.performanceMode);
+        }
         this.updateEnemyPosition(hitodama, enemy);
         this.enemyObjects.set(enemy.id, hitodama);
-        console.log(`[Renderer] 敵(人魂)追加: id=${enemy.id}`);
+        
     }
 
     /**
@@ -237,12 +285,12 @@ export class Renderer {
             if (hitodama.isPurifying || hitodama.isDead) {
                 hitodama.dispose();
                 this.enemyObjects.delete(enemyId);
-                console.log(`[Renderer] 敵(人魂)削除: id=${enemyId}`);
+                
             } else if (options.playerDamage && typeof hitodama.explode === 'function') {
                 hitodama.onExploded = () => {
                     hitodama.dispose();
                     this.enemyObjects.delete(enemyId);
-                    console.log(`[Renderer] 敵(人魂)爆発完了・削除: id=${enemyId}`);
+                    
                 };
                 try {
                     if (!this.scene.userData) this.scene.userData = {};
@@ -252,19 +300,19 @@ export class Renderer {
                     this.camera.getWorldPosition(this.scene.userData.cameraPosition);
                 } catch (e) { }
                 hitodama.explode({ toCameraBias: true });
-                console.log(`[Renderer] 敵(人魂)爆発開始 (playerDamage): id=${enemyId}`);
+                
             } else if (typeof hitodama.purify === 'function') {
                 hitodama.onPurified = () => {
                     hitodama.dispose();
                     this.enemyObjects.delete(enemyId);
-                    console.log(`[Renderer] 敵(人魂)浄化完了・削除: id=${enemyId}`);
+                    
                 };
                 hitodama.purify();
-                console.log(`[Renderer] 敵(人魂)浄化開始: id=${enemyId}`);
+                
             } else {
                 hitodama.dispose();
                 this.enemyObjects.delete(enemyId);
-                console.log(`[Renderer] 敵(人魂)削除: id=${enemyId}`);
+                
             }
         }
     }
@@ -563,7 +611,8 @@ export class Renderer {
             side: THREE.DoubleSide,
             depthWrite: false
         });
-        const ring = new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.018, 12, 96), ringMaterial);
+        const torusSegments = this.performanceMode === 'hot' ? 36 : (this.performanceMode === 'warm' ? 64 : 96);
+        const ring = new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.018, 8, torusSegments), ringMaterial);
         ring.position.copy(targetWorld);
         ring.lookAt(this.camera.position);
         this.scene.add(ring);
@@ -574,7 +623,8 @@ export class Renderer {
             speed: 7
         });
 
-        for (let i = 0; i < 56; i++) {
+        const fragmentCount = this.performanceMode === 'hot' ? 16 : (this.performanceMode === 'warm' ? 32 : 56);
+        for (let i = 0; i < fragmentCount; i++) {
             const material = new THREE.MeshBasicMaterial({
                 color: Math.random() > 0.35 ? 0x4df6ff : 0xe8ffff,
                 transparent: true,
@@ -748,13 +798,18 @@ export class Renderer {
     render(deltaTime, enemies) {
         // 人魂のアニメーション更新
         const dtSec = deltaTime / 1000;
+        this._renderFrameCount++;
+        const profile = this.performanceProfile || PERFORMANCE_PROFILES.normal;
+        const updateEffects = this._renderFrameCount % profile.effectUpdateStride === 0;
         for (const hitodama of this.enemyObjects.values()) {
             hitodama.update(dtSec);
         }
 
         // 飛翔体更新
-        this.updateCalibrationTargetBurstEffects(dtSec);
-        this.updateFreezeDomainEffects(dtSec);
+        if (updateEffects) {
+            this.updateCalibrationTargetBurstEffects(dtSec * profile.effectUpdateStride);
+            this.updateFreezeDomainEffects(dtSec * profile.effectUpdateStride);
+        }
 
         if (this.calibrationMode) {
             this.slashProjectileManager.update(deltaTime, [this.calibrationTarget], (data) => {
@@ -862,7 +917,7 @@ export class Renderer {
         const height = this.canvas.clientHeight || window.innerHeight;
         const videoWidth = this.videoElement && this.videoElement.videoWidth ? this.videoElement.videoWidth : 0;
         const videoHeight = this.videoElement && this.videoElement.videoHeight ? this.videoElement.videoHeight : 0;
-        const pixelRatio = Math.min(window.devicePixelRatio || 1, this.maxPixelRatio || 1);
+        const pixelRatio = this.getTargetPixelRatio();
         if (this._lastPixelRatio !== pixelRatio) {
             this.renderer.setPixelRatio(pixelRatio);
             this._lastPixelRatio = pixelRatio;
@@ -975,7 +1030,7 @@ export class Renderer {
             this.renderer = null;
         }
 
-        console.log('[Renderer] Dispose完了 (App Shutdown)');
+        
     }
 
     /**
@@ -1013,6 +1068,6 @@ export class Renderer {
         }
 
         this.renderer.clear();
-        console.log('[Renderer] Reset executed (Context preserved)');
+        
     }
 }

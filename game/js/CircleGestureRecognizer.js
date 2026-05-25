@@ -10,7 +10,9 @@ export class CircleGestureRecognizer {
         this.GESTURE_MIN_DURATION = 600;
         this.CIRCLE_MAX_CLOSURE = 25;
         this.CIRCLE_MIN_AXIS_RANGE = 7;
+        this.CIRCLE_MIN_AXIS_BALANCE = 0.30;
         this.CIRCLE_MIN_AREA = 80;
+        this.CIRCLE_MIN_ANGLE_COVERAGE = 240;
         this.CIRCLE_COOLDOWN = 700;
 
         this.lastDetectedTime = 0;
@@ -33,15 +35,17 @@ export class CircleGestureRecognizer {
         if (now - this.lastDetectedTime < this.CIRCLE_COOLDOWN) return;
 
         const metrics = this.calculateMetrics();
-        const { closure, pitchRange, yawRange, area } = metrics;
+        const { closure, pitchRange, yawRange, axisBalance, area, angleCoverage } = metrics;
 
         if (
             closure <= this.CIRCLE_MAX_CLOSURE &&
             pitchRange >= this.CIRCLE_MIN_AXIS_RANGE &&
             yawRange >= this.CIRCLE_MIN_AXIS_RANGE &&
-            area >= this.CIRCLE_MIN_AREA
+            axisBalance >= this.CIRCLE_MIN_AXIS_BALANCE &&
+            area >= this.CIRCLE_MIN_AREA &&
+            angleCoverage >= this.CIRCLE_MIN_ANGLE_COVERAGE
         ) {
-            console.log(`[Circle] Detected: C=${closure.toFixed(1)}, P=${pitchRange.toFixed(1)}, Y=${yawRange.toFixed(1)}, A=${area.toFixed(1)}`);
+            console.log(`[Circle] Detected: C=${closure.toFixed(1)}, P=${pitchRange.toFixed(1)}, Y=${yawRange.toFixed(1)}, B=${axisBalance.toFixed(2)}, A=${area.toFixed(1)}, G=${angleCoverage.toFixed(0)}`);
             this.lastDetectedTime = now;
             this.buffer = [];
 
@@ -58,7 +62,9 @@ export class CircleGestureRecognizer {
                 closure: Infinity,
                 pitchRange: 0,
                 yawRange: 0,
-                area: 0
+                axisBalance: 0,
+                area: 0,
+                angleCoverage: 0
             };
         }
 
@@ -66,7 +72,9 @@ export class CircleGestureRecognizer {
             closure: this.calculateClosureDistance(points),
             pitchRange: this.calculatePitchRange(points),
             yawRange: this.calculateYawRange(points),
-            area: this.calculateArea(points)
+            axisBalance: this.calculateAxisBalance(points),
+            area: this.calculateArea(points),
+            angleCoverage: this.calculateAngleCoverage(points)
         };
     }
 
@@ -112,6 +120,14 @@ export class CircleGestureRecognizer {
         return Math.max(...yaws) - Math.min(...yaws);
     }
 
+    calculateAxisBalance(points) {
+        const pitchRange = this.calculatePitchRange(points);
+        const yawRange = this.calculateYawRange(points);
+        const major = Math.max(pitchRange, yawRange);
+        const minor = Math.min(pitchRange, yawRange);
+        return major > 0 ? minor / major : 0;
+    }
+
     calculateArea(points) {
         if (points.length < 3) return 0;
 
@@ -123,6 +139,51 @@ export class CircleGestureRecognizer {
         }
 
         return Math.abs(sum) / 2;
+    }
+
+    calculateAngleCoverage(points) {
+        if (points.length < 3) return 0;
+
+        const center = this.calculateCentroid(points);
+        const maxRadius = points.reduce((max, p) => {
+            return Math.max(max, Math.hypot(p.yaw - center.yaw, p.pitch - center.pitch));
+        }, 0);
+
+        if (maxRadius <= 0) return 0;
+
+        const minRadius = Math.max(2, maxRadius * 0.25);
+        const angles = points
+            .map(p => ({
+                radius: Math.hypot(p.yaw - center.yaw, p.pitch - center.pitch),
+                angle: Math.atan2(p.pitch - center.pitch, p.yaw - center.yaw) * 180 / Math.PI
+            }))
+            .filter(p => p.radius >= minRadius)
+            .map(p => (p.angle + 360) % 360)
+            .sort((a, b) => a - b);
+
+        if (angles.length < 3) return 0;
+
+        let maxGap = 0;
+        for (let i = 0; i < angles.length; i++) {
+            const current = angles[i];
+            const next = angles[(i + 1) % angles.length] + (i === angles.length - 1 ? 360 : 0);
+            maxGap = Math.max(maxGap, next - current);
+        }
+
+        return 360 - maxGap;
+    }
+
+    calculateCentroid(points) {
+        const sum = points.reduce((acc, p) => {
+            acc.pitch += p.pitch;
+            acc.yaw += p.yaw;
+            return acc;
+        }, { pitch: 0, yaw: 0 });
+
+        return {
+            pitch: sum.pitch / points.length,
+            yaw: sum.yaw / points.length
+        };
     }
 
     unwrapAngle(angle) {

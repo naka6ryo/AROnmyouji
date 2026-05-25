@@ -138,8 +138,8 @@ export class DebugOverlay {
         if (data.circleDebug !== undefined) {
             const circle = data.circleDebug;
             if (circle.valid) {
-                this.debugElements.circle.textContent = 
-                    `C=${circle.closure.toFixed(0)}, P=${circle.pitchRange.toFixed(0)}, Y=${circle.yawRange.toFixed(0)}, A=${circle.area.toFixed(0)}`;
+                this.debugElements.circle.textContent =
+                    `C=${circle.closure.toFixed(0)}, P=${circle.pitchRange.toFixed(0)}, Y=${circle.yawRange.toFixed(0)}, B=${circle.axisBalance.toFixed(2)}, A=${circle.area.toFixed(0)}, G=${circle.angleCoverage.toFixed(0)}`;
             } else {
                 this.debugElements.circle.textContent = '未検出';
             }

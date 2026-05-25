@@ -95,35 +95,40 @@ export class SwingDetector {
 
         const duration = now - this.startTime;
 
-        if (a_mag <= this.A_END && duration >= this.T_MIN) {
-            this.finishSwing(now);
+        const sharpTurn = this.findRecentSharpTurn(now);
+        if (sharpTurn) {
+            this.splitSwing(now, point, a_mag, sharpTurn);
             return;
         }
 
-        if (this.shouldSplitAtSharpTurn(now)) {
-            this.splitSwing(now, point, a_mag);
+        if (a_mag <= this.A_END && duration >= this.T_MIN) {
+            this.finishSwing(now);
         }
     }
 
-    shouldSplitAtSharpTurn(now) {
+    findRecentSharpTurn(now) {
         if (this.trajectory.length < 3) return false;
         if (now - this.startTime < Math.max(this.T_MIN, this.MIN_SPLIT_INTERVAL)) return false;
 
-        const turnAngle = this.calculateRecentTurnAngle();
-        return turnAngle !== null && turnAngle >= this.SHARP_TURN_ANGLE_DEG;
+        for (let pivotIndex = this.trajectory.length - 2; pivotIndex >= 1; pivotIndex--) {
+            const turnAngle = this.calculateTurnAngleAt(pivotIndex);
+            if (turnAngle !== null && turnAngle >= this.SHARP_TURN_ANGLE_DEG) {
+                return { pivotIndex, turnAngle };
+            }
+        }
+
+        return false;
     }
 
-    calculateRecentTurnAngle() {
-        const endIndex = this.trajectory.length - 1;
-        const midIndex = Math.floor(endIndex / 2);
-        const startIndex = 0;
+    calculateTurnAngleAt(pivotIndex) {
+        const pivot = this.trajectory[pivotIndex];
+        const before = this.findVectorBeforePivot(pivotIndex);
+        const after = this.findVectorAfterPivot(pivotIndex);
 
-        const start = this.trajectory[startIndex];
-        const mid = this.trajectory[midIndex];
-        const end = this.trajectory[endIndex];
+        if (!before || !after) return null;
 
-        const v1 = this.createAngleVector(start, mid);
-        const v2 = this.createAngleVector(mid, end);
+        const v1 = this.createAngleVector(before, pivot);
+        const v2 = this.createAngleVector(pivot, after);
 
         const len1 = Math.hypot(v1.x, v1.y);
         const len2 = Math.hypot(v2.x, v2.y);
@@ -136,6 +141,40 @@ export class SwingDetector {
         return Math.acos(cos) * 180 / Math.PI;
     }
 
+    findVectorBeforePivot(pivotIndex) {
+        const pivot = this.trajectory[pivotIndex];
+
+        for (let i = pivotIndex - 1; i >= 0; i--) {
+            const vector = this.createAngleVector(this.trajectory[i], pivot);
+            if (Math.hypot(vector.x, vector.y) >= this.TURN_VECTOR_MIN_DEG) {
+                return this.trajectory[i];
+            }
+        }
+
+        return null;
+    }
+
+    findVectorAfterPivot(pivotIndex) {
+        const pivot = this.trajectory[pivotIndex];
+
+        for (let i = pivotIndex + 1; i < this.trajectory.length; i++) {
+            const vector = this.createAngleVector(pivot, this.trajectory[i]);
+            if (Math.hypot(vector.x, vector.y) >= this.TURN_VECTOR_MIN_DEG) {
+                return this.trajectory[i];
+            }
+        }
+
+        return null;
+    }
+
+    calculateRecentTurnAngle() {
+        const sharpTurn = this.findRecentSharpTurn(this.startTime + Math.max(this.T_MIN, this.MIN_SPLIT_INTERVAL));
+        if (!sharpTurn) {
+            return null;
+        }
+        return sharpTurn.turnAngle;
+    }
+
     createAngleVector(from, to) {
         return {
             x: this.unwrapAngle(to.yaw - from.yaw),
@@ -143,17 +182,28 @@ export class SwingDetector {
         };
     }
 
-    splitSwing(now, currentPoint, currentAMag) {
+    splitSwing(now, currentPoint, currentAMag, sharpTurn) {
         if (this.onSharpTurnSwingDetected) {
             const shouldContinue = this.onSharpTurnSwingDetected({ timestamp: now });
             if (shouldContinue === false) return;
         }
 
+        const pivotIndex = sharpTurn?.pivotIndex ?? this.trajectory.length - 1;
+        const previousTrajectory = this.trajectory;
+        const emittedTrajectory = previousTrajectory.slice(0, pivotIndex + 1);
+        const nextTrajectory = previousTrajectory.slice(pivotIndex);
+
+        this.trajectory = emittedTrajectory;
         const emitted = this.emitSwing(now);
-        if (!emitted) return;
+        if (!emitted) {
+            this.trajectory = previousTrajectory;
+            return;
+        }
 
         this.startTime = now;
-        this.trajectory = [{ ...currentPoint }];
+        this.trajectory = nextTrajectory.length >= 2
+            ? nextTrajectory.map(p => ({ ...p }))
+            : [{ ...currentPoint }];
         this.peakAMag = currentAMag;
 
         if (this.onSwingStarted) {
@@ -164,7 +214,7 @@ export class SwingDetector {
             this.onTrajectoryUpdate(this.trajectory);
         }
 
-        console.log('[Swing] Split at sharp turn');
+        console.log(`[Swing] Split at sharp turn: angle=${(sharpTurn?.turnAngle ?? 0).toFixed(1)}`);
     }
 
     finishSwing(now) {

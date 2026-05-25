@@ -97,11 +97,11 @@ export class Renderer {
         };
         this.calibrationTargetBurstEffects = [];
         this.freezeDomainEffects = [];
-        this.freezeDomainGeometry = new THREE.RingGeometry(0.85, 1.0, 96);
+        this.freezeDomainGeometry = new THREE.RingGeometry(0.74, 1.08, 128);
         this.freezeDomainMaterial = new THREE.MeshBasicMaterial({
-            color: 0x9eefff,
+            color: 0x1f5dff,
             transparent: true,
-            opacity: 0.42,
+            opacity: 0.72,
             blending: THREE.AdditiveBlending,
             side: THREE.DoubleSide,
             depthWrite: false
@@ -647,7 +647,7 @@ export class Renderer {
             const scale = 0.08 + effect.maxScale * (1 - Math.pow(1 - t, 2.2));
             effect.mesh.scale.set(scale, scale, scale);
             if (effect.mesh.material) {
-                effect.mesh.material.opacity = Math.max(0, effect.life) * 0.42;
+                effect.mesh.material.opacity = Math.max(0, effect.life) * 0.72;
             }
 
             if (effect.life <= 0) {

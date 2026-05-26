@@ -108,6 +108,7 @@ export class Renderer {
         this.calibrationTargetBurstEffects = [];
         this.freezeDomainEffects = [];
         this.maxFreezeDomainEffects = 2;
+        this.lastFreezeDomainEffectTime = -Infinity;
         this.freezeDomainGeometry = new THREE.RingGeometry(0.74, 1.08, this.performanceProfile.freezeSegments);
         this.freezeDomainGeometry.userData.segments = this.performanceProfile.freezeSegments;
         this.freezeDomainMaterial = new THREE.MeshBasicMaterial({
@@ -284,6 +285,10 @@ export class Renderer {
     removeEnemy(enemyId, options = {}) {
         const hitodama = this.enemyObjects.get(enemyId);
         if (hitodama) {
+            if (typeof hitodama.clearFreezeVisuals === 'function') {
+                hitodama.clearFreezeVisuals();
+            }
+
             if (hitodama.isPurifying || hitodama.isDead) {
                 hitodama.dispose();
                 this.enemyObjects.delete(enemyId);
@@ -301,7 +306,10 @@ export class Renderer {
                     }
                     this.camera.getWorldPosition(this.scene.userData.cameraPosition);
                 } catch (e) { }
-                hitodama.explode({ toCameraBias: true });
+                hitodama.explode({
+                    toCameraBias: true,
+                    lightweight: this.shouldUseLightweightDamageExplosion()
+                });
                 
             } else if (typeof hitodama.purify === 'function') {
                 hitodama.onPurified = () => {
@@ -327,6 +335,10 @@ export class Renderer {
         for (const enemy of enemies) {
             const hitodama = this.enemyObjects.get(enemy.id);
             if (hitodama) {
+                if (hitodama.isPurifying || hitodama.isExploding || hitodama.isDead) {
+                    continue;
+                }
+
                 const last = hitodama._lastEnemyState;
                 const frozenUntil = typeof enemy.frozenUntil === 'number' ? enemy.frozenUntil : 0;
                 const frozenChanged = !last || last.frozenUntil !== frozenUntil;
@@ -360,6 +372,8 @@ export class Renderer {
     }
 
     triggerFreezeDomainEffect() {
+        this.lastFreezeDomainEffectTime = performance.now();
+        this.reduceActiveExplosionLoadForFreeze();
         const cameraWorld = this._cameraPositionScratch;
         this.cameraPivot.updateMatrixWorld(true);
         this.camera.updateMatrixWorld(true);
@@ -385,6 +399,20 @@ export class Renderer {
             life: 1,
             maxScale: 7.5
         });
+    }
+
+    shouldUseLightweightDamageExplosion() {
+        const now = performance.now();
+        return (now - this.lastFreezeDomainEffectTime) <= 300 || this.freezeDomainEffects.length > 0;
+    }
+
+    reduceActiveExplosionLoadForFreeze() {
+        const maxFragments = this.performanceMode === 'hot' ? 8 : (this.performanceMode === 'warm' ? 12 : 18);
+        for (const hitodama of this.enemyObjects.values()) {
+            if (typeof hitodama.reduceExplosionLoad === 'function') {
+                hitodama.reduceExplosionLoad(maxFragments);
+            }
+        }
     }
 
     /**

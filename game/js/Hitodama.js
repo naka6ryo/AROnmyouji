@@ -42,6 +42,7 @@ export class Hitodama {
         this._pureColor = new THREE.Color(0xaaddff);
         this._scratchColor = new THREE.Color();
         this._scratchVec = new THREE.Vector3();
+        this._toCameraScratch = new THREE.Vector3();
         this.frozenUntil = 0;
         this.isFrozen = false;
         this._lastFrozenVisualState = null;
@@ -143,6 +144,7 @@ export class Hitodama {
     purify() {
         if (this.isPurifying || this.isDead) return;
         this.isPurifying = true;
+        this.clearFreezeVisuals();
 
         this.mesh.visible = false;
         this.coreMesh.visible = false;
@@ -191,6 +193,7 @@ export class Hitodama {
     explode(opts = {}) {
         if (this.isExploding || this.isDead) return;
         this.isExploding = true;
+        this.clearFreezeVisuals();
 
         this.mesh.visible = false;
         this.coreMesh.visible = false;
@@ -217,7 +220,9 @@ export class Hitodama {
         this.shockwaves.push({ mesh: ring2, speed: 20.0, opacity: 1.0 });
 
         // 破片
-        const fragmentCount = this.performanceProfile.explodeFragments;
+        const fragmentCount = opts.lightweight
+            ? Math.max(8, Math.round(this.performanceProfile.explodeFragments * 0.28))
+            : this.performanceProfile.explodeFragments;
         const fragGeo = HitodamaResources.geometries.explosionFragment;
 
         for (let i = 0; i < fragmentCount; i++) {
@@ -241,7 +246,7 @@ export class Hitodama {
 
             if (opts.toCameraBias && this.scene.userData && this.scene.userData.cameraPosition) {
                 const camPos = this.scene.userData.cameraPosition;
-                const toCamera = camPos.clone().sub(this.pos).normalize();
+                const toCamera = this._toCameraScratch.copy(camPos).sub(this.pos).normalize();
                 if (Math.random() < 0.5) velocity.add(toCamera.multiplyScalar(8.0 + Math.random() * 5.0));
             }
 
@@ -255,6 +260,24 @@ export class Hitodama {
         }
     }
 
+    reduceExplosionLoad(maxFragments = 18) {
+        if (!this.isExploding || this.fragments.length <= maxFragments) return;
+
+        for (let i = this.fragments.length - 1; i >= maxFragments; i--) {
+            const frag = this.fragments[i];
+            if (frag && frag.mesh) {
+                this.scene.remove(frag.mesh);
+                if (frag.mesh.material) frag.mesh.material.dispose();
+            }
+            this.fragments.splice(i, 1);
+        }
+
+        if (this.light) {
+            this.light.intensity = Math.min(this.light.intensity, 90 * this.performanceProfile.lightScale);
+            this.light.distance = Math.min(this.light.distance || 10, 24);
+        }
+    }
+
     setFrozen(durationMs) {
         this.setFrozenUntil(performance.now() + durationMs);
     }
@@ -265,6 +288,16 @@ export class Hitodama {
         if (nextFrozenUntil === this.frozenUntil) return;
         this.frozenUntil = nextFrozenUntil;
         this._freezeVisualDirty = true;
+    }
+
+    clearFreezeVisuals() {
+        this.frozenUntil = 0;
+        this.isFrozen = false;
+        this._freezeVisualDirty = true;
+        this.applyFreezeVisualState(false);
+        if (this.freezeRing) {
+            this.freezeRing.visible = false;
+        }
     }
 
     update(dt, nowMs = performance.now()) {
@@ -539,6 +572,7 @@ export class Hitodama {
     }
 
     finalizeDeath() {
+        this.clearFreezeVisuals();
         this.isDead = true;
         this.light.visible = false;
         // cleanup fragments
@@ -553,6 +587,7 @@ export class Hitodama {
     }
 
     dispose() {
+        this.clearFreezeVisuals();
         if (this.mesh) {
             this.scene.remove(this.mesh);
             this.mesh.geometry.dispose(); // Dispose unique body geometry

@@ -19,6 +19,7 @@ export class CircleGestureRecognizer {
         this.CIRCLE_CANDIDATE_MIN_AREA = 40;
         this.CIRCLE_CANDIDATE_MIN_ANGLE_COVERAGE = 120;
         this.CIRCLE_COOLDOWN = 700;
+        this.MAX_ANALYSIS_POINTS = 24;
 
         this.state = 'Idle';
         this.startTime = 0;
@@ -140,12 +141,23 @@ export class CircleGestureRecognizer {
     }
 
     calculateBestCircleMetrics(points) {
-        const metrics = this.calculateMetricsForPoints(points);
+        const sampledPoints = this.downsamplePoints(points, this.MAX_ANALYSIS_POINTS);
+        const metrics = this.calculateMetricsForPoints(sampledPoints);
         if (this.isCircleMetrics(metrics)) {
             return metrics;
         }
 
-        return this.findClosedCircleMetrics(points) || metrics;
+        return this.findClosedCircleMetrics(sampledPoints) || metrics;
+    }
+
+    downsamplePoints(points, maxPoints) {
+        if (!points || points.length <= maxPoints) return points;
+        const result = [];
+        const last = points.length - 1;
+        for (let i = 0; i < maxPoints; i++) {
+            result.push(points[Math.round((i / (maxPoints - 1)) * last)]);
+        }
+        return result;
     }
 
     findClosedCircleMetrics(points) {

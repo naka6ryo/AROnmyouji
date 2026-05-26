@@ -24,6 +24,13 @@ export class BleControllerAdapter {
         this.hapticQueue = [];
         this.lastHapticSendTime = 0;
         this.HAPTIC_MIN_INTERVAL = 100; // ms
+        this.minSensorIntervalMs = 0;
+        this.lastSensorCallbackTime = 0;
+        this.sensorTimestamps = [];
+        this.processedSensorTimestamps = [];
+        this.skippedSensorFrames = 0;
+        this.hapticSentCount = 0;
+        this.hapticSkippedCount = 0;
         this.DEBUG_LOGS = false;
     }
     
@@ -74,11 +81,43 @@ export class BleControllerAdapter {
      * センサーデータ受信ハンドラ
      */
     handleSensorData(dataView) {
+        const now = performance.now();
+        this.recordTimestamp(this.sensorTimestamps, now);
+        if (this.minSensorIntervalMs > 0 && now - this.lastSensorCallbackTime < this.minSensorIntervalMs) {
+            this.skippedSensorFrames++;
+            return;
+        }
+
+        this.lastSensorCallbackTime = now;
+        this.recordTimestamp(this.processedSensorTimestamps, now);
         if (this.onDataCallback) {
             // DataViewを配列に変換
-            const byteArray = new Uint8Array(dataView.buffer, dataView.byteOffset, dataView.byteLength);
-            this.onDataCallback(byteArray);
+            this.onDataCallback(dataView);
         }
+    }
+
+    recordTimestamp(list, now) {
+        list.push(now);
+        while (list.length > 90) list.shift();
+    }
+
+    getTimestampHz(list) {
+        if (!list || list.length < 2) return 0;
+        const duration = list[list.length - 1] - list[0];
+        return duration > 0 ? ((list.length - 1) / duration) * 1000 : 0;
+    }
+
+    setSensorMinInterval(intervalMs = 0) {
+        this.minSensorIntervalMs = Math.max(0, intervalMs || 0);
+    }
+
+    setPerformanceMode(mode) {
+        const intervals = {
+            normal: 1000 / 60,
+            warm: 1000 / 45,
+            hot: 1000 / 30
+        };
+        this.setSensorMinInterval(intervals[mode] || intervals.normal);
     }
     
     /**
@@ -121,7 +160,7 @@ export class BleControllerAdapter {
         // レート制限チェック
         const now = performance.now();
         if (now - this.lastHapticSendTime < this.HAPTIC_MIN_INTERVAL) {
-            if (this.DEBUG_LOGS) 
+            this.hapticSkippedCount++;
             return false;
         }
         
@@ -132,10 +171,10 @@ export class BleControllerAdapter {
                 Math.min(255, Math.max(0, duration))
             ]);
             
-            await this.hapticCharacteristic.writeValue(command);
+            await this.writeHapticValue(command, duration);
             this.lastHapticSendTime = now;
+            this.hapticSentCount++;
             
-            if (this.DEBUG_LOGS) 
             return true;
         } catch (error) {
             
@@ -158,15 +197,12 @@ export class BleControllerAdapter {
             // 直接 writeValue を連続で行い、sendHapticCommand のレート制限チェックを回避する
             for (let i = 0; i < pulses.length; i++) {
                 const pulse = pulses[i];
-                const command = new Uint8Array([
-                    Math.min(255, Math.max(0, pulse.strength)),
-                    Math.min(255, Math.max(0, pulse.duration))
-                ]);
-                await this.hapticCharacteristic.writeValue(command);
-                this.lastHapticSendTime = performance.now();
+                await this.waitForHapticSlot();
+                const sent = await this.sendHapticCommand(pulse.strength, pulse.duration);
+                if (!sent) return false;
 
                 if (i < pulses.length - 1) {
-                    await new Promise(resolve => setTimeout(resolve, Math.max(0, interval)));
+                    await new Promise(resolve => setTimeout(resolve, Math.max(this.HAPTIC_MIN_INTERVAL, interval || 0)));
                 }
             }
             return true;
@@ -174,6 +210,20 @@ export class BleControllerAdapter {
             
             return false;
         }
+    }
+
+    async waitForHapticSlot() {
+        const waitMs = this.HAPTIC_MIN_INTERVAL - (performance.now() - this.lastHapticSendTime);
+        if (waitMs > 0) {
+            await new Promise(resolve => setTimeout(resolve, waitMs));
+        }
+    }
+
+    async writeHapticValue(command, duration) {
+        if (duration <= 10 && typeof this.hapticCharacteristic.writeValueWithoutResponse === 'function') {
+            return this.hapticCharacteristic.writeValueWithoutResponse(command);
+        }
+        return this.hapticCharacteristic.writeValue(command);
     }
     
     /**
@@ -191,5 +241,15 @@ export class BleControllerAdapter {
      */
     getConnectionState() {
         return this.isConnected;
+    }
+
+    getStats() {
+        return {
+            rawReceiveHz: this.getTimestampHz(this.sensorTimestamps),
+            callbackHz: this.getTimestampHz(this.processedSensorTimestamps),
+            skippedSensorFrames: this.skippedSensorFrames,
+            hapticSentCount: this.hapticSentCount,
+            hapticSkippedCount: this.hapticSkippedCount
+        };
     }
 }

@@ -4,6 +4,9 @@
         this.debugElements = {
             bleState: document.getElementById('debugBleState'),
             hz: document.getElementById('debugHz'),
+            rawHz: document.getElementById('debugRawHz'),
+            processedHz: document.getElementById('debugProcessedHz'),
+            skippedSensor: document.getElementById('debugSkippedSensor'),
             drops: document.getElementById('debugDrops'),
             dropRate: document.getElementById('debugDropRate'),
             amag: document.getElementById('debugAmag'),
@@ -50,6 +53,9 @@
 
         this.setText('bleState', data.bleConnected === undefined ? undefined : (data.bleConnected ? 'connected' : 'disconnected'));
         this.setText('hz', data.receiveHz === undefined ? undefined : data.receiveHz.toFixed(1));
+        this.setText('rawHz', data.rawReceiveHz === undefined ? undefined : data.rawReceiveHz.toFixed(1));
+        this.setText('processedHz', data.processedHz === undefined ? undefined : data.processedHz.toFixed(1));
+        this.setText('skippedSensor', data.skippedSensorFrames);
         this.setText('drops', data.droppedFrames);
         this.setText('dropRate', data.dropRate === undefined ? undefined : data.dropRate.toFixed(2));
         this.setText('amag', data.a_mag === undefined ? undefined : data.a_mag.toFixed(3));
@@ -70,7 +76,10 @@
             this.lastHapticEvent = data.hapticEvent;
             this.hapticsSentCount++;
         }
-        this.setText('haptics', `${this.lastHapticEvent} (${this.hapticsSentCount})`);
+        const hapticStats = data.hapticSentCount === undefined
+            ? `${this.lastHapticEvent} (${this.hapticsSentCount})`
+            : `${this.lastHapticEvent} (${data.hapticSentCount}/${data.hapticSkippedCount || 0})`;
+        this.setText('haptics', hapticStats);
         this.setText('error', data.error);
     }
 

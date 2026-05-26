@@ -31,17 +31,18 @@ export class SensorFrameParser {
      * @returns {Object|null}
      */
     parseFrame(data) {
-        if (data.length !== 15 && data.length !== 17) {
+        const length = this.getFrameLength(data);
+        if (length !== 15 && length !== 17) {
             
             return null;
         }
 
-        if (data[0] !== 0x53) {
+        if (this.getByte(data, 0) !== 0x53) {
             
             return null;
         }
 
-        const seq = data[1];
+        const seq = this.getByte(data, 1);
         this.updateSequenceStats(seq);
 
         const ax_g = this.readInt16LE(data, 2) / 100.0;
@@ -59,7 +60,7 @@ export class SensorFrameParser {
         let frameFormat = 'euler15';
         let flags = 0;
 
-        if (data.length === 17) {
+        if (length === 17) {
             const quat = this.parseQuaternionFrame(data);
             quat_w = quat.w;
             quat_x = quat.x;
@@ -70,7 +71,7 @@ export class SensorFrameParser {
             pitch_deg = pyr.pitch;
             yaw_deg = pyr.yaw;
             roll_deg = pyr.roll;
-            flags = data[16];
+            flags = this.getByte(data, 16);
             frameFormat = 'quat17';
         } else {
             const pitch_raw = this.readInt16LE(data, 8);
@@ -80,7 +81,7 @@ export class SensorFrameParser {
             pitch_deg = -(pitch_raw / 10.0);
             yaw_deg = yaw_raw / 10.0;
             roll_deg = roll_raw / 10.0;
-            flags = data[14];
+            flags = this.getByte(data, 14);
         }
 
         const now = performance.now();
@@ -106,6 +107,14 @@ export class SensorFrameParser {
             flags,
             timestamp: now
         };
+    }
+
+    getFrameLength(data) {
+        return typeof data.byteLength === 'number' ? data.byteLength : data.length;
+    }
+
+    getByte(data, offset) {
+        return typeof data.getUint8 === 'function' ? data.getUint8(offset) : data[offset];
     }
 
     updateSequenceStats(seq) {
@@ -192,8 +201,8 @@ export class SensorFrameParser {
     }
 
     readInt16LE(data, offset) {
-        const low = data[offset];
-        const high = data[offset + 1];
+        const low = this.getByte(data, offset);
+        const high = this.getByte(data, offset + 1);
         const value = (high << 8) | low;
         return value > 32767 ? value - 65536 : value;
     }

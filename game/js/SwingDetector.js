@@ -27,6 +27,9 @@ export class SwingDetector {
         this.trajectory = [];
         this.prevAMag = 0;
         this.peakAMag = 0;
+        this.MAX_TRAJECTORY_POINTS = 24;
+        this.TRAJECTORY_CALLBACK_INTERVAL = 33;
+        this.lastTrajectoryCallbackTime = -Infinity;
 
         // Callbacks
         this.onSwingStarted = null;
@@ -88,8 +91,12 @@ export class SwingDetector {
         };
 
         this.trajectory.push(point);
+        if (this.trajectory.length > this.MAX_TRAJECTORY_POINTS) {
+            this.trajectory.shift();
+        }
 
-        if (this.onTrajectoryUpdate) {
+        if (this.onTrajectoryUpdate && now - this.lastTrajectoryCallbackTime >= this.TRAJECTORY_CALLBACK_INTERVAL) {
+            this.lastTrajectoryCallbackTime = now;
             this.onTrajectoryUpdate(this.trajectory);
         }
 
@@ -277,6 +284,7 @@ export class SwingDetector {
         this.trajectory = [];
         this.prevAMag = 0;
         this.peakAMag = 0;
+        this.lastTrajectoryCallbackTime = -Infinity;
         
     }
 }

@@ -16,6 +16,7 @@ export class UIManager {
         this.circleFreezeTimer = null;
         this.tutorialTimer = null;
         this.tutorialActive = false;
+        this.tutorialPreloads = [];
     }
 
     /**
@@ -690,9 +691,13 @@ export class UIManager {
 
             const image = this.elements.tutorialImage;
             if (image) {
-                if (image.getAttribute('src') !== slide.image) {
-                    image.setAttribute('src', slide.image);
-                }
+                image.style.visibility = 'hidden';
+                image.onload = () => { image.style.visibility = 'visible'; };
+                image.onerror = () => { image.style.visibility = 'visible'; };
+                image.removeAttribute('src');
+                void image.offsetWidth;
+                image.setAttribute('src', slide.image);
+                if (image.complete) image.style.visibility = 'visible';
                 image.setAttribute('alt', slide.alt);
             }
 
@@ -707,6 +712,15 @@ export class UIManager {
                     : 'w-1 h-1 bg-white/40';
             }
         };
+
+        this.tutorialPreloads = slides.map(slide => {
+            try {
+                const preload = new Image();
+                preload.src = slide.image;
+                return preload;
+            } catch (e) { }
+            return null;
+        });
 
         if (this.tutorialTimer) {
             clearTimeout(this.tutorialTimer);

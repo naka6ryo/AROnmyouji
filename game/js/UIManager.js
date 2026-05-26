@@ -692,6 +692,21 @@ export class UIManager {
 
         };
 
+        const restartSlideGif = (index) => {
+            const slide = slides[index];
+            if (!slide) return;
+
+            const image = index === 0
+                ? this.elements.tutorialImageSlash
+                : this.elements.tutorialImageFreeze;
+            if (!image) return;
+
+            image.removeAttribute('src');
+            void image.offsetWidth;
+            image.setAttribute('src', `${slide.image}?restart=${Date.now()}`);
+            image.setAttribute('alt', slide.alt);
+        };
+
         this.tutorialPreloads = slides.map(slide => {
             try {
                 const preload = new Image();
@@ -717,15 +732,24 @@ export class UIManager {
         const transitionTailMs = transitionTotalMs - transitionMidpointMs;
 
         applySlide(0);
+        setTimeout(() => {
+            if (this.tutorialActive) restartSlideGif(0);
+        }, transitionTailMs);
+
         this.tutorialTimer = setTimeout(() => {
             this.playScreenTransition(() => {
                 applySlide(1);
 
                 this.tutorialTimer = setTimeout(() => {
-                    this.tutorialTimer = null;
-                    this.tutorialActive = false;
-                    if (onComplete) onComplete();
-                }, transitionTailMs + slides[1].durationMs);
+                    if (!this.tutorialActive) return;
+                    restartSlideGif(1);
+
+                    this.tutorialTimer = setTimeout(() => {
+                        this.tutorialTimer = null;
+                        this.tutorialActive = false;
+                        if (onComplete) onComplete();
+                    }, slides[1].durationMs);
+                }, transitionTailMs);
             });
         }, transitionTailMs + slides[0].durationMs);
     }

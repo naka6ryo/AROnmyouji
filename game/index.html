@@ -1348,9 +1348,6 @@
             class="absolute bottom-0 left-0 w-full h-12 bg-white border-t border-ink-black flex items-center justify-between px-8 z-20">
             <div class="flex items-center gap-4">
                 <div class="w-32 h-2 bg-gradient-to-r from-primary to-transparent opacity-50"></div>
-                <span id="permissionDebugLogStatus"
-                    class="font-display text-[10px] text-tech-gray tracking-widest">INITIALIZING
-                    SENSORS...</span>
             </div>
             <div class="flex gap-1">
                 <div class="w-1 h-4 bg-ink-black"></div>
@@ -2102,10 +2099,6 @@
                         </div>
                     </main>
                 </div>
-
-                <!-- Debug Toggle (Keeping it) -->
-                <button id="toggleDebugButton"
-                    class="absolute top-4 right-4 z-50 text-xs text-white/20 border border-white/10 px-2 py-1 opacity-50 hover:opacity-100">DEBUG</button>
             </div>
 
 
@@ -2389,31 +2382,6 @@
         <div class="absolute inset-0 bg-radial-gradient from-transparent to-black/40"></div>
     </div>
 
-    <!-- Debug Overlay -->
-    <div id="debugOverlay"
-        class="hidden fixed top-0 left-0 w-64 h-full bg-black/80 text-green-400 font-mono text-xs p-2 z-[100] overflow-auto">
-        <h3 class="border-b border-green-800 mb-2">デバッグ情報</h3>
-        <div id="debugContent">
-            <p>BLE状態: <span id="debugBleState">--</span></p>
-            <p>受信Hz: <span id="debugHz">--</span></p>
-            <p>BLE rawHz: <span id="debugRawHz">--</span></p>
-            <p>処理Hz: <span id="debugProcessedHz">--</span> / skip: <span id="debugSkippedSensor">--</span></p>
-            <p>欠落数: <span id="debugDrops">--</span> (<span id="debugDropRate">--</span>%)</p>
-            <p>a_mag: <span id="debugAmag">--</span> g</p>
-            <p>Pitch: <span id="debugPitch">--</span>° / Yaw: <span id="debugYaw">--</span>° / Roll: <span
-                    id="debugRoll">--</span>°</p>
-            <p>斬撃状態: <span id="debugSwingState">--</span></p>
-            <p>クールダウン: <span id="debugCooldown">--</span>ms</p>
-            <p>円判定: <span id="debugCircle">--</span></p>
-            <p>触覚送信: <span id="debugHaptics">--</span></p>
-            <p>エラー: <span id="debugError">--</span></p>
-        </div>
-        <div id="debugLog" class="mt-4 border-t border-green-800 pt-2">
-            <h4>ログ</h4>
-            <div id="logContent"></div>
-        </div>
-    </div>
-
     <!-- Three.js Library -->
     <script type="importmap">
         {
@@ -2446,10 +2414,8 @@
                     countdown: 'assets/sfx/Countdown02-2.mp3'
                 });
                 window.__sfxLoaded = true;
-                console.info('[Preload] SFXロード完了');
             } catch (e) {
                 window.__sfxLoaded = false;
-                console.warn('[Preload] SFXロード失敗', e);
             }
         })();
     </script>
@@ -2562,14 +2528,9 @@
                         if (window.game && window.game.soundManager) {
                             try { window.game.soundManager.unlock(); } catch (e) { }
                             try { window.game.soundManager.play('button', { volume: 0.6 }); } catch (e) { }
-                            try { console.log('[index] startButton click: audioContext state', window.game.soundManager.audioContext ? window.game.soundManager.audioContext.state : 'no-audioContext'); } catch (e) {}
                             // Ensure title loop buffer is decoded if possible (decode occurs only when audioContext exists)
                             try {
                                 window.game.soundManager.load({ tv_signal_noise: 'assets/sfx/TV-Signal_Noise01-3(Retro).mp3' }).then(() => {
-                                    console.log('[index] tv_signal_noise load attempted after unlock');
-                                    try { if (window.game && window.game.uiManager && typeof window.game.uiManager.startTitleSignalNow === 'function') window.game.uiManager.startTitleSignalNow(); } catch (e) { console.warn('[index] startTitleSignalNow failed', e); }
-                                }).catch(e => console.warn('[index] tv_signal_noise load failed', e));
-                            } catch (e) { console.warn('[index] tv_signal_noise load threw', e); }
                         } else {
                             try {
                                 const a = new Audio('assets/sfx/Button.mp3');

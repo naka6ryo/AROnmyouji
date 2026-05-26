@@ -114,8 +114,8 @@ export class BleControllerAdapter {
     setPerformanceMode(mode) {
         const intervals = {
             normal: 1000 / 60,
-            warm: 1000 / 45,
-            hot: 1000 / 30
+            warm: 1000 / 50,
+            hot: 1000 / 45
         };
         this.setSensorMinInterval(intervals[mode] || intervals.normal);
     }

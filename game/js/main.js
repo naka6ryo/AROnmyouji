@@ -11,35 +11,33 @@ import { MotionInterpreter } from './MotionInterpreter.js';
 import { GameWorld } from './GameWorld.js';
 import { CombatSystem } from './CombatSystem.js';
 import { Renderer } from './Renderer.js';
-import { DebugOverlay } from './DebugOverlay.js';
 import { UIManager } from './UIManager.js';
 import { soundManager } from './SoundManager.js';
 
 const PERFORMANCE_CONFIG = {
     HUD_UPDATE_INTERVAL_MS: 100,
     INDICATOR_UPDATE_INTERVAL_MS: 66,
-    DEBUG_UPDATE_INTERVAL_MS: 250,
     CAMERA_MAX_WIDTH: 960,
     CAMERA_MAX_HEIGHT: 540,
-    CAMERA_MAX_FPS: 24,
+    CAMERA_MAX_FPS: 30,
     THERMAL_MODES: {
         normal: {
-            targetFrameMs: 1000 / 45,
-            updateFrameMs: 1000 / 45,
+            targetFrameMs: 1000 / 50,
+            updateFrameMs: 1000 / 50,
             hudIntervalMs: 100,
             indicatorIntervalMs: 90
         },
         warm: {
-            targetFrameMs: 1000 / 36,
-            updateFrameMs: 1000 / 40,
-            hudIntervalMs: 160,
-            indicatorIntervalMs: 140
+            targetFrameMs: 1000 / 45,
+            updateFrameMs: 1000 / 45,
+            hudIntervalMs: 140,
+            indicatorIntervalMs: 120
         },
         hot: {
-            targetFrameMs: 1000 / 30,
-            updateFrameMs: 1000 / 30,
-            hudIntervalMs: 240,
-            indicatorIntervalMs: 220
+            targetFrameMs: 1000 / 36,
+            updateFrameMs: 1000 / 36,
+            hudIntervalMs: 180,
+            indicatorIntervalMs: 160
         }
     },
     FRAME_AVERAGE_ALPHA: 0.08,
@@ -48,20 +46,18 @@ const PERFORMANCE_CONFIG = {
     LONG_FRAME_MS: 80,
     LONG_FRAME_LIMIT: 3,
     MOBILE_WARM_AFTER_MS: 15000,
-    MOBILE_HOT_AFTER_MS: 60000,
     DESKTOP_WARM_AFTER_MS: 45000,
     RECOVERY_DELAY_MS: 3000
 };
 
 const BLE_PROCESS_CONFIG = {
     MOTION_INTERVAL_MS: {
-        normal: 1000 / 45,
-        warm: 1000 / 30,
-        hot: 1000 / 20
+        normal: 1000 / 50,
+        warm: 1000 / 45,
+        hot: 1000 / 36
     },
     CALIBRATION_INTERVAL_MS: 1000 / 30,
     HIGH_RECEIVE_HZ_WARM: 55,
-    HIGH_RECEIVE_HZ_HOT: 80,
     PROCESSED_HZ_HISTORY: 60
 };
 
@@ -74,8 +70,7 @@ class AROnmyoujiGame {
         this.motionInterpreter = new MotionInterpreter();
         this.gameWorld = new GameWorld();
         this.combatSystem = new CombatSystem(this.gameWorld, this.motionInterpreter);
-        this.debugOverlay = new DebugOverlay();
-        this.renderer = new Renderer('gameCanvas', this.debugOverlay);
+        this.renderer = new Renderer('gameCanvas');
         this.uiManager = new UIManager();
         this.soundManager = soundManager;
         if (typeof this.bleAdapter.setPerformanceMode === 'function') {
@@ -109,7 +104,6 @@ class AROnmyoujiGame {
         this.isRunning = false;
         this.lastHudUpdateTime = 0;
         this.lastIndicatorUpdateTime = 0;
-        this.lastDebugUpdateTime = 0;
         this.lastRenderTime = 0;
         this.frameAverageMs = 1000 / 60;
         this.longFrameCount = 0;
@@ -191,8 +185,7 @@ class AROnmyoujiGame {
             onCancel: () => this.onCancel(), // Added Cancel Button Handler
             onRetry: () => this.onRetry(),
             onReconnect: () => this.onReconnect(),
-            onRecalibrate: () => this.onRecalibrate(),
-            onToggleDebug: () => this.debugOverlay.toggle()
+            onRecalibrate: () => this.onRecalibrate()
         });
 
         // BLE コールバック
@@ -495,20 +488,16 @@ class AROnmyoujiGame {
      * 権限要求
      */
     async requestPermissions() {
-        this.uiManager.addPermissionLog('権限要求開始...');
 
         try {
             // モーション権限
             if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
-                this.uiManager.addPermissionLog('📱 iOS環境: requestPermission実行...');
 
                 try {
                     const permission = await DeviceOrientationEvent.requestPermission();
-                    this.uiManager.addPermissionLog(`📱 requestPermission結果: ${permission}`);
 
                     if (permission === 'granted') {
                         this.uiManager.updatePermissionStatus('motion', 'granted');
-                        this.uiManager.addPermissionLog('✓ モーション権限許可');
                         window.addEventListener('deviceorientation', this.deviceOrientationHandler);
                     } else if (permission === 'denied') {
                         this.uiManager.updatePermissionStatus('motion', 'denied');
@@ -522,12 +511,10 @@ class AROnmyoujiGame {
                 }
             } else {
                 this.uiManager.updatePermissionStatus('motion', 'granted');
-                this.uiManager.addPermissionLog('✓ 非iOS環境: 自動許可');
                 window.addEventListener('deviceorientation', this.deviceOrientationHandler);
             }
 
             // カメラ権限
-            this.uiManager.addPermissionLog('📷 カメラ権限要求中...');
 
             this.cameraStream = await this.getCameraStream();
             this.videoElement.srcObject = this.cameraStream;
@@ -565,8 +552,6 @@ class AROnmyoujiGame {
             }
 
             this.uiManager.updatePermissionStatus('camera', 'granted');
-            this.uiManager.addPermissionLog('✓ カメラ権限取得成功');
-            this.uiManager.addPermissionLog('✓ 全権限取得完了');
 
             this.uiManager.playScreenTransition(() => {
                 this.appState.permissionGranted();
@@ -575,7 +560,6 @@ class AROnmyoujiGame {
         } catch (error) {
             
             this.uiManager.showPermissionError(error.message);
-            this.uiManager.addPermissionLog(`✗ エラー: ${error.message}`);
         }
     }
 
@@ -653,7 +637,6 @@ class AROnmyoujiGame {
         this.lastUpdateTime = performance.now();
         this.lastHudUpdateTime = 0;
         this.lastIndicatorUpdateTime = 0;
-        this.lastDebugUpdateTime = 0;
         this.lastRenderTime = 0;
         this.lastSimulationTime = 0;
         this.lastMotionProcessTime = 0;
@@ -683,7 +666,6 @@ class AROnmyoujiGame {
             this.skippedMotionFrames++;
         }
 
-        this.maybeUpdateDebugInfo();
     }
 
     shouldProcessMotionFrame(now) {
@@ -718,9 +700,7 @@ class AROnmyoujiGame {
             ? this.bleAdapter.getStats()
             : null;
         const receiveHz = adapterStats ? adapterStats.rawReceiveHz : this.parser.getReceiveHz();
-        if (receiveHz >= BLE_PROCESS_CONFIG.HIGH_RECEIVE_HZ_HOT) {
-            this.setPerformanceMode('hot', now);
-        } else if (receiveHz >= BLE_PROCESS_CONFIG.HIGH_RECEIVE_HZ_WARM && this.performanceMode === 'normal') {
+        if (receiveHz >= BLE_PROCESS_CONFIG.HIGH_RECEIVE_HZ_WARM && this.performanceMode === 'normal') {
             this.setPerformanceMode('warm', now);
         }
     }
@@ -926,14 +906,10 @@ class AROnmyoujiGame {
     }
 
     async onHapticEvent(event) {
-        let sent = false;
         if (event.data.pulses) {
-            sent = await this.bleAdapter.sendHapticPulses(event.data.pulses, event.data.interval);
+            await this.bleAdapter.sendHapticPulses(event.data.pulses, event.data.interval);
         } else {
-            sent = await this.bleAdapter.sendHapticCommand(event.data.strength, event.data.duration);
-        }
-        if (sent) {
-            this.debugOverlay.update({ hapticEvent: event.type });
+            await this.bleAdapter.sendHapticCommand(event.data.strength, event.data.duration);
         }
     }
 
@@ -1037,8 +1013,7 @@ class AROnmyoujiGame {
         const elapsed = this.gameplayStartedAt ? now - this.gameplayStartedAt : 0;
         const warmAfter = this.isMobileDevice ? PERFORMANCE_CONFIG.MOBILE_WARM_AFTER_MS : PERFORMANCE_CONFIG.DESKTOP_WARM_AFTER_MS;
 
-        if ((this.isMobileDevice && elapsed >= PERFORMANCE_CONFIG.MOBILE_HOT_AFTER_MS) ||
-            this.frameAverageMs >= PERFORMANCE_CONFIG.HOT_FRAME_MS ||
+        if (this.frameAverageMs >= PERFORMANCE_CONFIG.HOT_FRAME_MS ||
             this.longFrameCount >= PERFORMANCE_CONFIG.LONG_FRAME_LIMIT) {
             this.setPerformanceMode('hot', now);
             return;
@@ -1077,12 +1052,9 @@ class AROnmyoujiGame {
         return !this.lastRenderTime || now - this.lastRenderTime >= modeConfig.targetFrameMs;
     }
 
-    // ... (updateHUD, updateDebugInfo unchanged)
-
     onRetry() {
         // Legacy support if needed, but we use onReturnToTitle mostly now
         this.renderer.dispose();
-        this.debugOverlay.clearLogs();
         this.appState.retry();
         this.startGameplay();
     }
@@ -1173,47 +1145,6 @@ class AROnmyoujiGame {
                 this.renderer.getCameraBasis({ skipMatrixUpdate: true })
             );
         }
-    }
-
-    maybeUpdateDebugInfo() {
-        const now = performance.now();
-        if (now - this.lastDebugUpdateTime < PERFORMANCE_CONFIG.DEBUG_UPDATE_INTERVAL_MS) return;
-        this.lastDebugUpdateTime = now;
-        this.updateDebugInfo();
-    }
-
-    // Debug info update
-    updateDebugInfo() {
-        const parserStats = this.parser.getStats();
-        const bleStats = this.bleAdapter && typeof this.bleAdapter.getStats === 'function'
-            ? this.bleAdapter.getStats()
-            : {};
-        if (this.latestFrame) {
-            this.debugOverlay.update({
-                bleConnected: this.bleAdapter.getConnectionState(),
-                receiveHz: parserStats.receiveHz,
-                rawReceiveHz: bleStats.rawReceiveHz,
-                processedHz: this.getProcessedSensorHz(),
-                skippedSensorFrames: (bleStats.skippedSensorFrames || 0) + this.skippedMotionFrames,
-                droppedFrames: parserStats.droppedFrames,
-                dropRate: parserStats.dropRate,
-                a_mag: this.latestFrame.a_mag,
-                pitch: this.latestFrame.pitch_deg,
-                yaw: this.latestFrame.yaw_deg,
-                roll: this.latestFrame.roll_deg,
-                hapticSentCount: bleStats.hapticSentCount,
-                hapticSkippedCount: bleStats.hapticSkippedCount
-            });
-        }
-
-        const swingState = this.motionInterpreter.getSwingState();
-        this.debugOverlay.update({
-            swingState: `${swingState.state} (Int:${swingState.lastIntensity.toFixed(2)})`,
-            cooldownRemaining: swingState.cooldownRemaining
-        });
-
-        const circleInfo = this.motionInterpreter.getCircleDebugInfo();
-        this.debugOverlay.update({ circleDebug: circleInfo });
     }
 }
 

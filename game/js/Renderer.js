@@ -8,19 +8,18 @@ import { Hitodama } from './Hitodama.js';
 import { SwingTracer } from './SwingTracer.js';
 import { SlashProjectileManager } from './SlashProjectileManager.js';
 
-const MOBILE_MAX_PIXEL_RATIO = 1.2;
+const MOBILE_MAX_PIXEL_RATIO = 1.25;
 const DEFAULT_CAMERA_FOV_DEG = 60;
 const DEG2RAD = Math.PI / 180;
 const PERFORMANCE_PROFILES = {
-    normal: { pixelRatioScale: 0.9, freezeSegments: 96, effectUpdateStride: 1, enemyUpdateStride: 1, slashUpdateStride: 1 },
-    warm: { pixelRatioScale: 0.72, freezeSegments: 56, effectUpdateStride: 2, enemyUpdateStride: 2, slashUpdateStride: 1 },
-    hot: { pixelRatioScale: 0.55, freezeSegments: 32, effectUpdateStride: 3, enemyUpdateStride: 3, slashUpdateStride: 2 }
+    normal: { pixelRatioScale: 0.95, freezeSegments: 96, effectUpdateStride: 1, enemyUpdateStride: 1, slashUpdateStride: 1 },
+    warm: { pixelRatioScale: 0.82, freezeSegments: 64, effectUpdateStride: 2, enemyUpdateStride: 1, slashUpdateStride: 1 },
+    hot: { pixelRatioScale: 0.68, freezeSegments: 40, effectUpdateStride: 2, enemyUpdateStride: 2, slashUpdateStride: 1 }
 };
 
 export class Renderer {
-    constructor(canvasId, debugOverlay = null) {
+    constructor(canvasId) {
         this.canvas = document.getElementById(canvasId);
-        this.debugOverlay = debugOverlay; // デバッグUIへのログ出力
 
         // Three.js セットアップ
         this.scene = new THREE.Scene();
@@ -122,8 +121,7 @@ export class Renderer {
         this.slashProjectileManager = new SlashProjectileManager(
             this.scene,
             this.camera,
-            () => this.getPivotWorldPosition(),
-            this.debugOverlay
+            () => this.getPivotWorldPosition()
         );
 
         // ライト

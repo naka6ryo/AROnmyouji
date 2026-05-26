@@ -7,17 +7,16 @@
 import * as THREE from 'three';
 
 const PERFORMANCE_PROFILES = {
-    normal: { tubeScale: 0.82, radialScale: 0.85, sparkScale: 0.65, maxProjectiles: 4, minIntervalMs: 120 },
-    warm: { tubeScale: 0.58, radialScale: 0.65, sparkScale: 0.3, maxProjectiles: 3, minIntervalMs: 180 },
-    hot: { tubeScale: 0.38, radialScale: 0.45, sparkScale: 0, maxProjectiles: 2, minIntervalMs: 260 }
+    normal: { tubeScale: 0.9, radialScale: 0.9, sparkScale: 0.8, maxProjectiles: 4, minIntervalMs: 110 },
+    warm: { tubeScale: 0.75, radialScale: 0.78, sparkScale: 0.45, maxProjectiles: 4, minIntervalMs: 140 },
+    hot: { tubeScale: 0.62, radialScale: 0.68, sparkScale: 0.2, maxProjectiles: 3, minIntervalMs: 180 }
 };
 
 export class SlashProjectileManager {
-    constructor(scene, camera, getPivotWorldPosition, debugOverlay = null) {
+    constructor(scene, camera, getPivotWorldPosition) {
         this.scene = scene;
         this.camera = camera;
         this.getPivotWorldPosition = getPivotWorldPosition; // 関数として受け取る
-        this.debugOverlay = debugOverlay;
 
         this.projectiles = [];
         this.performanceMode = 'normal';

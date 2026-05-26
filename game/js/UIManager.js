@@ -32,9 +32,6 @@ export class UIManager {
             cameraStatus: document.getElementById('cameraStatus'),
             motionStatus: document.getElementById('motionStatus'),
             permissionError: document.getElementById('permissionError'),
-            // Replaced default log area with footer status text
-            permissionDebugLogStatus: document.getElementById('permissionDebugLogStatus'),
-
             // BLE Connect
             connectBleButton: document.getElementById('connectBleButton'),
             bleStatus: document.getElementById('bleStatus'),
@@ -117,10 +114,6 @@ export class UIManager {
             returnToTitleButtonFail: document.getElementById('returnToTitleButtonFail'),
             // Old buttons removed: retryButton, reconnectButton, recalibrateButton
 
-            // Debug
-            toggleDebugButton: document.getElementById('toggleDebugButton'),
-            toggleDebugButtonResult: document.getElementById('toggleDebugButtonResult'),
-
             // CRT Boot & Hologram
             crtMainDisplay: document.getElementById('crt-main-display'),
             hologramText: document.getElementById('hologramText')
@@ -159,11 +152,6 @@ export class UIManager {
         this.bindClick(this.elements.returnToTitleButtonSuccess, handlers.onReturnToTitle);
         this.bindClick(this.elements.returnToTitleButtonFail, handlers.onReturnToTitle);
 
-
-
-        // Debug
-        this.bindClick(this.elements.toggleDebugButton, handlers.onToggleDebug);
-        this.bindClick(this.elements.toggleDebugButtonResult, handlers.onToggleDebug);
     }
 
     bindClick(element, handler) {
@@ -232,17 +220,6 @@ export class UIManager {
     showPermissionError(message) {
         if (this.elements.permissionError) {
             this.setTextIfChanged(this.elements.permissionError, `ERROR: ${message}`);
-        }
-    }
-
-    addPermissionLog(message) {
-        // Log to console
-        
-
-        // Update footer status text (single line only)
-        const statusEl = this.elements.permissionDebugLogStatus;
-        if (statusEl) {
-            this.setTextIfChanged(statusEl, message.toUpperCase());
         }
     }
 

@@ -81,7 +81,8 @@ export class UIManager {
             tutorialTitle: document.getElementById('tutorialTitle'),
             tutorialInstruction: document.getElementById('tutorialInstruction'),
             tutorialEnglish: document.getElementById('tutorialEnglish'),
-            tutorialImage: document.getElementById('tutorialImage'),
+            tutorialImageSlash: document.getElementById('tutorialImageSlash'),
+            tutorialImageFreeze: document.getElementById('tutorialImageFreeze'),
             tutorialDot1: document.getElementById('tutorialDot1'),
             tutorialDot2: document.getElementById('tutorialDot2'),
             // Top center HUD
@@ -689,17 +690,10 @@ export class UIManager {
             this.setTextIfChanged(this.elements.tutorialInstruction, slide.instruction);
             this.setTextIfChanged(this.elements.tutorialEnglish, slide.english);
 
-            const image = this.elements.tutorialImage;
-            if (image) {
-                image.style.visibility = 'hidden';
-                image.onload = () => { image.style.visibility = 'visible'; };
-                image.onerror = () => { image.style.visibility = 'visible'; };
-                image.removeAttribute('src');
-                void image.offsetWidth;
-                image.setAttribute('src', slide.image);
-                if (image.complete) image.style.visibility = 'visible';
-                image.setAttribute('alt', slide.alt);
-            }
+            const slashImage = this.elements.tutorialImageSlash;
+            const freezeImage = this.elements.tutorialImageFreeze;
+            if (slashImage) slashImage.style.opacity = index === 0 ? '1' : '0';
+            if (freezeImage) freezeImage.style.opacity = index === 1 ? '1' : '0';
 
             if (this.elements.tutorialDot1) {
                 this.elements.tutorialDot1.className = index === 0
@@ -2250,7 +2244,12 @@ export class UIManager {
             try { if (typeof soundManager !== 'undefined') soundManager.initAudioContext(); } catch (e) { }
             const mgr = (typeof window !== 'undefined' && window.soundManager) ? window.soundManager : (typeof soundManager !== 'undefined' ? soundManager : null);
             try {
-                if (mgr && typeof mgr.play === 'function') {
+                const hasLoadedSound = mgr && (
+                    (mgr.buffers && typeof mgr.buffers.has === 'function' && mgr.buffers.has(audioKey)) ||
+                    (mgr.sounds && typeof mgr.sounds.has === 'function' && mgr.sounds.has(audioKey))
+                );
+
+                if (mgr && typeof mgr.play === 'function' && hasLoadedSound) {
                     mgr.play(audioKey, { volume: 0.55 });
                     
                 } else if (mgr && typeof mgr.load === 'function') {

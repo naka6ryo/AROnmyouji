@@ -699,12 +699,18 @@ export class UIManager {
             const image = index === 0
                 ? this.elements.tutorialImageSlash
                 : this.elements.tutorialImageFreeze;
-            if (!image) return;
+            if (!image || !image.parentElement) return;
 
-            image.removeAttribute('src');
-            void image.offsetWidth;
-            image.setAttribute('src', `${slide.image}?restart=${Date.now()}`);
-            image.setAttribute('alt', slide.alt);
+            const nextImage = image.cloneNode(false);
+            nextImage.setAttribute('src', slide.image);
+            nextImage.setAttribute('alt', slide.alt);
+            image.parentElement.replaceChild(nextImage, image);
+
+            if (index === 0) {
+                this.elements.tutorialImageSlash = nextImage;
+            } else {
+                this.elements.tutorialImageFreeze = nextImage;
+            }
         };
 
         this.tutorialPreloads = slides.map(slide => {

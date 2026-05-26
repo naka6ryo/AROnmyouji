@@ -13,6 +13,11 @@ const PERFORMANCE_PROFILES = {
     warm: { purifyFragments: 18, explodeFragments: 32, tailStep: 3, wobbleEvery: 3, lightScale: 0.6 },
     hot: { purifyFragments: 7, explodeFragments: 12, tailStep: 5, wobbleEvery: 0, lightScale: 0.35 }
 };
+const MOBILE_PERFORMANCE_PROFILES = {
+    normal: { purifyFragments: 26, explodeFragments: 48, tailStep: 2, wobbleEvery: 2, lightScale: 0.7 },
+    warm: { purifyFragments: 12, explodeFragments: 22, tailStep: 4, wobbleEvery: 4, lightScale: 0.48 },
+    hot: { purifyFragments: 5, explodeFragments: 8, tailStep: 6, wobbleEvery: 0, lightScale: 0.28 }
+};
 
 export class Hitodama {
     constructor(scene, position = new THREE.Vector3(0, 0, 0)) {
@@ -26,8 +31,10 @@ export class Hitodama {
         this.isPurifying = false;
         this.isExploding = false;
         this.isDead = false;
+        this.isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent || '');
+        this.performanceProfiles = this.isMobile ? MOBILE_PERFORMANCE_PROFILES : PERFORMANCE_PROFILES;
         this.performanceMode = 'normal';
-        this.performanceProfile = PERFORMANCE_PROFILES.normal;
+        this.performanceProfile = this.performanceProfiles.normal;
         this.updateFrame = 0;
 
         this.fragments = [];
@@ -134,8 +141,8 @@ export class Hitodama {
     }
 
     setPerformanceMode(mode) {
-        this.performanceMode = PERFORMANCE_PROFILES[mode] ? mode : 'normal';
-        this.performanceProfile = PERFORMANCE_PROFILES[this.performanceMode];
+        this.performanceMode = this.performanceProfiles[mode] ? mode : 'normal';
+        this.performanceProfile = this.performanceProfiles[this.performanceMode];
         this._freezeVisualDirty = true;
     }
 

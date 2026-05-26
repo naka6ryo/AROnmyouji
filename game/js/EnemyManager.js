@@ -8,7 +8,12 @@ export class EnemyManager {
         this.enemies = [];
         this.nextEnemyId = 0;
         this.performanceMode = 'normal';
-        this.maxActiveEnemiesByMode = {
+        this.isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent || '');
+        this.maxActiveEnemiesByMode = this.isMobile ? {
+            normal: 5,
+            warm: 4,
+            hot: 3
+        } : {
             normal: 6,
             warm: 5,
             hot: 4

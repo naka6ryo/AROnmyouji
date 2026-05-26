@@ -112,7 +112,12 @@ export class BleControllerAdapter {
     }
 
     setPerformanceMode(mode) {
-        const intervals = {
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent || '');
+        const intervals = isMobile ? {
+            normal: 1000 / 45,
+            warm: 1000 / 35,
+            hot: 1000 / 24
+        } : {
             normal: 1000 / 60,
             warm: 1000 / 50,
             hot: 1000 / 45

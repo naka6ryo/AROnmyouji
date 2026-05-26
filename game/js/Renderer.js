@@ -8,13 +8,18 @@ import { Hitodama } from './Hitodama.js';
 import { SwingTracer } from './SwingTracer.js';
 import { SlashProjectileManager } from './SlashProjectileManager.js';
 
-const MOBILE_MAX_PIXEL_RATIO = 1.25;
+const MOBILE_MAX_PIXEL_RATIO = 1.0;
 const DEFAULT_CAMERA_FOV_DEG = 60;
 const DEG2RAD = Math.PI / 180;
 const PERFORMANCE_PROFILES = {
     normal: { pixelRatioScale: 0.95, freezeSegments: 96, effectUpdateStride: 1, enemyUpdateStride: 1, slashUpdateStride: 1 },
     warm: { pixelRatioScale: 0.82, freezeSegments: 64, effectUpdateStride: 2, enemyUpdateStride: 1, slashUpdateStride: 1 },
     hot: { pixelRatioScale: 0.68, freezeSegments: 40, effectUpdateStride: 2, enemyUpdateStride: 2, slashUpdateStride: 1 }
+};
+const MOBILE_PERFORMANCE_PROFILES = {
+    normal: { pixelRatioScale: 0.86, freezeSegments: 72, effectUpdateStride: 1, enemyUpdateStride: 1, slashUpdateStride: 1 },
+    warm: { pixelRatioScale: 0.72, freezeSegments: 48, effectUpdateStride: 3, enemyUpdateStride: 2, slashUpdateStride: 1 },
+    hot: { pixelRatioScale: 0.6, freezeSegments: 32, effectUpdateStride: 4, enemyUpdateStride: 3, slashUpdateStride: 1 }
 };
 
 export class Renderer {
@@ -42,8 +47,9 @@ export class Renderer {
         this.camera.position.set(0, 0, 0);
 
         this.isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent || '');
+        this.performanceProfiles = this.isMobile ? MOBILE_PERFORMANCE_PROFILES : PERFORMANCE_PROFILES;
         this.performanceMode = 'normal';
-        this.performanceProfile = PERFORMANCE_PROFILES.normal;
+        this.performanceProfile = this.performanceProfiles.normal;
         this._renderFrameCount = 0;
 
         this.renderer = new THREE.WebGLRenderer({
@@ -157,7 +163,7 @@ export class Renderer {
     }
 
     setPerformanceMode(mode) {
-        const profile = PERFORMANCE_PROFILES[mode] || PERFORMANCE_PROFILES.normal;
+        const profile = this.performanceProfiles[mode] || this.performanceProfiles.normal;
         if (this.performanceMode === mode) return;
 
         this.performanceMode = mode;

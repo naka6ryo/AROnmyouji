@@ -20,6 +20,9 @@ const PERFORMANCE_CONFIG = {
     CAMERA_MAX_WIDTH: 960,
     CAMERA_MAX_HEIGHT: 540,
     CAMERA_MAX_FPS: 30,
+    MOBILE_CAMERA_MAX_WIDTH: 854,
+    MOBILE_CAMERA_MAX_HEIGHT: 480,
+    MOBILE_CAMERA_MAX_FPS: 24,
     THERMAL_MODES: {
         normal: {
             targetFrameMs: 1000 / 50,
@@ -55,6 +58,11 @@ const BLE_PROCESS_CONFIG = {
         normal: 1000 / 50,
         warm: 1000 / 45,
         hot: 1000 / 36
+    },
+    MOBILE_MOTION_INTERVAL_MS: {
+        normal: 1000 / 45,
+        warm: 1000 / 35,
+        hot: 1000 / 24
     },
     CALIBRATION_INTERVAL_MS: 1000 / 30,
     HIGH_RECEIVE_HZ_WARM: 55,
@@ -567,12 +575,15 @@ class AROnmyoujiGame {
      * BLE接続
      */
     async getCameraStream() {
+        const cameraWidth = this.isMobileDevice ? PERFORMANCE_CONFIG.MOBILE_CAMERA_MAX_WIDTH : PERFORMANCE_CONFIG.CAMERA_MAX_WIDTH;
+        const cameraHeight = this.isMobileDevice ? PERFORMANCE_CONFIG.MOBILE_CAMERA_MAX_HEIGHT : PERFORMANCE_CONFIG.CAMERA_MAX_HEIGHT;
+        const cameraFps = this.isMobileDevice ? PERFORMANCE_CONFIG.MOBILE_CAMERA_MAX_FPS : PERFORMANCE_CONFIG.CAMERA_MAX_FPS;
         const optimizedConstraints = {
             video: {
                 facingMode: { ideal: 'environment' },
-                width: { ideal: PERFORMANCE_CONFIG.CAMERA_MAX_WIDTH, max: PERFORMANCE_CONFIG.CAMERA_MAX_WIDTH },
-                height: { ideal: PERFORMANCE_CONFIG.CAMERA_MAX_HEIGHT, max: PERFORMANCE_CONFIG.CAMERA_MAX_HEIGHT },
-                frameRate: { ideal: PERFORMANCE_CONFIG.CAMERA_MAX_FPS, max: PERFORMANCE_CONFIG.CAMERA_MAX_FPS }
+                width: { ideal: cameraWidth, max: cameraWidth },
+                height: { ideal: cameraHeight, max: cameraHeight },
+                frameRate: { ideal: cameraFps, max: cameraFps }
             }
         };
 
@@ -673,7 +684,8 @@ class AROnmyoujiGame {
         const isGameplay = this.appState.isGameplay();
         if (!isCalibrating && !isGameplay) return false;
 
-        const modeInterval = BLE_PROCESS_CONFIG.MOTION_INTERVAL_MS[this.performanceMode] || BLE_PROCESS_CONFIG.MOTION_INTERVAL_MS.normal;
+        const intervals = this.isMobileDevice ? BLE_PROCESS_CONFIG.MOBILE_MOTION_INTERVAL_MS : BLE_PROCESS_CONFIG.MOTION_INTERVAL_MS;
+        const modeInterval = intervals[this.performanceMode] || intervals.normal;
         const interval = isCalibrating
             ? Math.max(BLE_PROCESS_CONFIG.CALIBRATION_INTERVAL_MS, modeInterval)
             : modeInterval;

@@ -2495,13 +2495,12 @@
                     if (progressBar) progressBar.style.width = `100%`;
                     if (progressText) progressText.innerText = `100%`;
 
-                    // At load completion, wait for the SFX preload to actually finish
-                    // before revealing the start button. Poll `window.__sfxLoaded` and
-                    // reveal when ready so the subsequent tap is guaranteed to be
-                    // a user gesture that can unlock audio.
+                    // Wait briefly for SFX preload, but never block the title flow forever.
+                    const revealStartedAt = performance.now();
+                    const maxRevealWaitMs = 3000;
                     const revealStartWhenReady = () => {
                         try {
-                            if (window.__sfxLoaded) {
+                            if (window.__sfxLoaded || performance.now() - revealStartedAt >= maxRevealWaitMs) {
                                 if (startButton) {
                                     startButton.classList.remove('opacity-0');
                                     startButton.classList.remove('pointer-events-none');
@@ -2528,9 +2527,9 @@
                         if (window.game && window.game.soundManager) {
                             try { window.game.soundManager.unlock(); } catch (e) { }
                             try { window.game.soundManager.play('button', { volume: 0.6 }); } catch (e) { }
-                            // Ensure title loop buffer is decoded if possible (decode occurs only when audioContext exists)
                             try {
-                                window.game.soundManager.load({ tv_signal_noise: 'assets/sfx/TV-Signal_Noise01-3(Retro).mp3' }).then(() => {
+                                window.game.soundManager.load({ tv_signal_noise: 'assets/sfx/TV-Signal_Noise01-3(Retro).mp3' }).catch(() => { });
+                            } catch (e) { }
                         } else {
                             try {
                                 const a = new Audio('assets/sfx/Button.mp3');

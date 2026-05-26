@@ -81,8 +81,6 @@ export class UIManager {
             tutorialEnglish: document.getElementById('tutorialEnglish'),
             tutorialImageSlash: document.getElementById('tutorialImageSlash'),
             tutorialImageFreeze: document.getElementById('tutorialImageFreeze'),
-            tutorialDot1: document.getElementById('tutorialDot1'),
-            tutorialDot2: document.getElementById('tutorialDot2'),
             // Top center HUD
             elapsedTimeDisplay: document.getElementById('elapsedTimeDisplay'),
             defeatedDisplay: document.getElementById('defeatedDisplay'),
@@ -692,16 +690,6 @@ export class UIManager {
             if (slashImage) slashImage.style.opacity = index === 0 ? '1' : '0';
             if (freezeImage) freezeImage.style.opacity = index === 1 ? '1' : '0';
 
-            if (this.elements.tutorialDot1) {
-                this.elements.tutorialDot1.className = index === 0
-                    ? 'w-1 h-1 bg-primary animate-pulse'
-                    : 'w-1 h-1 bg-white/40';
-            }
-            if (this.elements.tutorialDot2) {
-                this.elements.tutorialDot2.className = index === 1
-                    ? 'w-1 h-1 bg-primary animate-pulse'
-                    : 'w-1 h-1 bg-white/40';
-            }
         };
 
         this.tutorialPreloads = slides.map(slide => {

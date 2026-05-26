@@ -410,14 +410,17 @@ export class UIManager {
 
         if (container) {
             container.classList.remove('freeze-screen');
-            void container.offsetWidth;
-            container.classList.add('freeze-screen');
+            const raf = typeof requestAnimationFrame === 'function'
+                ? requestAnimationFrame
+                : (callback) => setTimeout(callback, 16);
 
             const overlay = this.ensureCircleFreezeOverlay();
             overlay.querySelector('.circle-freeze-duration').textContent = `${(durationMs / 1000).toFixed(0)}秒`;
             overlay.classList.remove('active');
-            void overlay.offsetWidth;
-            overlay.classList.add('active');
+            raf(() => {
+                container.classList.add('freeze-screen');
+                overlay.classList.add('active');
+            });
 
             if (this.circleFreezeTimer) clearTimeout(this.circleFreezeTimer);
             this.circleFreezeTimer = setTimeout(() => {
@@ -495,15 +498,17 @@ export class UIManager {
             // This avoids Euler angle singularities and Left/Right confusion.
 
             // 1. Basis Vectors. Prefer the renderer's camera basis so roll is preserved.
-            let fwd = cameraBasis && cameraBasis.forward ? { ...cameraBasis.forward } : { x: viewDir.x, y: viewDir.y, z: viewDir.z };
-            let right = cameraBasis && cameraBasis.right ? { ...cameraBasis.right } : null;
-            let up = cameraBasis && cameraBasis.up ? { ...cameraBasis.up } : null;
+            let fwd = cameraBasis && cameraBasis.forward ? cameraBasis.forward : { x: viewDir.x, y: viewDir.y, z: viewDir.z };
+            let right = cameraBasis && cameraBasis.right ? cameraBasis.right : null;
+            let up = cameraBasis && cameraBasis.up ? cameraBasis.up : null;
 
-            const fwdLen = Math.sqrt(fwd.x * fwd.x + fwd.y * fwd.y + fwd.z * fwd.z);
-            if (fwdLen > 0) { fwd.x /= fwdLen; fwd.y /= fwdLen; fwd.z /= fwdLen; }
+            const fwdLen = Math.sqrt(fwd.x * fwd.x + fwd.y * fwd.y + fwd.z * fwd.z) || 1;
+            const fwdX = fwd.x / fwdLen;
+            const fwdY = fwd.y / fwdLen;
+            const fwdZ = fwd.z / fwdLen;
 
             if (!right || !up) {
-                right = { x: -fwd.z, y: 0, z: fwd.x };
+                right = { x: -fwdZ, y: 0, z: fwdX };
                 const rightLen = Math.sqrt(right.x * right.x + right.y * right.y + right.z * right.z);
                 if (rightLen < 0.001) {
                     right = { x: 1, y: 0, z: 0 };
@@ -511,9 +516,9 @@ export class UIManager {
                     right.x /= rightLen; right.y /= rightLen; right.z /= rightLen;
                 }
                 up = {
-                    x: right.y * fwd.z - right.z * fwd.y,
-                    y: right.z * fwd.x - right.x * fwd.z,
-                    z: right.x * fwd.y - right.y * fwd.x
+                    x: right.y * fwdZ - right.z * fwdY,
+                    y: right.z * fwdX - right.x * fwdZ,
+                    z: right.x * fwdY - right.y * fwdX
                 };
             }
 
@@ -531,7 +536,7 @@ export class UIManager {
             // vz = Dot(eVec, fwd) -- We use this to know if behind
             const vx = eVec.x * right.x + eVec.y * right.y + eVec.z * right.z;
             const vy = eVec.x * up.x + eVec.y * up.y + eVec.z * up.z;
-            const vz = eVec.x * fwd.x + eVec.y * fwd.y + eVec.z * fwd.z;
+            const vz = eVec.x * fwdX + eVec.y * fwdY + eVec.z * fwdZ;
 
             // 4. Calculate Screen Angle
             // atan2(vy, vx) gives angle in Camera Plane (Math usually: 0=Right, 90=Up)

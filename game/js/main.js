@@ -1065,6 +1065,9 @@ class AROnmyoujiGame {
         // Enemy Indicators
         if (viewDir && (forceIndicators || now - this.lastIndicatorUpdateTime >= modeConfig.indicatorIntervalMs)) {
             this.lastIndicatorUpdateTime = now;
+            if (this.renderer && typeof this.renderer.prepareProjectionMatrices === 'function') {
+                this.renderer.prepareProjectionMatrices();
+            }
             this.uiManager.updateEnemyIndicators(
                 this.gameWorld.getEnemies(),
                 viewDir,
@@ -1072,9 +1075,9 @@ class AROnmyoujiGame {
                     halfHorz: this.renderer.getHalfFovHorizontalDegrees(),
                     halfVert: this.renderer.getHalfFovDegrees()
                 },
-                (pos) => this.renderer.projectToNdc(pos),
+                (pos) => this.renderer.projectToNdc(pos, undefined, { skipMatrixUpdate: true }),
                 (enemy) => this.gameWorld.getEnemyDirection(enemy), // !!! getEnemyDirection returns DIRECTION, not Position.
-                this.renderer.getCameraBasis()
+                this.renderer.getCameraBasis({ skipMatrixUpdate: true })
             );
         }
     }

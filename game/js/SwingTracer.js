@@ -20,6 +20,8 @@ export class SwingTracer {
         this._cameraWorldQuaternion = new THREE.Quaternion();
         this._worldToCameraQuaternion = new THREE.Quaternion();
         this._directionScratch = new THREE.Vector3();
+        this._lastTrajectorySignature = '';
+        this._lastBuildTime = 0;
 
         this.TRACER_RADIUS = 0.4 * 1.5; // 球面半径（カメラ回転中心から）
         this.TRACER_BASE_WIDTH = 0.006 * 1.5 * 3; // 軌跡基本幅（4.5倍）
@@ -47,6 +49,8 @@ export class SwingTracer {
      */
     start() {
         this.disposeMesh();
+        this._lastTrajectorySignature = '';
+        this._lastBuildTime = 0;
     }
 
     /**
@@ -54,6 +58,14 @@ export class SwingTracer {
      */
     update(trajectory) {
         if (!trajectory || trajectory.length < 2) return;
+
+        const now = performance.now();
+        const signature = this.getTrajectorySignature(trajectory);
+        if (signature === this._lastTrajectorySignature && now - this._lastBuildTime < 48) {
+            return;
+        }
+        this._lastTrajectorySignature = signature;
+        this._lastBuildTime = now;
 
         this.disposeMesh();
 
@@ -74,11 +86,24 @@ export class SwingTracer {
         const tubeGeometry = new THREE.TubeGeometry(curve, tubularSegments, radius, radialSegments, false);
 
         // Update Uniforms
-        this.material.uniforms.uTime.value = (performance.now() - this._startTime) * 0.001;
+        this.material.uniforms.uTime.value = (now - this._startTime) * 0.001;
 
         this.mesh = new THREE.Mesh(tubeGeometry, this.material);
         this.mesh.frustumCulled = false;
         this.root.add(this.mesh);
+    }
+
+    getTrajectorySignature(trajectory) {
+        const first = trajectory[0];
+        const last = trajectory[trajectory.length - 1];
+        const mid = trajectory[Math.floor(trajectory.length / 2)] || last;
+        const bucket = (value) => Math.round((value || 0) * 2);
+        return [
+            trajectory.length,
+            bucket(first.pitch), bucket(first.yaw),
+            bucket(mid.pitch), bucket(mid.yaw),
+            bucket(last.pitch), bucket(last.yaw)
+        ].join(':');
     }
 
     /**
@@ -113,6 +138,8 @@ export class SwingTracer {
      */
     end() {
         this.disposeMesh();
+        this._lastTrajectorySignature = '';
+        this._lastBuildTime = 0;
     }
 
     /**
@@ -141,6 +168,8 @@ export class SwingTracer {
 
     reset() {
         this.disposeMesh();
+        this._lastTrajectorySignature = '';
+        this._lastBuildTime = 0;
         // Do not dispose material as it is shared/reused
     }
 }

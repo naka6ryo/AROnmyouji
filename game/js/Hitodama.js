@@ -43,6 +43,9 @@ export class Hitodama {
         this._scratchColor = new THREE.Color();
         this._scratchVec = new THREE.Vector3();
         this.frozenUntil = 0;
+        this.isFrozen = false;
+        this._lastFrozenVisualState = null;
+        this._freezeVisualDirty = true;
         this.freezeRing = null;
 
         // テクスチャ取得 via AssetLoader
@@ -132,6 +135,7 @@ export class Hitodama {
     setPerformanceMode(mode) {
         this.performanceMode = PERFORMANCE_PROFILES[mode] ? mode : 'normal';
         this.performanceProfile = PERFORMANCE_PROFILES[this.performanceMode];
+        this._freezeVisualDirty = true;
     }
 
     // ... (purify/explode logic needs update to use shared geometries for fragments)
@@ -257,10 +261,13 @@ export class Hitodama {
 
     setFrozenUntil(frozenUntil) {
         if (typeof frozenUntil !== 'number') return;
-        this.frozenUntil = Math.max(this.frozenUntil || 0, frozenUntil);
+        const nextFrozenUntil = Math.max(this.frozenUntil || 0, frozenUntil);
+        if (nextFrozenUntil === this.frozenUntil) return;
+        this.frozenUntil = nextFrozenUntil;
+        this._freezeVisualDirty = true;
     }
 
-    update(dt) {
+    update(dt, nowMs = performance.now()) {
         this.time += dt;
         this.updateFrame++;
 
@@ -275,9 +282,12 @@ export class Hitodama {
             this.updatePurification(dt);
             // Tail fading during purification is handled in updatePurification
         } else {
-            this.updateNormal(dt);
+            this.updateNormal(dt, nowMs);
             // Update Tail Particle System
-            if (this.updateFrame % this.performanceProfile.tailStep === 0) {
+            const tailStep = this.isFrozen
+                ? Math.max(2, this.performanceProfile.tailStep * 2)
+                : this.performanceProfile.tailStep;
+            if (this.updateFrame % tailStep === 0) {
                 this.updateTailPoints();
             }
         }
@@ -427,8 +437,12 @@ export class Hitodama {
         }
     }
 
-    updateNormal(dt) {
-        const isFrozen = performance.now() < this.frozenUntil;
+    updateNormal(dt, nowMs = performance.now()) {
+        const isFrozen = nowMs < this.frozenUntil;
+        if (this.isFrozen !== isFrozen) {
+            this.isFrozen = isFrozen;
+            this._freezeVisualDirty = true;
+        }
 
         this.mesh.position.copy(this.pos);
         this.mesh.position.y += 0.3;
@@ -441,28 +455,14 @@ export class Hitodama {
         const pulse = 1.0 + Math.sin(this.time * pulseSpeed) * pulseAmount;
         this.auraSprite.scale.set(3.0 * pulse, 5.0 * pulse, 3.0 * pulse);
 
-        const freezeBlend = isFrozen ? 1 : 0;
-        if (this.mesh.material && this.mesh.material.color) {
-            this.mesh.material.color.copy(this._bodyNormalColor).lerp(this._frozenColor, freezeBlend);
-            this.mesh.material.opacity = isFrozen ? 0.72 : 0.5;
-        }
-        if (this.coreMesh.material && this.coreMesh.material.color) {
-            this.coreMesh.material.color.copy(this._coreNormalColor).lerp(this._frozenColor, freezeBlend);
-            this.coreMesh.material.opacity = isFrozen ? 1.0 : 0.8;
-        }
-        if (this.auraSprite.material && this.auraSprite.material.color) {
-            this.auraSprite.material.color.copy(this._auraNormalColor).lerp(this._frozenColor, freezeBlend);
-            this.auraSprite.material.opacity = isFrozen ? 0.62 : 0.4;
-        }
-        if (this.light) {
-            this.light.color.copy(this._auraNormalColor).lerp(this._frozenColor, freezeBlend);
-            this.light.intensity = (isFrozen ? 42 : 30) * this.performanceProfile.lightScale;
-        }
-        this._tailBaseColor.copy(isFrozen ? this._tailFrozenColor : this._tailNormalColor);
+        this.applyFreezeVisualState(isFrozen);
         this.updateFreezeRing(isFrozen, dt);
 
         // vertex wobble
-        if (this.performanceProfile.wobbleEvery === 0 || this.updateFrame % this.performanceProfile.wobbleEvery !== 0) {
+        const wobbleEvery = this.performanceProfile.wobbleEvery === 0
+            ? 0
+            : (isFrozen ? Math.max(3, this.performanceProfile.wobbleEvery * 3) : this.performanceProfile.wobbleEvery);
+        if (wobbleEvery === 0 || this.updateFrame % wobbleEvery !== 0) {
             const tailPos = this.tailPositions.pop() || new THREE.Vector3();
             tailPos.copy(this.pos);
             this.tailPositions.unshift(tailPos);
@@ -499,10 +499,37 @@ export class Hitodama {
         this.tailPositions.unshift(tailPos);
     }
 
+    applyFreezeVisualState(isFrozen) {
+        if (!this._freezeVisualDirty && this._lastFrozenVisualState === isFrozen) return;
+
+        this._lastFrozenVisualState = isFrozen;
+        this._freezeVisualDirty = false;
+
+        if (this.mesh.material && this.mesh.material.color) {
+            this.mesh.material.color.copy(isFrozen ? this._frozenColor : this._bodyNormalColor);
+            this.mesh.material.opacity = isFrozen ? 0.72 : 0.5;
+        }
+        if (this.coreMesh.material && this.coreMesh.material.color) {
+            this.coreMesh.material.color.copy(isFrozen ? this._frozenColor : this._coreNormalColor);
+            this.coreMesh.material.opacity = isFrozen ? 1.0 : 0.8;
+        }
+        if (this.auraSprite.material && this.auraSprite.material.color) {
+            this.auraSprite.material.color.copy(isFrozen ? this._frozenColor : this._auraNormalColor);
+            this.auraSprite.material.opacity = isFrozen ? 0.62 : 0.4;
+        }
+        if (this.light) {
+            this.light.color.copy(isFrozen ? this._frozenColor : this._auraNormalColor);
+            this.light.intensity = (isFrozen ? 42 : 30) * this.performanceProfile.lightScale;
+        }
+        this._tailBaseColor.copy(isFrozen ? this._tailFrozenColor : this._tailNormalColor);
+    }
+
     updateFreezeRing(isFrozen, dt) {
         if (!this.freezeRing) return;
 
-        this.freezeRing.visible = isFrozen;
+        if (this.freezeRing.visible !== isFrozen) {
+            this.freezeRing.visible = isFrozen;
+        }
         if (!isFrozen) return;
 
         this.freezeRing.position.copy(this.pos);

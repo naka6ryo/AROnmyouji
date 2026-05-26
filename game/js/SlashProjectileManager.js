@@ -89,7 +89,8 @@ export class SlashProjectileManager {
                 : this.camera.getWorldDirection(new THREE.Vector3()).normalize(),
             hitEnemies: new Set(),
             baseOpacity: 0.75 + intensity * 0.2,
-            visualScale: 1.0 + Math.max(0.5, Math.min(2.0, intensity || 1.0)) * 0.04
+            visualScale: 1.0 + Math.max(0.5, Math.min(2.0, intensity || 1.0)) * 0.04,
+            materials: slashGroup.userData.materials || []
         };
 
         this.projectiles.push(projectile);
@@ -100,17 +101,18 @@ export class SlashProjectileManager {
     /**
      * 飛翔体を更新
      */
-    update(deltaTime, enemies, onHitCallback) {
-        const now = performance.now();
+    update(deltaTime, enemies, onHitCallback, now = performance.now()) {
         const deltaTimeSec = deltaTime / 1000;
 
-        this.projectiles = this.projectiles.filter(proj => {
+        for (let i = this.projectiles.length - 1; i >= 0; i--) {
+            const proj = this.projectiles[i];
             const age = now - proj.spawnTime;
 
             if (age >= this.SLASH_LIFETIME) {
                 // 寿命切れ
                 this.disposeProjectileMesh(proj);
-                return false;
+                this.projectiles.splice(i, 1);
+                continue;
             }
 
             // 時間経過で円弧の半径を拡大 (Scale)
@@ -139,16 +141,15 @@ export class SlashProjectileManager {
             }
 
             // メッシュ更新（拡大・移動・発光の揺らぎ）
-            this.updateProjectileMesh(proj, radiusScale, lifeFraction, deltaTimeSec);
+            this.updateProjectileMesh(proj, radiusScale, lifeFraction, deltaTimeSec, now);
 
-            return true;
-        });
+        }
     }
 
     /**
      * メッシュの更新
      */
-    updateProjectileMesh(proj, radiusScale, lifeFraction, deltaTimeSec) {
+    updateProjectileMesh(proj, radiusScale, lifeFraction, deltaTimeSec, now = performance.now()) {
         // Move
         proj.mesh.position.add(this._moveScratch.copy(proj.direction).multiplyScalar(proj.speed * deltaTimeSec));
 
@@ -157,17 +158,14 @@ export class SlashProjectileManager {
         const visualScale = proj.visualScale || 1.0;
         proj.mesh.scale.set(radiusScale * visualScale, radiusScale * visualScale * slashPulse, radiusScale * visualScale);
 
-        proj.mesh.traverse(child => {
-            if (!child.material) return;
-            const materials = Array.isArray(child.material) ? child.material : [child.material];
-            for (const material of materials) {
-                const baseOpacity = material.userData.baseOpacity ?? proj.baseOpacity;
-                const flicker = material.userData.flicker
-                    ? 0.82 + Math.sin((performance.now() + material.userData.flickerOffset) * 0.035) * 0.18
-                    : 1.0;
-                material.opacity = baseOpacity * flicker;
-            }
-        });
+        const materials = proj.materials || proj.mesh.userData.materials || [];
+        for (const material of materials) {
+            const baseOpacity = material.userData.baseOpacity ?? proj.baseOpacity;
+            const flicker = material.userData.flicker
+                ? 0.82 + Math.sin((now + material.userData.flickerOffset) * 0.035) * 0.18
+                : 1.0;
+            material.opacity = baseOpacity * flicker;
+        }
     }
 
     /**
@@ -283,7 +281,21 @@ export class SlashProjectileManager {
             this.addSparkLines(group, points, strength);
         }
 
+        group.userData.materials = this.collectMaterials(group);
         return group;
+    }
+
+    collectMaterials(group) {
+        const materials = [];
+        group.traverse(child => {
+            if (!child.material) return;
+            if (Array.isArray(child.material)) {
+                materials.push(...child.material);
+            } else {
+                materials.push(child.material);
+            }
+        });
+        return materials;
     }
 
     scaleSegments(base, scale) {

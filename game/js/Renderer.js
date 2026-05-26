@@ -83,6 +83,7 @@ export class Renderer {
         this._projectionScratch = new THREE.Vector3();
         this._pivotPositionScratch = new THREE.Vector3();
         this._cameraPositionScratch = new THREE.Vector3();
+        this._effectMoveScratch = new THREE.Vector3();
 
         // 端末姿勢（視点制御用）
         this.deviceOrientation = { alpha: 0, beta: 0, gamma: 0, screenOrientation: 0 };
@@ -106,6 +107,7 @@ export class Renderer {
         };
         this.calibrationTargetBurstEffects = [];
         this.freezeDomainEffects = [];
+        this.maxFreezeDomainEffects = 2;
         this.freezeDomainGeometry = new THREE.RingGeometry(0.74, 1.08, this.performanceProfile.freezeSegments);
         this.freezeDomainGeometry.userData.segments = this.performanceProfile.freezeSegments;
         this.freezeDomainMaterial = new THREE.MeshBasicMaterial({
@@ -325,8 +327,24 @@ export class Renderer {
         for (const enemy of enemies) {
             const hitodama = this.enemyObjects.get(enemy.id);
             if (hitodama) {
-                this.updateEnemyPosition(hitodama, enemy);
-                if (typeof hitodama.setFrozenUntil === 'function' && typeof enemy.frozenUntil === 'number') {
+                const last = hitodama._lastEnemyState;
+                const frozenUntil = typeof enemy.frozenUntil === 'number' ? enemy.frozenUntil : 0;
+                const frozenChanged = !last || last.frozenUntil !== frozenUntil;
+                if (!last ||
+                    last.azim !== enemy.azim ||
+                    last.elev !== enemy.elev ||
+                    last.distance !== enemy.distance) {
+                    this.updateEnemyPosition(hitodama, enemy);
+                    hitodama._lastEnemyState = last || {};
+                    hitodama._lastEnemyState.azim = enemy.azim;
+                    hitodama._lastEnemyState.elev = enemy.elev;
+                    hitodama._lastEnemyState.distance = enemy.distance;
+                    hitodama._lastEnemyState.frozenUntil = frozenUntil;
+                } else if (frozenChanged) {
+                    last.frozenUntil = frozenUntil;
+                }
+
+                if (frozenChanged && typeof hitodama.setFrozenUntil === 'function' && frozenUntil) {
                     hitodama.setFrozenUntil(enemy.frozenUntil);
                 }
             }
@@ -346,6 +364,13 @@ export class Renderer {
         this.cameraPivot.updateMatrixWorld(true);
         this.camera.updateMatrixWorld(true);
         this.camera.getWorldPosition(cameraWorld);
+
+        while (this.freezeDomainEffects.length >= this.maxFreezeDomainEffects) {
+            const effect = this.freezeDomainEffects.shift();
+            if (!effect) break;
+            this.scene.remove(effect.mesh);
+            if (effect.mesh.material) effect.mesh.material.dispose();
+        }
 
         const ring = new THREE.Mesh(this.freezeDomainGeometry, this.freezeDomainMaterial.clone());
         ring.position.copy(cameraWorld);
@@ -668,7 +693,7 @@ export class Renderer {
                 effect.life -= dtSec * 2.2;
                 effect.mesh.material.opacity = Math.max(0, effect.life);
             } else {
-                effect.mesh.position.add(effect.velocity.clone().multiplyScalar(dtSec));
+                effect.mesh.position.add(this._effectMoveScratch.copy(effect.velocity).multiplyScalar(dtSec));
                 effect.mesh.rotation.x += effect.rotationSpeed.x * dtSec;
                 effect.mesh.rotation.y += effect.rotationSpeed.y * dtSec;
                 effect.mesh.rotation.z += effect.rotationSpeed.z * dtSec;
@@ -797,12 +822,13 @@ export class Renderer {
      */
     render(deltaTime, enemies) {
         // 人魂のアニメーション更新
+        const now = performance.now();
         const dtSec = deltaTime / 1000;
         this._renderFrameCount++;
         const profile = this.performanceProfile || PERFORMANCE_PROFILES.normal;
         const updateEffects = this._renderFrameCount % profile.effectUpdateStride === 0;
         for (const hitodama of this.enemyObjects.values()) {
-            hitodama.update(dtSec);
+            hitodama.update(dtSec, now);
         }
 
         // 飛翔体更新
@@ -814,9 +840,9 @@ export class Renderer {
         if (this.calibrationMode) {
             this.slashProjectileManager.update(deltaTime, [this.calibrationTarget], (data) => {
                 if (this.onCalibrationTargetHit) this.onCalibrationTargetHit(data);
-            });
+            }, now);
         } else {
-            this.slashProjectileManager.update(deltaTime, enemies, this.onSlashHitEnemy);
+            this.slashProjectileManager.update(deltaTime, enemies, this.onSlashHitEnemy, now);
         }
 
         // シェーダー軌跡の時間更新
@@ -864,12 +890,17 @@ export class Renderer {
     /**
      * 任意のワールド座標をNDCに射影
      */
-    projectToNdc(worldPos, target = this._projectionScratch) {
+    prepareProjectionMatrices() {
         // Ensure camera matrices are fresh (View Matrix specifically)
         this.cameraPivot.updateMatrixWorld(true);
         this.camera.updateMatrixWorld(true);
         this.camera.matrixWorldInverse.copy(this.camera.matrixWorld).invert();
+    }
 
+    projectToNdc(worldPos, target = this._projectionScratch, options = {}) {
+        if (!options.skipMatrixUpdate) {
+            this.prepareProjectionMatrices();
+        }
         const v = target.set(worldPos.x, worldPos.y, worldPos.z);
         // Note: project() uses matrixWorldInverse (View) * projectionMatrix
         v.project(this.camera);
@@ -885,9 +916,11 @@ export class Renderer {
         return dir.normalize();
     }
 
-    getCameraBasis() {
-        this.cameraPivot.updateMatrixWorld(true);
-        this.camera.updateMatrixWorld(true);
+    getCameraBasis(options = {}) {
+        if (!options.skipMatrixUpdate) {
+            this.cameraPivot.updateMatrixWorld(true);
+            this.camera.updateMatrixWorld(true);
+        }
         const q = this.camera.getWorldQuaternion(this._qFinal);
         const right = this._right.set(1, 0, 0).applyQuaternion(q).normalize();
         const up = this._up.set(0, 1, 0).applyQuaternion(q).normalize();

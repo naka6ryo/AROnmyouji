@@ -381,7 +381,9 @@ class AROnmyoujiGame {
 
         this.uiManager.playScreenTransition(() => {
             this.appState.calibrationComplete();
-            this.uiManager.toggleSceneStartButton(true);
+            this.uiManager.showTutorialSequence(() => {
+                this.onStartInScene();
+            });
         });
     }
 

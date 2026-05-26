@@ -14,6 +14,8 @@ export class UIManager {
         this._barActiveCountCache = new WeakMap();
         this.circleFreezeOverlay = null;
         this.circleFreezeTimer = null;
+        this.tutorialTimer = null;
+        this.tutorialActive = false;
     }
 
     /**
@@ -74,6 +76,13 @@ export class UIManager {
             countdownOverlay: document.getElementById('countdownOverlay'),
             countdownValue: document.getElementById('countdownValue'),
             startOverlay: document.getElementById('startOverlay'),
+            tutorialStepLabel: document.getElementById('tutorialStepLabel'),
+            tutorialTitle: document.getElementById('tutorialTitle'),
+            tutorialInstruction: document.getElementById('tutorialInstruction'),
+            tutorialEnglish: document.getElementById('tutorialEnglish'),
+            tutorialImage: document.getElementById('tutorialImage'),
+            tutorialDot1: document.getElementById('tutorialDot1'),
+            tutorialDot2: document.getElementById('tutorialDot2'),
             // Top center HUD
             elapsedTimeDisplay: document.getElementById('elapsedTimeDisplay'),
             defeatedDisplay: document.getElementById('defeatedDisplay'),
@@ -625,6 +634,11 @@ export class UIManager {
     toggleSceneStartButton(show) {
         const btn = this.elements.sceneStartButton;
         const overlay = this.elements.startOverlay;
+        if (!show && this.tutorialTimer) {
+            clearTimeout(this.tutorialTimer);
+            this.tutorialTimer = null;
+            this.tutorialActive = false;
+        }
         if (btn) {
             btn.style.display = show ? 'block' : 'none';
             btn.style.pointerEvents = show ? 'auto' : 'none';
@@ -635,6 +649,92 @@ export class UIManager {
             overlay.style.pointerEvents = show ? 'auto' : 'none';
             if (show) overlay.classList.remove('hidden'); else overlay.classList.add('hidden');
         }
+    }
+
+    showTutorialSequence(onComplete) {
+        const overlay = this.elements.startOverlay;
+        if (!overlay) {
+            if (onComplete) onComplete();
+            return;
+        }
+
+        const slides = [
+            {
+                step: 'TUTORIAL 01 / 02',
+                title: '斬撃',
+                instruction: 'グローブを振り抜き、斬撃を放て',
+                english: 'Swing the glove to release a slash',
+                image: 'assets/picture/Zangeki.gif',
+                alt: '斬撃チュートリアル',
+                durationMs: 3520
+            },
+            {
+                step: 'TUTORIAL 02 / 02',
+                title: '氷結',
+                instruction: 'グローブで円を描き、氷結の術を発動せよ',
+                english: 'Draw a circle with the glove to freeze enemies',
+                image: 'assets/picture/Hyouketu.gif',
+                alt: '氷結チュートリアル',
+                durationMs: 5000
+            }
+        ];
+
+        const applySlide = (index) => {
+            const slide = slides[index];
+            if (!slide) return;
+
+            this.setTextIfChanged(this.elements.tutorialStepLabel, slide.step);
+            this.setTextIfChanged(this.elements.tutorialTitle, slide.title);
+            this.setTextIfChanged(this.elements.tutorialInstruction, slide.instruction);
+            this.setTextIfChanged(this.elements.tutorialEnglish, slide.english);
+
+            const image = this.elements.tutorialImage;
+            if (image) {
+                if (image.getAttribute('src') !== slide.image) {
+                    image.setAttribute('src', slide.image);
+                }
+                image.setAttribute('alt', slide.alt);
+            }
+
+            if (this.elements.tutorialDot1) {
+                this.elements.tutorialDot1.className = index === 0
+                    ? 'w-1 h-1 bg-primary animate-pulse'
+                    : 'w-1 h-1 bg-white/40';
+            }
+            if (this.elements.tutorialDot2) {
+                this.elements.tutorialDot2.className = index === 1
+                    ? 'w-1 h-1 bg-primary animate-pulse'
+                    : 'w-1 h-1 bg-white/40';
+            }
+        };
+
+        if (this.tutorialTimer) {
+            clearTimeout(this.tutorialTimer);
+            this.tutorialTimer = null;
+        }
+        this.tutorialActive = true;
+
+        overlay.classList.remove('hidden');
+        overlay.style.display = 'flex';
+        overlay.style.pointerEvents = 'auto';
+        overlay.style.opacity = '1';
+
+        const transitionTotalMs = 1400;
+        const transitionMidpointMs = 130;
+        const transitionTailMs = transitionTotalMs - transitionMidpointMs;
+
+        applySlide(0);
+        this.tutorialTimer = setTimeout(() => {
+            this.playScreenTransition(() => {
+                applySlide(1);
+
+                this.tutorialTimer = setTimeout(() => {
+                    this.tutorialTimer = null;
+                    this.tutorialActive = false;
+                    if (onComplete) onComplete();
+                }, transitionTailMs + slides[1].durationMs);
+            });
+        }, transitionTailMs + slides[0].durationMs);
     }
 
     /**

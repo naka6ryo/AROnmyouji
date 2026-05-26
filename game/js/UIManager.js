@@ -177,6 +177,11 @@ export class UIManager {
                     // ユーザージェスチャに紐づけてAudioContextを解除し、クリック音を鳴らす
                     if (typeof soundManager !== 'undefined' && soundManager) {
                         try { soundManager.unlock(); soundManager.initAudioContext(); } catch (err) { }
+                        try {
+                            soundManager.load({
+                                fluorescent_crackle: 'assets/sfx/Fluorescent_Light-Noise01-1(Crackle).mp3'
+                            }).catch(() => { });
+                        } catch (err) { }
                         try { soundManager.play('button', { volume: 0.6 }); } catch (err) { }
                     }
                 } catch (err) {
@@ -2244,22 +2249,26 @@ export class UIManager {
             try { if (typeof soundManager !== 'undefined') soundManager.initAudioContext(); } catch (e) { }
             const mgr = (typeof window !== 'undefined' && window.soundManager) ? window.soundManager : (typeof soundManager !== 'undefined' ? soundManager : null);
             try {
-                const hasLoadedSound = mgr && (
-                    (mgr.buffers && typeof mgr.buffers.has === 'function' && mgr.buffers.has(audioKey)) ||
-                    (mgr.sounds && typeof mgr.sounds.has === 'function' && mgr.sounds.has(audioKey))
-                );
+                const hasBuffer = mgr && mgr.buffers && typeof mgr.buffers.has === 'function' && mgr.buffers.has(audioKey);
+                const hasHtmlAudio = mgr && mgr.sounds && typeof mgr.sounds.has === 'function' && mgr.sounds.has(audioKey);
 
-                if (mgr && typeof mgr.play === 'function' && hasLoadedSound) {
-                    mgr.play(audioKey, { volume: 0.55 });
+                if (mgr && typeof mgr.unlock === 'function') {
+                    try { mgr.unlock(); } catch (e) { }
+                }
+
+                if (mgr && mgr.audioContext && !hasBuffer && typeof mgr.load === 'function') {
+                    mgr.load({ [audioKey]: assetPath }).then(() => { try { mgr.play(audioKey, { volume: 1.0 }); } catch (e) { } }).catch(e => {  });
+                } else if (mgr && typeof mgr.play === 'function' && (hasBuffer || hasHtmlAudio)) {
+                    mgr.play(audioKey, { volume: 1.0 });
                     
                 } else if (mgr && typeof mgr.load === 'function') {
-                    mgr.load({ [audioKey]: assetPath }).then(() => { try { mgr.play(audioKey, { volume: 0.55 }); } catch (e) { } }).catch(e => {  });
+                    mgr.load({ [audioKey]: assetPath }).then(() => { try { mgr.play(audioKey, { volume: 1.0 }); } catch (e) { } }).catch(e => {  });
                 } else {
                     // HTMLAudio fallback
                     const a = document.createElement('audio');
                     a.src = assetPath;
                     a.preload = 'auto';
-                    a.volume = 0.55;
+                    a.volume = 1.0;
                     a.play().catch(() => { });
                 }
             } catch (e) {  }

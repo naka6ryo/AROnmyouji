@@ -407,6 +407,7 @@ class AROnmyoujiGame {
                     attack_swipe: 'assets/sfx/atttack.mp3',
                     circle_freeze: 'assets/sfx/聖魔法.mp3',
                     button: 'assets/sfx/Button.mp3',
+                    fluorescent_crackle: 'assets/sfx/Fluorescent_Light-Noise01-1(Crackle).mp3',
                     tv_turn_off: 'assets/sfx/TV-Turn_Off01-2(Reverb).mp3'
                 }).catch(() => {});
             }
@@ -452,6 +453,7 @@ class AROnmyoujiGame {
                 attack_swipe: 'assets/sfx/atttack.mp3',
                 circle_freeze: 'assets/sfx/聖魔法.mp3',
                 button: 'assets/sfx/Button.mp3',
+                fluorescent_crackle: 'assets/sfx/Fluorescent_Light-Noise01-1(Crackle).mp3',
                 tv_turn_off: 'assets/sfx/TV-Turn_Off01-2(Reverb).mp3'
             }).catch(() => {});
         } catch (e) {
@@ -611,6 +613,7 @@ class AROnmyoujiGame {
                     attack_swipe: 'assets/sfx/atttack.mp3',
                     circle_freeze: 'assets/sfx/聖魔法.mp3',
                     button: 'assets/sfx/Button.mp3',
+                    fluorescent_crackle: 'assets/sfx/Fluorescent_Light-Noise01-1(Crackle).mp3',
                     tv_turn_off: 'assets/sfx/TV-Turn_Off01-2(Reverb).mp3'
                 }).catch(() => {});
             }

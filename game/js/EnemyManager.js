@@ -7,6 +7,12 @@ export class EnemyManager {
     constructor() {
         this.enemies = [];
         this.nextEnemyId = 0;
+        this.performanceMode = 'normal';
+        this.maxActiveEnemiesByMode = {
+            normal: 6,
+            warm: 5,
+            hot: 4
+        };
 
         // 敵仕様
         this.ENEMY_HP = 1;
@@ -26,6 +32,14 @@ export class EnemyManager {
 
         // コールバック
         this.onEnemySpawned = null;
+    }
+
+    setPerformanceMode(mode) {
+        this.performanceMode = this.maxActiveEnemiesByMode[mode] ? mode : 'normal';
+    }
+
+    getMaxActiveEnemies() {
+        return this.maxActiveEnemiesByMode[this.performanceMode] || this.maxActiveEnemiesByMode.normal;
     }
 
     /**
@@ -86,6 +100,10 @@ export class EnemyManager {
      * 敵をスポーン
      */
     spawnEnemy(remainingSeconds, maxGameSeconds) {
+        if (this.enemies.length >= this.getMaxActiveEnemies()) {
+            return;
+        }
+
         const azim = Math.random() * 360;
         // ピッチ（仰角）は 10 度 から 60 度 の範囲でランダムに出現させる
         const elev = 10 + Math.random() * 50;

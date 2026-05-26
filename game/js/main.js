@@ -19,31 +19,37 @@ const PERFORMANCE_CONFIG = {
     HUD_UPDATE_INTERVAL_MS: 100,
     INDICATOR_UPDATE_INTERVAL_MS: 66,
     DEBUG_UPDATE_INTERVAL_MS: 250,
-    CAMERA_MAX_WIDTH: 1280,
-    CAMERA_MAX_HEIGHT: 720,
-    CAMERA_MAX_FPS: 30,
+    CAMERA_MAX_WIDTH: 960,
+    CAMERA_MAX_HEIGHT: 540,
+    CAMERA_MAX_FPS: 24,
     THERMAL_MODES: {
         normal: {
-            targetFrameMs: 1000 / 60,
+            targetFrameMs: 1000 / 45,
+            updateFrameMs: 1000 / 45,
             hudIntervalMs: 100,
-            indicatorIntervalMs: 66
+            indicatorIntervalMs: 90
         },
         warm: {
-            targetFrameMs: 1000 / 45,
-            hudIntervalMs: 140,
-            indicatorIntervalMs: 110
+            targetFrameMs: 1000 / 36,
+            updateFrameMs: 1000 / 40,
+            hudIntervalMs: 160,
+            indicatorIntervalMs: 140
         },
         hot: {
             targetFrameMs: 1000 / 30,
-            hudIntervalMs: 200,
-            indicatorIntervalMs: 160
+            updateFrameMs: 1000 / 30,
+            hudIntervalMs: 240,
+            indicatorIntervalMs: 220
         }
     },
     FRAME_AVERAGE_ALPHA: 0.08,
-    WARM_FRAME_MS: 22,
-    HOT_FRAME_MS: 33,
+    WARM_FRAME_MS: 26,
+    HOT_FRAME_MS: 40,
     LONG_FRAME_MS: 80,
     LONG_FRAME_LIMIT: 3,
+    MOBILE_WARM_AFTER_MS: 15000,
+    MOBILE_HOT_AFTER_MS: 60000,
+    DESKTOP_WARM_AFTER_MS: 45000,
     RECOVERY_DELAY_MS: 3000
 };
 
@@ -94,6 +100,9 @@ class AROnmyoujiGame {
         this.longFrameCount = 0;
         this.performanceMode = 'normal';
         this.performanceModeChangedAt = 0;
+        this.lastSimulationTime = 0;
+        this.gameplayStartedAt = 0;
+        this.isMobileDevice = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent || '');
 
         // ダブルヒット防止用
         this.lastEnemyHitTime = new Map();
@@ -628,9 +637,11 @@ class AROnmyoujiGame {
         this.lastIndicatorUpdateTime = 0;
         this.lastDebugUpdateTime = 0;
         this.lastRenderTime = 0;
+        this.lastSimulationTime = 0;
+        this.gameplayStartedAt = performance.now();
         this.frameAverageMs = 1000 / 60;
         this.longFrameCount = 0;
-        this.setPerformanceMode('normal', performance.now());
+        this.setPerformanceMode(this.isMobileDevice ? 'warm' : 'normal', this.gameplayStartedAt);
         this.gameLoop();
     }
 
@@ -933,17 +944,22 @@ class AROnmyoujiGame {
         this.lastUpdateTime = now;
         this.updatePerformanceMode(actualDelta, now);
 
-        const safeDelta = Math.min(actualDelta, 100);
-
-        this.gameWorld.update(safeDelta);
-        const viewDir = this.renderer.getViewDirection();
-        this.combatSystem.update(safeDelta, viewDir);
-
+        const modeConfig = PERFORMANCE_CONFIG.THERMAL_MODES[this.performanceMode] || PERFORMANCE_CONFIG.THERMAL_MODES.normal;
+        const shouldUpdateSimulation = !this.lastSimulationTime || now - this.lastSimulationTime >= modeConfig.updateFrameMs;
         const enemies = this.gameWorld.getEnemies();
-        this.updateHUD(viewDir);
+        let viewDir = this.renderer.getViewDirection();
+        if (shouldUpdateSimulation) {
+            const simulationDelta = Math.min(this.lastSimulationTime ? now - this.lastSimulationTime : actualDelta, 100);
+            this.lastSimulationTime = now;
+            this.gameWorld.update(simulationDelta);
+            viewDir = this.renderer.getViewDirection();
+            this.combatSystem.update(simulationDelta, viewDir);
+            this.updateHUD(viewDir);
+        }
+
         if (this.shouldRenderFrame(now)) {
             this.renderer.updateEnemies(enemies);
-            this.renderer.render(Math.min(now - this.lastRenderTime || safeDelta, 100), enemies);
+            this.renderer.render(Math.min(now - this.lastRenderTime || actualDelta, 100), enemies);
             this.lastRenderTime = now;
         }
         requestAnimationFrame(() => this.gameLoop());
@@ -955,14 +971,17 @@ class AROnmyoujiGame {
         this.longFrameCount = frameMs >= PERFORMANCE_CONFIG.LONG_FRAME_MS
             ? this.longFrameCount + 1
             : Math.max(0, this.longFrameCount - 1);
+        const elapsed = this.gameplayStartedAt ? now - this.gameplayStartedAt : 0;
+        const warmAfter = this.isMobileDevice ? PERFORMANCE_CONFIG.MOBILE_WARM_AFTER_MS : PERFORMANCE_CONFIG.DESKTOP_WARM_AFTER_MS;
 
-        if (this.frameAverageMs >= PERFORMANCE_CONFIG.HOT_FRAME_MS ||
+        if ((this.isMobileDevice && elapsed >= PERFORMANCE_CONFIG.MOBILE_HOT_AFTER_MS) ||
+            this.frameAverageMs >= PERFORMANCE_CONFIG.HOT_FRAME_MS ||
             this.longFrameCount >= PERFORMANCE_CONFIG.LONG_FRAME_LIMIT) {
             this.setPerformanceMode('hot', now);
             return;
         }
 
-        if (this.frameAverageMs >= PERFORMANCE_CONFIG.WARM_FRAME_MS) {
+        if (elapsed >= warmAfter || this.frameAverageMs >= PERFORMANCE_CONFIG.WARM_FRAME_MS) {
             if (this.performanceMode === 'normal') this.setPerformanceMode('warm', now);
             return;
         }
@@ -981,6 +1000,9 @@ class AROnmyoujiGame {
         this.performanceModeChangedAt = now;
         if (this.renderer && typeof this.renderer.setPerformanceMode === 'function') {
             this.renderer.setPerformanceMode(mode);
+        }
+        if (this.gameWorld && typeof this.gameWorld.setPerformanceMode === 'function') {
+            this.gameWorld.setPerformanceMode(mode);
         }
     }
 

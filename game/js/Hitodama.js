@@ -9,9 +9,9 @@ import { assetLoader } from './AssetLoader.js';
 import { HitodamaResources } from './HitodamaResources.js';
 
 const PERFORMANCE_PROFILES = {
-    normal: { purifyFragments: 50, explodeFragments: 100, tailStep: 1, wobbleEvery: 1, lightScale: 1 },
-    warm: { purifyFragments: 25, explodeFragments: 45, tailStep: 2, wobbleEvery: 2, lightScale: 0.75 },
-    hot: { purifyFragments: 10, explodeFragments: 18, tailStep: 4, wobbleEvery: 0, lightScale: 0.45 }
+    normal: { purifyFragments: 38, explodeFragments: 72, tailStep: 1, wobbleEvery: 1, lightScale: 0.85 },
+    warm: { purifyFragments: 18, explodeFragments: 32, tailStep: 3, wobbleEvery: 3, lightScale: 0.6 },
+    hot: { purifyFragments: 7, explodeFragments: 12, tailStep: 5, wobbleEvery: 0, lightScale: 0.35 }
 };
 
 export class Hitodama {

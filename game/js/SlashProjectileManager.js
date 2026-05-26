@@ -7,9 +7,9 @@
 import * as THREE from 'three';
 
 const PERFORMANCE_PROFILES = {
-    normal: { tubeScale: 1, radialScale: 1, sparkScale: 1 },
-    warm: { tubeScale: 0.68, radialScale: 0.75, sparkScale: 0.5 },
-    hot: { tubeScale: 0.45, radialScale: 0.55, sparkScale: 0 }
+    normal: { tubeScale: 0.82, radialScale: 0.85, sparkScale: 0.65, maxProjectiles: 4, minIntervalMs: 120 },
+    warm: { tubeScale: 0.58, radialScale: 0.65, sparkScale: 0.3, maxProjectiles: 3, minIntervalMs: 180 },
+    hot: { tubeScale: 0.38, radialScale: 0.45, sparkScale: 0, maxProjectiles: 2, minIntervalMs: 260 }
 };
 
 export class SlashProjectileManager {
@@ -24,6 +24,7 @@ export class SlashProjectileManager {
         this.performanceProfile = PERFORMANCE_PROFILES.normal;
         this.SLASH_SPEED = 8.0; // m/s
         this.SLASH_LIFETIME = 1500; // ms
+        this.lastProjectileSpawnTime = -Infinity;
         this._cameraPos = new THREE.Vector3();
         this._moveScratch = new THREE.Vector3();
         this._enemyWorld = new THREE.Vector3();
@@ -46,6 +47,16 @@ export class SlashProjectileManager {
      * 円弧飛翔体を追加
      */
     addProjectile(startPyr, endPyr, intensity, options = {}) {
+        const now = performance.now();
+        const profile = this.performanceProfile || PERFORMANCE_PROFILES.normal;
+        if (!options.ignoreThrottle && now - this.lastProjectileSpawnTime < profile.minIntervalMs) {
+            return;
+        }
+        while (this.projectiles.length >= profile.maxProjectiles) {
+            const oldest = this.projectiles.shift();
+            if (oldest) this.disposeProjectileMesh(oldest);
+        }
+
         // 始点と終点の3D位置を計算（半径0.3m -> 1.5倍）
         const baseRadius = 0.3 * 1.5;
 
@@ -82,7 +93,7 @@ export class SlashProjectileManager {
             startPos: startPos.clone(),
             endPos: endPos.clone(),
             speed: this.SLASH_SPEED,
-            spawnTime: performance.now(),
+            spawnTime: now,
             intensity,
             direction: options.direction
                 ? new THREE.Vector3(options.direction.x || 0, options.direction.y || 0, options.direction.z || 0).normalize()
@@ -94,6 +105,7 @@ export class SlashProjectileManager {
         };
 
         this.projectiles.push(projectile);
+        this.lastProjectileSpawnTime = now;
 
         
     }
@@ -473,5 +485,6 @@ export class SlashProjectileManager {
 
     reset() {
         this.dispose();
+        this.lastProjectileSpawnTime = -Infinity;
     }
 }

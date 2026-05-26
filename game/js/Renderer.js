@@ -8,13 +8,13 @@ import { Hitodama } from './Hitodama.js';
 import { SwingTracer } from './SwingTracer.js';
 import { SlashProjectileManager } from './SlashProjectileManager.js';
 
-const MOBILE_MAX_PIXEL_RATIO = 1.5;
+const MOBILE_MAX_PIXEL_RATIO = 1.2;
 const DEFAULT_CAMERA_FOV_DEG = 60;
 const DEG2RAD = Math.PI / 180;
 const PERFORMANCE_PROFILES = {
-    normal: { pixelRatioScale: 1, freezeSegments: 128, effectUpdateStride: 1 },
-    warm: { pixelRatioScale: 0.8, freezeSegments: 72, effectUpdateStride: 1 },
-    hot: { pixelRatioScale: 0.6, freezeSegments: 40, effectUpdateStride: 2 }
+    normal: { pixelRatioScale: 0.9, freezeSegments: 96, effectUpdateStride: 1, enemyUpdateStride: 1, slashUpdateStride: 1 },
+    warm: { pixelRatioScale: 0.72, freezeSegments: 56, effectUpdateStride: 2, enemyUpdateStride: 2, slashUpdateStride: 1 },
+    hot: { pixelRatioScale: 0.55, freezeSegments: 32, effectUpdateStride: 3, enemyUpdateStride: 3, slashUpdateStride: 2 }
 };
 
 export class Renderer {
@@ -26,15 +26,7 @@ export class Renderer {
         this.scene = new THREE.Scene();
         // カメラ映像を Three.js の背景テクスチャとして扱う
         this.videoElement = document.getElementById('cameraVideo');
-        if (this.videoElement) {
-            try {
-                this.videoTexture = new THREE.VideoTexture(this.videoElement);
-                this.videoTexture.minFilter = THREE.LinearFilter;
-                this.videoTexture.magFilter = THREE.LinearFilter;
-            } catch (e) {
-                
-            }
-        }
+        this.videoTexture = null;
         this.camera = new THREE.PerspectiveCamera(
             DEFAULT_CAMERA_FOV_DEG, // FOV
             window.innerWidth / window.innerHeight,
@@ -855,8 +847,12 @@ export class Renderer {
         this._renderFrameCount++;
         const profile = this.performanceProfile || PERFORMANCE_PROFILES.normal;
         const updateEffects = this._renderFrameCount % profile.effectUpdateStride === 0;
-        for (const hitodama of this.enemyObjects.values()) {
-            hitodama.update(dtSec, now);
+        const updateEnemies = this._renderFrameCount % profile.enemyUpdateStride === 0;
+        const updateSlash = this._renderFrameCount % profile.slashUpdateStride === 0;
+        if (updateEnemies) {
+            for (const hitodama of this.enemyObjects.values()) {
+                hitodama.update(dtSec * profile.enemyUpdateStride, now);
+            }
         }
 
         // 飛翔体更新
@@ -865,12 +861,15 @@ export class Renderer {
             this.updateFreezeDomainEffects(dtSec * profile.effectUpdateStride);
         }
 
-        if (this.calibrationMode) {
-            this.slashProjectileManager.update(deltaTime, [this.calibrationTarget], (data) => {
-                if (this.onCalibrationTargetHit) this.onCalibrationTargetHit(data);
-            }, now);
-        } else {
-            this.slashProjectileManager.update(deltaTime, enemies, this.onSlashHitEnemy, now);
+        if (updateSlash) {
+            const slashDelta = deltaTime * profile.slashUpdateStride;
+            if (this.calibrationMode) {
+                this.slashProjectileManager.update(slashDelta, [this.calibrationTarget], (data) => {
+                    if (this.onCalibrationTargetHit) this.onCalibrationTargetHit(data);
+                }, now);
+            } else {
+                this.slashProjectileManager.update(slashDelta, enemies, this.onSlashHitEnemy, now);
+            }
         }
 
         // シェーダー軌跡の時間更新

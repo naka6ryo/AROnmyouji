@@ -115,6 +115,12 @@ export class GameWorld {
         return this.enemyManager.freezeEnemies(durationMs);
     }
 
+    setPerformanceMode(mode) {
+        if (this.enemyManager && typeof this.enemyManager.setPerformanceMode === 'function') {
+            this.enemyManager.setPerformanceMode(mode);
+        }
+    }
+
     /**
      * 敵の方向ベクトルを取得（Utility Wrapper）
      */

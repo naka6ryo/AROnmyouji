@@ -88,7 +88,7 @@ export class CircleGestureRecognizer {
             return;
         }
 
-        const metrics = this.calculateMetrics();
+        const metrics = this.calculateBestCircleMetrics(this.getUnwrappedPoints());
 
         this.emitIfCircle(metrics, now);
 
@@ -135,8 +135,50 @@ export class CircleGestureRecognizer {
             timestamp: point.timestamp
         }));
         const points = this.unwrapPoints(rawPoints);
-        const metrics = this.calculateMetricsForPoints(points);
+        const metrics = this.calculateBestCircleMetrics(points);
         return this.emitIfCircle(metrics, now);
+    }
+
+    calculateBestCircleMetrics(points) {
+        const metrics = this.calculateMetricsForPoints(points);
+        if (this.isCircleMetrics(metrics)) {
+            return metrics;
+        }
+
+        return this.findClosedCircleMetrics(points) || metrics;
+    }
+
+    findClosedCircleMetrics(points) {
+        const minPoints = 6;
+        let bestMetrics = null;
+
+        for (let startIndex = 0; startIndex <= points.length - minPoints; startIndex++) {
+            for (let endIndex = startIndex + minPoints - 1; endIndex < points.length; endIndex++) {
+                const duration = points[endIndex].timestamp - points[startIndex].timestamp;
+                if (duration < this.GESTURE_MIN_DURATION) continue;
+
+                const segment = points.slice(startIndex, endIndex + 1);
+                const closure = this.calculateClosureDistance(segment);
+                if (closure > this.CIRCLE_MAX_CLOSURE) continue;
+
+                const metrics = this.calculateMetricsForPoints(segment);
+                if (!this.isCircleMetrics(metrics)) continue;
+
+                if (!bestMetrics || this.isBetterCircleMetrics(metrics, bestMetrics)) {
+                    bestMetrics = metrics;
+                }
+            }
+        }
+
+        return bestMetrics;
+    }
+
+    isBetterCircleMetrics(candidate, current) {
+        if (candidate.angleCoverage !== current.angleCoverage) {
+            return candidate.angleCoverage > current.angleCoverage;
+        }
+
+        return candidate.closure < current.closure;
     }
 
     emitIfCircle(metrics, now) {

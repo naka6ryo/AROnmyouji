@@ -77,8 +77,6 @@ export class UIManager {
             countdownOverlay: document.getElementById('countdownOverlay'),
             countdownValue: document.getElementById('countdownValue'),
             startOverlay: document.getElementById('startOverlay'),
-            tutorialStepLabel: document.getElementById('tutorialStepLabel'),
-            tutorialTitle: document.getElementById('tutorialTitle'),
             tutorialInstruction: document.getElementById('tutorialInstruction'),
             tutorialEnglish: document.getElementById('tutorialEnglish'),
             tutorialImageSlash: document.getElementById('tutorialImageSlash'),
@@ -667,8 +665,6 @@ export class UIManager {
 
         const slides = [
             {
-                step: 'TUTORIAL 01 / 02',
-                title: '斬撃',
                 instruction: 'グローブを振り抜き、斬撃を放て',
                 english: 'Swing the glove to release a slash',
                 image: 'assets/picture/Zangeki.gif',
@@ -676,8 +672,6 @@ export class UIManager {
                 durationMs: 3520
             },
             {
-                step: 'TUTORIAL 02 / 02',
-                title: '氷結',
                 instruction: 'グローブで円を描き、氷結の術を発動せよ',
                 english: 'Draw a circle with the glove to freeze enemies',
                 image: 'assets/picture/Hyouketu.gif',
@@ -690,8 +684,6 @@ export class UIManager {
             const slide = slides[index];
             if (!slide) return;
 
-            this.setTextIfChanged(this.elements.tutorialStepLabel, slide.step);
-            this.setTextIfChanged(this.elements.tutorialTitle, slide.title);
             this.setTextIfChanged(this.elements.tutorialInstruction, slide.instruction);
             this.setTextIfChanged(this.elements.tutorialEnglish, slide.english);
 
@@ -2257,18 +2249,18 @@ export class UIManager {
                 }
 
                 if (mgr && mgr.audioContext && !hasBuffer && typeof mgr.load === 'function') {
-                    mgr.load({ [audioKey]: assetPath }).then(() => { try { mgr.play(audioKey, { volume: 1.0 }); } catch (e) { } }).catch(e => {  });
+                    mgr.load({ [audioKey]: assetPath }).then(() => { try { mgr.play(audioKey, { volume: 0.55 }); } catch (e) { } }).catch(e => {  });
                 } else if (mgr && typeof mgr.play === 'function' && (hasBuffer || hasHtmlAudio)) {
-                    mgr.play(audioKey, { volume: 1.0 });
+                    mgr.play(audioKey, { volume: 0.55 });
                     
                 } else if (mgr && typeof mgr.load === 'function') {
-                    mgr.load({ [audioKey]: assetPath }).then(() => { try { mgr.play(audioKey, { volume: 1.0 }); } catch (e) { } }).catch(e => {  });
+                    mgr.load({ [audioKey]: assetPath }).then(() => { try { mgr.play(audioKey, { volume: 0.55 }); } catch (e) { } }).catch(e => {  });
                 } else {
                     // HTMLAudio fallback
                     const a = document.createElement('audio');
                     a.src = assetPath;
                     a.preload = 'auto';
-                    a.volume = 1.0;
+                    a.volume = 0.55;
                     a.play().catch(() => { });
                 }
             } catch (e) {  }

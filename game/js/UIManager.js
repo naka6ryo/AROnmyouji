@@ -645,8 +645,8 @@ export class UIManager {
 
         const slides = [
             {
-                instruction: '斬撃は 斬撃で敵を祓え',
-                english: 'Slash: Banish enemies with a slash',
+                instruction: '斬撃で敵を祓え',
+                english: 'Banish enemies with a slash',
                 sprite: 'assets/picture/Zangeki_spritesheet.jpg',
                 frameCount: 22,
                 frameWidth: 585,
@@ -656,8 +656,8 @@ export class UIManager {
                 loops: 3
             },
             {
-                instruction: '氷結は 円を描き敵を縫い留めよ',
-                english: 'Freeze: Draw a circle and pin enemies in place',
+                instruction: '円を描き敵を縫い留めよ',
+                english: 'Draw a circle and pin enemies in place',
                 sprite: 'assets/picture/Hyouketu_spritesheet.jpg',
                 frameCount: 33,
                 frameWidth: 585,

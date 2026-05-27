@@ -645,8 +645,8 @@ export class UIManager {
 
         const slides = [
             {
-                instruction: '\u30b0\u30ed\u30fc\u30d6\u3092\u632f\u308a\u629c\u304d\u3001\u65ac\u6483\u3092\u653e\u3066',
-                english: 'Swing the glove to release a slash',
+                instruction: '斬撃は 斬撃で敵を祓え',
+                english: 'Slash: Banish enemies with a slash',
                 sprite: 'assets/picture/Zangeki_spritesheet.jpg',
                 frameCount: 22,
                 frameWidth: 585,
@@ -656,8 +656,8 @@ export class UIManager {
                 loops: 3
             },
             {
-                instruction: '\u30b0\u30ed\u30fc\u30d6\u3067\u5186\u3092\u63cf\u304d\u3001\u6c37\u7d50\u306e\u8853\u3092\u767a\u52d5\u305b\u3088',
-                english: 'Draw a circle with the glove to freeze enemies',
+                instruction: '氷結は 円を描き敵を縫い留めよ',
+                english: 'Freeze: Draw a circle and pin enemies in place',
                 sprite: 'assets/picture/Hyouketu_spritesheet.jpg',
                 frameCount: 33,
                 frameWidth: 585,

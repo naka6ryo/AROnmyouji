@@ -34,6 +34,7 @@ export class EnemyManager {
         this.initialSpawnBase = 2500 + Math.random() * 1000; // 2500-3500ms のランダム初期基準
         this.spawnInterval = this.initialSpawnBase;
         this.nextSpawnTime = 0;
+        this.spawnPausedUntil = 0;
 
         // コールバック
         this.onEnemySpawned = null;
@@ -57,6 +58,7 @@ export class EnemyManager {
         this.spawnInterval = this.initialSpawnBase;
         // カウントダウン終了直後に1体即時スポーンさせるため即時に設定
         this.nextSpawnTime = performance.now();
+        this.spawnPausedUntil = 0;
     }
 
     /**
@@ -66,7 +68,10 @@ export class EnemyManager {
         const now = performance.now();
 
         // スポーン
-        if (now >= this.nextSpawnTime) {
+        const isSpawnPaused = now < this.spawnPausedUntil;
+        if (isSpawnPaused) {
+            this.nextSpawnTime = Math.max(this.nextSpawnTime, this.spawnPausedUntil);
+        } else if (now >= this.nextSpawnTime) {
             // spawn 時に残り時間を渡して、その敵の接近速度を決める
             this.spawnEnemy(remainingSeconds, maxGameSeconds);
 
@@ -162,6 +167,10 @@ export class EnemyManager {
     freezeEnemies(durationMs) {
         const now = performance.now();
         const frozenUntil = now + durationMs;
+        const pauseFrom = Math.max(now, this.spawnPausedUntil || 0);
+        const pauseExtension = Math.max(0, frozenUntil - pauseFrom);
+        this.spawnPausedUntil = Math.max(this.spawnPausedUntil || 0, frozenUntil);
+        this.nextSpawnTime += pauseExtension;
         let affected = 0;
 
         for (const enemy of this.enemies) {

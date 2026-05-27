@@ -9,6 +9,8 @@ import { SwingTracer } from './SwingTracer.js';
 import { SlashProjectileManager } from './SlashProjectileManager.js';
 
 const MOBILE_MAX_PIXEL_RATIO = 1.0;
+const INTERNAL_RENDER_WIDTH = 640;
+const INTERNAL_RENDER_HEIGHT = 360;
 const DEFAULT_CAMERA_FOV_DEG = 60;
 const DEG2RAD = Math.PI / 180;
 const PERFORMANCE_PROFILES = {
@@ -185,8 +187,7 @@ export class Renderer {
     }
 
     getTargetPixelRatio() {
-        const profile = this.performanceProfile || PERFORMANCE_PROFILES.normal;
-        return Math.max(0.5, Math.min(window.devicePixelRatio || 1, this.maxPixelRatio || 1) * profile.pixelRatioScale);
+        return 1;
     }
 
     rebuildFreezeDomainGeometry(segments) {
@@ -979,6 +980,8 @@ export class Renderer {
     updateRendererSize() {
         const width = this.canvas.clientWidth || window.innerWidth;
         const height = this.canvas.clientHeight || window.innerHeight;
+        const renderWidth = INTERNAL_RENDER_WIDTH;
+        const renderHeight = INTERNAL_RENDER_HEIGHT;
         const videoWidth = this.videoElement && this.videoElement.videoWidth ? this.videoElement.videoWidth : 0;
         const videoHeight = this.videoElement && this.videoElement.videoHeight ? this.videoElement.videoHeight : 0;
         const pixelRatio = this.getTargetPixelRatio();
@@ -992,7 +995,9 @@ export class Renderer {
             this._lastVideoWidth !== videoWidth ||
             this._lastVideoHeight !== videoHeight
         ) {
-            this.renderer.setSize(width, height, false);
+            this.canvas.style.width = `${width}px`;
+            this.canvas.style.height = `${height}px`;
+            this.renderer.setSize(renderWidth, renderHeight, false);
             this.camera.aspect = width / height;
             this.camera.fov = this.calculateCoveredVideoFov(width, height, videoWidth, videoHeight);
             this.camera.updateProjectionMatrix();

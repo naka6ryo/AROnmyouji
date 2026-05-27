@@ -17,12 +17,9 @@ import { soundManager } from './SoundManager.js';
 const PERFORMANCE_CONFIG = {
     HUD_UPDATE_INTERVAL_MS: 100,
     INDICATOR_UPDATE_INTERVAL_MS: 66,
-    CAMERA_MAX_WIDTH: 960,
-    CAMERA_MAX_HEIGHT: 540,
-    CAMERA_MAX_FPS: 30,
-    MOBILE_CAMERA_MAX_WIDTH: 854,
-    MOBILE_CAMERA_MAX_HEIGHT: 480,
-    MOBILE_CAMERA_MAX_FPS: 24,
+    CAMERA_MAX_WIDTH: 640,
+    CAMERA_MAX_HEIGHT: 360,
+    CAMERA_MAX_FPS: 24,
     THERMAL_MODES: {
         normal: {
             targetFrameMs: 1000 / 50,
@@ -575,15 +572,12 @@ class AROnmyoujiGame {
      * BLE接続
      */
     async getCameraStream() {
-        const cameraWidth = this.isMobileDevice ? PERFORMANCE_CONFIG.MOBILE_CAMERA_MAX_WIDTH : PERFORMANCE_CONFIG.CAMERA_MAX_WIDTH;
-        const cameraHeight = this.isMobileDevice ? PERFORMANCE_CONFIG.MOBILE_CAMERA_MAX_HEIGHT : PERFORMANCE_CONFIG.CAMERA_MAX_HEIGHT;
-        const cameraFps = this.isMobileDevice ? PERFORMANCE_CONFIG.MOBILE_CAMERA_MAX_FPS : PERFORMANCE_CONFIG.CAMERA_MAX_FPS;
         const optimizedConstraints = {
             video: {
                 facingMode: { ideal: 'environment' },
-                width: { ideal: cameraWidth, max: cameraWidth },
-                height: { ideal: cameraHeight, max: cameraHeight },
-                frameRate: { ideal: cameraFps, max: cameraFps }
+                width: { ideal: PERFORMANCE_CONFIG.CAMERA_MAX_WIDTH, max: PERFORMANCE_CONFIG.CAMERA_MAX_WIDTH },
+                height: { ideal: PERFORMANCE_CONFIG.CAMERA_MAX_HEIGHT, max: PERFORMANCE_CONFIG.CAMERA_MAX_HEIGHT },
+                frameRate: { ideal: PERFORMANCE_CONFIG.CAMERA_MAX_FPS, max: PERFORMANCE_CONFIG.CAMERA_MAX_FPS }
             }
         };
 

@@ -647,20 +647,22 @@ export class UIManager {
             {
                 instruction: '\u30b0\u30ed\u30fc\u30d6\u3092\u632f\u308a\u629c\u304d\u3001\u65ac\u6483\u3092\u653e\u3066',
                 english: 'Swing the glove to release a slash',
-                sprite: 'assets/picture/Zangeki_spritesheet.png',
+                sprite: 'assets/picture/Zangeki_spritesheet.jpg',
                 frameCount: 22,
                 frameWidth: 585,
                 frameHeight: 877,
+                columns: 6,
                 frameMs: 80,
                 loops: 3
             },
             {
                 instruction: '\u30b0\u30ed\u30fc\u30d6\u3067\u5186\u3092\u63cf\u304d\u3001\u6c37\u7d50\u306e\u8853\u3092\u767a\u52d5\u305b\u3088',
                 english: 'Draw a circle with the glove to freeze enemies',
-                sprite: 'assets/picture/Hyouketu_spritesheet.png',
+                sprite: 'assets/picture/Hyouketu_spritesheet.jpg',
                 frameCount: 49,
                 frameWidth: 585,
                 frameHeight: 877,
+                columns: 7,
                 frameMs: 80,
                 loops: 3
             }
@@ -715,12 +717,13 @@ export class UIManager {
             const drawHeight = slide.frameHeight * scale;
             const dx = (canvas.width - drawWidth) / 2;
             const dy = (canvas.height - drawHeight) / 2;
-            const sx = frameIndex * slide.frameWidth;
+            const sx = (frameIndex % slide.columns) * slide.frameWidth;
+            const sy = Math.floor(frameIndex / slide.columns) * slide.frameHeight;
 
             ctx.drawImage(
                 image,
                 sx,
-                0,
+                sy,
                 slide.frameWidth,
                 slide.frameHeight,
                 dx,
@@ -779,6 +782,10 @@ export class UIManager {
                 this.tutorialRaf = requestAnimationFrame(tick);
             });
         };
+
+        slides.forEach(slide => {
+            loadSprite(slide).catch(() => { });
+        });
 
         if (this.tutorialTimer) {
             clearTimeout(this.tutorialTimer);

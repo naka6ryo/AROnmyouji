@@ -15,8 +15,10 @@ export class UIManager {
         this.circleFreezeOverlay = null;
         this.circleFreezeTimer = null;
         this.tutorialTimer = null;
+        this.tutorialRaf = null;
         this.tutorialActive = false;
         this.tutorialPreloads = [];
+        this.tutorialSpriteImages = new Map();
     }
 
     /**
@@ -76,8 +78,7 @@ export class UIManager {
             startOverlay: document.getElementById('startOverlay'),
             tutorialInstruction: document.getElementById('tutorialInstruction'),
             tutorialEnglish: document.getElementById('tutorialEnglish'),
-            tutorialImageSlash: document.getElementById('tutorialImageSlash'),
-            tutorialImageFreeze: document.getElementById('tutorialImageFreeze'),
+            tutorialCanvas: document.getElementById('tutorialCanvas'),
             // Top center HUD
             elapsedTimeDisplay: document.getElementById('elapsedTimeDisplay'),
             defeatedDisplay: document.getElementById('defeatedDisplay'),
@@ -619,6 +620,10 @@ export class UIManager {
             this.tutorialTimer = null;
             this.tutorialActive = false;
         }
+        if (!show && this.tutorialRaf) {
+            cancelAnimationFrame(this.tutorialRaf);
+            this.tutorialRaf = null;
+        }
         if (btn) {
             btn.style.display = show ? 'block' : 'none';
             btn.style.pointerEvents = show ? 'auto' : 'none';
@@ -640,68 +645,148 @@ export class UIManager {
 
         const slides = [
             {
-                instruction: 'グローブを振り抜き、斬撃を放て',
+                instruction: '\u30b0\u30ed\u30fc\u30d6\u3092\u632f\u308a\u629c\u304d\u3001\u65ac\u6483\u3092\u653e\u3066',
                 english: 'Swing the glove to release a slash',
-                image: 'assets/picture/Zangeki.gif',
-                alt: '斬撃チュートリアル',
-                durationMs: 3520
+                sprite: 'assets/picture/Zangeki_spritesheet.png',
+                frameCount: 22,
+                frameWidth: 585,
+                frameHeight: 877,
+                frameMs: 80,
+                loops: 3
             },
             {
-                instruction: 'グローブで円を描き、氷結の術を発動せよ',
+                instruction: '\u30b0\u30ed\u30fc\u30d6\u3067\u5186\u3092\u63cf\u304d\u3001\u6c37\u7d50\u306e\u8853\u3092\u767a\u52d5\u305b\u3088',
                 english: 'Draw a circle with the glove to freeze enemies',
-                image: 'assets/picture/Hyouketu.gif',
-                alt: '氷結チュートリアル',
-                durationMs: 5000
+                sprite: 'assets/picture/Hyouketu_spritesheet.png',
+                frameCount: 49,
+                frameWidth: 585,
+                frameHeight: 877,
+                frameMs: 80,
+                loops: 3
             }
         ];
 
-        const applySlide = (index) => {
+        const applySlideText = (index) => {
             const slide = slides[index];
             if (!slide) return;
-
             this.setTextIfChanged(this.elements.tutorialInstruction, slide.instruction);
             this.setTextIfChanged(this.elements.tutorialEnglish, slide.english);
-
-            const slashImage = this.elements.tutorialImageSlash;
-            const freezeImage = this.elements.tutorialImageFreeze;
-            if (slashImage) slashImage.style.opacity = index === 0 ? '1' : '0';
-            if (freezeImage) freezeImage.style.opacity = index === 1 ? '1' : '0';
-
         };
 
-        const restartSlideGif = (index) => {
-            const slide = slides[index];
-            if (!slide) return;
+        const clearTutorialCanvas = () => {
+            const canvas = this.elements.tutorialCanvas;
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            if (ctx) ctx.clearRect(0, 0, canvas.width || 1, canvas.height || 1);
+        };
 
-            const image = index === 0
-                ? this.elements.tutorialImageSlash
-                : this.elements.tutorialImageFreeze;
-            if (!image || !image.parentElement) return;
-
-            const nextImage = image.cloneNode(false);
-            nextImage.setAttribute('src', slide.image);
-            nextImage.setAttribute('alt', slide.alt);
-            image.parentElement.replaceChild(nextImage, image);
-
-            if (index === 0) {
-                this.elements.tutorialImageSlash = nextImage;
-            } else {
-                this.elements.tutorialImageFreeze = nextImage;
+        const loadSprite = (slide) => new Promise((resolve, reject) => {
+            const cached = this.tutorialSpriteImages.get(slide.sprite);
+            if (cached && cached.complete && cached.naturalWidth > 0) {
+                resolve(cached);
+                return;
             }
+
+            const image = new Image();
+            image.onload = () => {
+                this.tutorialSpriteImages.set(slide.sprite, image);
+                resolve(image);
+            };
+            image.onerror = reject;
+            image.src = slide.sprite;
+        });
+
+        const drawSpriteFrame = (ctx, canvas, image, slide, frameIndex) => {
+            const rect = canvas.getBoundingClientRect();
+            const dpr = window.devicePixelRatio || 1;
+            const nextWidth = Math.max(1, Math.round(rect.width * dpr));
+            const nextHeight = Math.max(1, Math.round(rect.height * dpr));
+            if (canvas.width !== nextWidth || canvas.height !== nextHeight) {
+                canvas.width = nextWidth;
+                canvas.height = nextHeight;
+            }
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'high';
+
+            const scale = Math.min(canvas.width / slide.frameWidth, canvas.height / slide.frameHeight);
+            const drawWidth = slide.frameWidth * scale;
+            const drawHeight = slide.frameHeight * scale;
+            const dx = (canvas.width - drawWidth) / 2;
+            const dy = (canvas.height - drawHeight) / 2;
+            const sx = frameIndex * slide.frameWidth;
+
+            ctx.drawImage(
+                image,
+                sx,
+                0,
+                slide.frameWidth,
+                slide.frameHeight,
+                dx,
+                dy,
+                drawWidth,
+                drawHeight
+            );
         };
 
-        this.tutorialPreloads = slides.map(slide => {
-            try {
-                const preload = new Image();
-                preload.src = slide.image;
-                return preload;
-            } catch (e) { }
-            return null;
-        });
+        const playTutorialSprite = async (slide) => {
+            const canvas = this.elements.tutorialCanvas;
+            if (!canvas) return { loops: 0, drawnFrames: 0 };
+
+            const ctx = canvas.getContext('2d');
+            if (!ctx) return { loops: 0, drawnFrames: 0 };
+
+            const image = await loadSprite(slide);
+            if (!this.tutorialActive) return { loops: 0, drawnFrames: 0 };
+
+            return new Promise((resolve) => {
+                let frameIndex = 0;
+                let loopCount = 0;
+                let lastFrameAt = 0;
+                let drawnFrames = 0;
+
+                const finish = () => {
+                    this.tutorialRaf = null;
+                    resolve({ loops: loopCount, drawnFrames });
+                };
+
+                const tick = (now) => {
+                    if (!this.tutorialActive) {
+                        finish();
+                        return;
+                    }
+
+                    if (!lastFrameAt || now - lastFrameAt >= slide.frameMs) {
+                        drawSpriteFrame(ctx, canvas, image, slide, frameIndex);
+                        drawnFrames += 1;
+                        lastFrameAt = now;
+
+                        frameIndex += 1;
+                        if (frameIndex >= slide.frameCount) {
+                            frameIndex = 0;
+                            loopCount += 1;
+                            if (loopCount >= slide.loops) {
+                                this.tutorialTimer = setTimeout(finish, slide.frameMs);
+                                return;
+                            }
+                        }
+                    }
+
+                    this.tutorialRaf = requestAnimationFrame(tick);
+                };
+
+                this.tutorialRaf = requestAnimationFrame(tick);
+            });
+        };
 
         if (this.tutorialTimer) {
             clearTimeout(this.tutorialTimer);
             this.tutorialTimer = null;
+        }
+        if (this.tutorialRaf) {
+            cancelAnimationFrame(this.tutorialRaf);
+            this.tutorialRaf = null;
         }
         this.tutorialActive = true;
 
@@ -714,34 +799,32 @@ export class UIManager {
         const transitionMidpointMs = 130;
         const transitionTailMs = transitionTotalMs - transitionMidpointMs;
 
-        applySlide(0);
-        setTimeout(() => {
-            if (this.tutorialActive) restartSlideGif(0);
-        }, transitionTailMs);
+        applySlideText(0);
+        clearTutorialCanvas();
 
-        this.tutorialTimer = setTimeout(() => {
+        this.tutorialTimer = setTimeout(async () => {
+            if (!this.tutorialActive) return;
+
+            await playTutorialSprite(slides[0]);
+            if (!this.tutorialActive) return;
+
             this.playScreenTransition(() => {
-                applySlide(1);
+                applySlideText(1);
+                clearTutorialCanvas();
 
-                this.tutorialTimer = setTimeout(() => {
+                this.tutorialTimer = setTimeout(async () => {
                     if (!this.tutorialActive) return;
-                    restartSlideGif(1);
 
-                    this.tutorialTimer = setTimeout(() => {
-                        this.tutorialTimer = null;
-                        this.tutorialActive = false;
-                        if (onComplete) onComplete();
-                    }, slides[1].durationMs);
+                    await playTutorialSprite(slides[1]);
+                    if (!this.tutorialActive) return;
+
+                    this.tutorialTimer = null;
+                    this.tutorialActive = false;
+                    if (onComplete) onComplete();
                 }, transitionTailMs);
             });
-        }, transitionTailMs + slides[0].durationMs);
+        }, transitionTailMs);
     }
-
-    /**
-     * カウントダウン表示を開始する。
-     * countFrom: number (例: 3)
-     * onComplete: 呼び出し後に実行されるコールバック
-     */
     showCountdown(countFrom, onComplete) {
         const overlay = this.elements.countdownOverlay;
         const valueEl = this.elements.countdownValue;

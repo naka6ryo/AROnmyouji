@@ -82,6 +82,8 @@ export class Renderer {
         this._projectionScratch = new THREE.Vector3();
         this._pivotPositionScratch = new THREE.Vector3();
         this._cameraPositionScratch = new THREE.Vector3();
+        this._calibrationCameraPositionScratch = new THREE.Vector3();
+        this._calibrationDirectionScratch = new THREE.Vector3();
         this._effectMoveScratch = new THREE.Vector3();
 
         // 端末姿勢（視点制御用）
@@ -97,12 +99,21 @@ export class Renderer {
         this.calibrationMode = false;
         this.calibrationStageGroup = null;
         this.calibrationFrontYaw = 0;
+        this.calibrationAnchor = {
+            cameraWorldPosition: new THREE.Vector3(),
+            cameraWorldQuaternion: new THREE.Quaternion(),
+            frontDirection: new THREE.Vector3(0, 0, -1),
+            rightDirection: new THREE.Vector3(1, 0, 0),
+            upDirection: new THREE.Vector3(0, 1, 0),
+            targetWorldPosition: new THREE.Vector3(0, 0, -6)
+        };
         this.calibrationTarget = {
             id: 'calibration-target',
             azim: 0,
             elev: 0,
             distance: 6,
-            radius: 0.75
+            radius: 0.75,
+            worldPosition: this.calibrationAnchor.targetWorldPosition
         };
         this.calibrationTargetBurstEffects = [];
         this.freezeDomainEffects = [];
@@ -508,9 +519,26 @@ export class Renderer {
     }
 
     setCalibrationFrontToCurrentCamera() {
-        const frontYaw = this.getCameraHorizontalYawDegrees();
+        this.cameraPivot.updateMatrixWorld(true);
+        this.camera.updateMatrixWorld(true);
+
+        const anchor = this.calibrationAnchor;
+        this.camera.getWorldPosition(anchor.cameraWorldPosition);
+        this.camera.getWorldQuaternion(anchor.cameraWorldQuaternion);
+
+        anchor.rightDirection.set(1, 0, 0).applyQuaternion(anchor.cameraWorldQuaternion).normalize();
+        anchor.upDirection.set(0, 1, 0).applyQuaternion(anchor.cameraWorldQuaternion).normalize();
+        anchor.frontDirection.set(0, 0, -1).applyQuaternion(anchor.cameraWorldQuaternion).normalize();
+        anchor.targetWorldPosition
+            .copy(anchor.cameraWorldPosition)
+            .addScaledVector(anchor.frontDirection, this.calibrationTarget.distance);
+
+        this.calibrationTarget.worldPosition = anchor.targetWorldPosition;
+
+        const frontYaw = Math.atan2(anchor.frontDirection.x, -anchor.frontDirection.z) / DEG2RAD;
         this.calibrationFrontYaw = frontYaw;
         this.calibrationTarget.azim = frontYaw;
+        this.calibrationTarget.elev = Math.asin(Math.max(-1, Math.min(1, anchor.frontDirection.y))) / DEG2RAD;
     }
 
     getCalibrationFrontYaw() {
@@ -553,27 +581,32 @@ export class Renderer {
         const target = this.calibrationStageGroup.getObjectByName('calibrationTarget');
         if (!target) return;
 
-        const azimRad = this.calibrationTarget.azim * DEG2RAD;
-        const elevRad = this.calibrationTarget.elev * DEG2RAD;
-        const r = this.calibrationTarget.distance;
+        this.calibrationAnchor.targetWorldPosition
+            .copy(this.calibrationAnchor.cameraWorldPosition)
+            .addScaledVector(this.calibrationAnchor.frontDirection, this.calibrationTarget.distance);
+        this.calibrationTarget.worldPosition = this.calibrationAnchor.targetWorldPosition;
 
-        target.position.set(
-            r * Math.cos(elevRad) * Math.sin(azimRad),
-            r * Math.sin(elevRad),
-            -r * Math.cos(elevRad) * Math.cos(azimRad)
-        );
+        this.calibrationStageGroup.position.copy(this.calibrationAnchor.cameraWorldPosition);
+        this.calibrationStageGroup.quaternion.copy(this.calibrationAnchor.cameraWorldQuaternion);
+        target.position.set(0, 0, -this.calibrationTarget.distance);
+        target.quaternion.identity();
+        target.updateMatrixWorld(true);
     }
 
     getCalibrationTargetGuide() {
         const targetWorld = this.getCalibrationTargetWorldPosition();
         const basis = this.getCameraBasis();
-        const eLen = targetWorld.length();
+        this.camera.getWorldPosition(this._calibrationCameraPositionScratch);
+        const direction = this._calibrationDirectionScratch
+            .copy(targetWorld)
+            .sub(this._calibrationCameraPositionScratch);
+        const eLen = direction.length();
         if (eLen < 0.0001) return null;
 
         const eVec = {
-            x: targetWorld.x / eLen,
-            y: targetWorld.y / eLen,
-            z: targetWorld.z / eLen
+            x: direction.x / eLen,
+            y: direction.y / eLen,
+            z: direction.z / eLen
         };
 
         const vx = eVec.x * basis.right.x + eVec.y * basis.right.y + eVec.z * basis.right.z;
@@ -614,16 +647,20 @@ export class Renderer {
 
     getCalibrationTargetViewportPoint() {
         const targetWorld = this.getCalibrationTargetWorldPosition(this._cameraPositionScratch);
-        const ndc = this.projectToNdc(targetWorld);
         const basis = this.getCameraBasis();
-        const eLen = targetWorld.length();
+        this.camera.getWorldPosition(this._calibrationCameraPositionScratch);
+        const direction = this._calibrationDirectionScratch
+            .copy(targetWorld)
+            .sub(this._calibrationCameraPositionScratch);
+        const eLen = direction.length();
         if (eLen < 0.0001) return null;
         const eVec = {
-            x: targetWorld.x / eLen,
-            y: targetWorld.y / eLen,
-            z: targetWorld.z / eLen
+            x: direction.x / eLen,
+            y: direction.y / eLen,
+            z: direction.z / eLen
         };
         const vz = eVec.x * basis.forward.x + eVec.y * basis.forward.y + eVec.z * basis.forward.z;
+        const ndc = this.projectToNdc(targetWorld);
 
         return {
             x: (ndc.x + 1) * 0.5 * window.innerWidth,
@@ -636,6 +673,10 @@ export class Renderer {
     }
 
     getCalibrationTargetWorldPosition(target = this._projectionScratch) {
+        if (this.calibrationTarget.worldPosition) {
+            return target.copy(this.calibrationTarget.worldPosition);
+        }
+
         const azimRad = this.calibrationTarget.azim * DEG2RAD;
         const elevRad = this.calibrationTarget.elev * DEG2RAD;
         const r = this.calibrationTarget.distance;
@@ -664,7 +705,8 @@ export class Renderer {
         const torusSegments = this.performanceMode === 'hot' ? 36 : (this.performanceMode === 'warm' ? 64 : 96);
         const ring = new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.018, 8, torusSegments), ringMaterial);
         ring.position.copy(targetWorld);
-        ring.lookAt(this.camera.position);
+        this.camera.getWorldPosition(this._calibrationCameraPositionScratch);
+        ring.lookAt(this._calibrationCameraPositionScratch);
         this.scene.add(ring);
         this.calibrationTargetBurstEffects.push({
             type: 'shockwave',
@@ -778,6 +820,8 @@ export class Renderer {
     createCalibrationStage() {
         const group = new THREE.Group();
         group.name = 'calibrationStage';
+        group.position.copy(this.calibrationAnchor.cameraWorldPosition);
+        group.quaternion.copy(this.calibrationAnchor.cameraWorldQuaternion);
 
         const floorGrid = new THREE.GridHelper(10, 20, 0x8f969e, 0xc2c9d1);
         floorGrid.position.set(0, -1.15, -3.2);
@@ -830,14 +874,7 @@ export class Renderer {
         glow.position.z = -0.004;
         target.add(glow);
 
-        const azimRad = this.calibrationTarget.azim * DEG2RAD;
-        const elevRad = this.calibrationTarget.elev * DEG2RAD;
-        const r = this.calibrationTarget.distance;
-        target.position.set(
-            r * Math.cos(elevRad) * Math.sin(azimRad),
-            r * Math.sin(elevRad),
-            -r * Math.cos(elevRad) * Math.cos(azimRad)
-        );
+        target.position.set(0, 0, -this.calibrationTarget.distance);
         group.add(target);
         return group;
     }

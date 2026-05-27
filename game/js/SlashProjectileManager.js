@@ -183,18 +183,23 @@ export class SlashProjectileManager {
      * 衝突判定
      */
     checkCollision(proj, radiusScale, enemy) {
-        // cameraPivotのワールド座標を基準にする
-        const pivotPos = this.getPivotWorldPosition();
+        const enemyWorld = this._enemyWorld;
+        if (enemy.worldPosition) {
+            enemyWorld.set(enemy.worldPosition.x, enemy.worldPosition.y, enemy.worldPosition.z);
+        } else {
+            // cameraPivotのワールド座標を基準にする
+            const pivotPos = this.getPivotWorldPosition();
 
-        // 敵のワールド座標
-        const azimRad = enemy.azim * Math.PI / 180;
-        const elevRad = enemy.elev * Math.PI / 180;
-        const r = enemy.distance;
-        const enemyWorld = this._enemyWorld.set(
-            r * Math.cos(elevRad) * Math.sin(azimRad),
-            r * Math.sin(elevRad),
-            -r * Math.cos(elevRad) * Math.cos(azimRad)
-        ).add(pivotPos);
+            const azimRad = enemy.azim * Math.PI / 180;
+            // 敵のワールド座標
+            const elevRad = enemy.elev * Math.PI / 180;
+            const r = enemy.distance;
+            enemyWorld.set(
+                r * Math.cos(elevRad) * Math.sin(azimRad),
+                r * Math.sin(elevRad),
+                -r * Math.cos(elevRad) * Math.cos(azimRad)
+            ).add(pivotPos);
+        }
 
         // 斬撃円弧の始点・終点（pivot基準）
         // mesh.position includes the camera offset and movement. 

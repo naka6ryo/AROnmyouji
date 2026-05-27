@@ -2395,6 +2395,34 @@
 
         // Mark not loaded initially
         window.__sfxLoaded = false;
+        window.__tutorialSpritesLoaded = false;
+        window.__tutorialSpriteImages = {};
+
+        const preloadTutorialSprite = (src) => new Promise((resolve, reject) => {
+            const image = new Image();
+            image.onload = async () => {
+                try {
+                    if (typeof image.decode === 'function') await image.decode();
+                } catch (e) { }
+                window.__tutorialSpriteImages[src] = image;
+                resolve(image);
+            };
+            image.onerror = reject;
+            image.src = src;
+        });
+
+        (async () => {
+            try {
+                await Promise.all([
+                    preloadTutorialSprite('assets/picture/Zangeki_spritesheet.jpg'),
+                    preloadTutorialSprite('assets/picture/Hyouketu_spritesheet.jpg')
+                ]);
+                window.__tutorialSpritesLoaded = true;
+            } catch (e) {
+                window.__tutorialSpritesLoaded = false;
+            }
+        })();
+
         // Start loading common SFX assets used by UI and gameplay.
         (async () => {
             try {
@@ -2492,12 +2520,13 @@
                     if (progressBar) progressBar.style.width = `100%`;
                     if (progressText) progressText.innerText = `100%`;
 
-                    // Wait briefly for SFX preload, but never block the title flow forever.
+                    // Wait briefly for SFX/tutorial preload, but never block the title flow forever.
                     const revealStartedAt = performance.now();
-                    const maxRevealWaitMs = 3000;
+                    const maxRevealWaitMs = 10000;
                     const revealStartWhenReady = () => {
                         try {
-                            if (window.__sfxLoaded || performance.now() - revealStartedAt >= maxRevealWaitMs) {
+                            const preloadReady = window.__sfxLoaded && window.__tutorialSpritesLoaded;
+                            if (preloadReady || performance.now() - revealStartedAt >= maxRevealWaitMs) {
                                 if (startButton) {
                                     startButton.classList.remove('opacity-0');
                                     startButton.classList.remove('pointer-events-none');

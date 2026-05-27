@@ -659,10 +659,10 @@ export class UIManager {
                 instruction: '\u30b0\u30ed\u30fc\u30d6\u3067\u5186\u3092\u63cf\u304d\u3001\u6c37\u7d50\u306e\u8853\u3092\u767a\u52d5\u305b\u3088',
                 english: 'Draw a circle with the glove to freeze enemies',
                 sprite: 'assets/picture/Hyouketu_spritesheet.jpg',
-                frameCount: 49,
+                frameCount: 33,
                 frameWidth: 585,
                 frameHeight: 877,
-                columns: 7,
+                columns: 6,
                 frameMs: 80,
                 loops: 3
             }
@@ -686,6 +686,13 @@ export class UIManager {
             const cached = this.tutorialSpriteImages.get(slide.sprite);
             if (cached && cached.complete && cached.naturalWidth > 0) {
                 resolve(cached);
+                return;
+            }
+
+            const preloaded = window.__tutorialSpriteImages && window.__tutorialSpriteImages[slide.sprite];
+            if (preloaded && preloaded.complete && preloaded.naturalWidth > 0) {
+                this.tutorialSpriteImages.set(slide.sprite, preloaded);
+                resolve(preloaded);
                 return;
             }
 

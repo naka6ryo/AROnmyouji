@@ -102,6 +102,7 @@ export class Renderer {
         this.calibrationAnchor = {
             cameraWorldPosition: new THREE.Vector3(),
             cameraWorldQuaternion: new THREE.Quaternion(),
+            horizontalWorldQuaternion: new THREE.Quaternion(),
             frontDirection: new THREE.Vector3(0, 0, -1),
             rightDirection: new THREE.Vector3(1, 0, 0),
             upDirection: new THREE.Vector3(0, 1, 0),
@@ -526,9 +527,22 @@ export class Renderer {
         this.camera.getWorldPosition(anchor.cameraWorldPosition);
         this.camera.getWorldQuaternion(anchor.cameraWorldQuaternion);
 
-        anchor.rightDirection.set(1, 0, 0).applyQuaternion(anchor.cameraWorldQuaternion).normalize();
-        anchor.upDirection.set(0, 1, 0).applyQuaternion(anchor.cameraWorldQuaternion).normalize();
         anchor.frontDirection.set(0, 0, -1).applyQuaternion(anchor.cameraWorldQuaternion).normalize();
+        anchor.frontDirection.y = 0;
+        if (anchor.frontDirection.lengthSq() < 0.0001) {
+            anchor.frontDirection.set(0, 0, -1);
+        } else {
+            anchor.frontDirection.normalize();
+        }
+        anchor.upDirection.set(0, 1, 0);
+        anchor.rightDirection.crossVectors(anchor.frontDirection, anchor.upDirection).normalize();
+        anchor.horizontalWorldQuaternion.setFromRotationMatrix(
+            new THREE.Matrix4().makeBasis(
+                anchor.rightDirection,
+                anchor.upDirection,
+                this._calibrationDirectionScratch.copy(anchor.frontDirection).negate()
+            )
+        );
         anchor.targetWorldPosition
             .copy(anchor.cameraWorldPosition)
             .addScaledVector(anchor.frontDirection, this.calibrationTarget.distance);
@@ -587,7 +601,7 @@ export class Renderer {
         this.calibrationTarget.worldPosition = this.calibrationAnchor.targetWorldPosition;
 
         this.calibrationStageGroup.position.copy(this.calibrationAnchor.cameraWorldPosition);
-        this.calibrationStageGroup.quaternion.copy(this.calibrationAnchor.cameraWorldQuaternion);
+        this.calibrationStageGroup.quaternion.copy(this.calibrationAnchor.horizontalWorldQuaternion);
         target.position.set(0, 0, -this.calibrationTarget.distance);
         target.quaternion.identity();
         target.updateMatrixWorld(true);
@@ -821,7 +835,7 @@ export class Renderer {
         const group = new THREE.Group();
         group.name = 'calibrationStage';
         group.position.copy(this.calibrationAnchor.cameraWorldPosition);
-        group.quaternion.copy(this.calibrationAnchor.cameraWorldQuaternion);
+        group.quaternion.copy(this.calibrationAnchor.horizontalWorldQuaternion);
 
         const floorGrid = new THREE.GridHelper(10, 20, 0x8f969e, 0xc2c9d1);
         floorGrid.position.set(0, -1.15, -3.2);

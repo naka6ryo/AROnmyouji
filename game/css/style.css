@@ -21,6 +21,11 @@ body {
     background: #000;
 }
 
+body.calibration-active,
+body:has(#calibrateScreen.active) {
+    background: #e8edf2;
+}
+
 /* カメラビデオ背景 */
 #cameraVideo {
     position: fixed;
@@ -44,6 +49,11 @@ body {
 }
 
 #gameCanvas.calibration-canvas {
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100dvw !important;
+    height: 100dvh !important;
+    min-height: 100vh;
     z-index: 55;
     background: #e8edf2;
     pointer-events: none;
@@ -52,6 +62,18 @@ body {
 #calibrateScreen.active {
     z-index: 60 !important;
     background: transparent !important;
+}
+
+body.calibration-active #crt-main-display,
+body.calibration-active #crt-main-display > .absolute.inset-0.z-0.bg-black,
+#calibrateScreen.active ~ #crt-main-display,
+#calibrateScreen.active ~ #crt-main-display > .absolute.inset-0.z-0.bg-black {
+    background: #e8edf2 !important;
+}
+
+body.calibration-active #global-tv-effects .global-vignette,
+#calibrateScreen.active ~ #global-tv-effects .global-vignette {
+    display: none !important;
 }
 
 #calibrateScreen.active #calibrationCard {

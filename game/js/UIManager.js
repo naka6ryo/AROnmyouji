@@ -19,6 +19,9 @@ export class UIManager {
         this.tutorialActive = false;
         this.tutorialPreloads = [];
         this.tutorialSpriteImages = new Map();
+        this.titleHomeBackground = 'assets/picture/Title02.jpg';
+        this.titleHomeFailureBackground = 'assets/picture/Title02_fail.jpg';
+        this.useFailureTitleBackground = false;
     }
 
     /**
@@ -723,7 +726,7 @@ export class UIManager {
             const drawWidth = slide.frameWidth * scale;
             const drawHeight = slide.frameHeight * scale;
             const dx = (canvas.width - drawWidth) / 2;
-            const dy = (canvas.height - drawHeight) / 2;
+            const dy = 0;
             const sx = (frameIndex % slide.columns) * slide.frameWidth;
             const sy = Math.floor(frameIndex / slide.columns) * slide.frameHeight;
 
@@ -1182,6 +1185,7 @@ export class UIManager {
         if (this.elements.gameplayScreen) this.elements.gameplayScreen.classList.add('hidden');
 
         const isSuccess = /クリア|Clear|任務完了/.test(title);
+        this.useFailureTitleBackground = !isSuccess;
 
         // Play fluorescent crackle when showing result screens
         try {
@@ -1315,7 +1319,10 @@ export class UIManager {
             }
             // Remove utility classes if present to avoid tailwind width/fit overrides
             try { bgImg.classList.remove('w-full', 'h-full', 'object-cover'); } catch (e) { }
-            bgImg.src = 'assets/picture/Title02.jpg';
+            const titleBackgroundSrc = this.useFailureTitleBackground
+                ? this.titleHomeFailureBackground
+                : this.titleHomeBackground;
+            bgImg.src = titleBackgroundSrc;
             // Make UI title image fixed to viewport so it's unaffected by parent padding
             // Scale to match viewport height while preserving aspect ratio
             bgImg.style.position = 'fixed';
@@ -1345,7 +1352,7 @@ export class UIManager {
                         crtDisplay.insertBefore(crtImg, crtDisplay.firstChild);
                     }
                     try { crtImg.classList.remove('w-full', 'h-full', 'object-cover'); } catch (e) { }
-                    crtImg.src = 'assets/picture/Title02.jpg';
+                    crtImg.src = titleBackgroundSrc;
                     // Ensure CRT-side image also occupies full viewport (fixed) so no parent padding shows
                     // Scale CRT-side image to match viewport height, preserve aspect ratio
                     crtImg.style.position = 'fixed';

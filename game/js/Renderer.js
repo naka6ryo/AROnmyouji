@@ -495,6 +495,7 @@ export class Renderer {
         const target = this.calibrationStageGroup.getObjectByName('calibrationTarget');
         if (target) target.visible = true;
         this.renderer.setClearColor(0xe8edf2, 1);
+        document.body.classList.add('calibration-active');
 
         if (this.canvas) {
             this.canvas.classList.remove('hidden');
@@ -576,6 +577,7 @@ export class Renderer {
         this.clearCalibrationTargetBurstEffects();
         this.slashProjectileManager.reset();
         this.renderer.setClearColor(0x000000, 0);
+        document.body.classList.remove('calibration-active');
 
         if (this.canvas) {
             this.canvas.classList.remove('calibration-canvas');

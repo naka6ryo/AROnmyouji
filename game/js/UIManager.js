@@ -1079,6 +1079,88 @@ export class UIManager {
         }, 900);
     }
 
+    /**
+     * Show "状況完了" using the countdown overlay style but without audio.
+     */
+    showSituationComplete(onComplete) {
+        const overlay = this.elements.countdownOverlay;
+        const valueEl = this.elements.countdownValue;
+        if (!overlay || !valueEl) {
+            if (onComplete) onComplete();
+            return;
+        }
+
+        if (this._countdownTimer) {
+            clearTimeout(this._countdownTimer);
+            this._countdownTimer = null;
+        }
+
+        overlay.classList.remove('hidden');
+        overlay.style.display = 'flex';
+        overlay.style.visibility = 'visible';
+        overlay.style.pointerEvents = 'none';
+
+        valueEl.textContent = '状況完了';
+        valueEl.style.fontFamily = "'Shippori Mincho', serif";
+        valueEl.style.fontSize = '4rem';
+        valueEl.style.color = '';
+        valueEl.classList.add('hologram-effect');
+        valueEl.classList.remove('hologram-tick');
+        void valueEl.offsetWidth;
+        valueEl.classList.add('hologram-tick');
+
+        // 状況完了SE
+        try {
+            const audioKey = 'situation_complete';
+            const assetPath = 'assets/sfx/決定ボタンを押す49.mp3';
+            const fallbackPath = 'C:/Users/naka6/Downloads/決定ボタンを押す49.mp3';
+            const mgr = (typeof window !== 'undefined' && window.soundManager)
+                ? window.soundManager
+                : (typeof soundManager !== 'undefined' ? soundManager : null);
+
+            if (mgr && typeof mgr.play === 'function') {
+                try {
+                    mgr.play(audioKey, { volume: 0.9 });
+                } catch (playErr) {
+                    if (typeof mgr.load === 'function') {
+                        mgr.load({ [audioKey]: assetPath })
+                            .then(() => {
+                                try { mgr.play(audioKey, { volume: 0.9 }); } catch (e) { }
+                            })
+                            .catch(() => {
+                                const a = new Audio(fallbackPath);
+                                a.preload = 'auto';
+                                a.volume = 0.9;
+                                a.play().catch(() => { });
+                            });
+                    }
+                }
+            } else {
+                const a = new Audio(assetPath);
+                a.preload = 'auto';
+                a.volume = 0.9;
+                a.play().catch(() => {
+                    const b = new Audio(fallbackPath);
+                    b.preload = 'auto';
+                    b.volume = 0.9;
+                    b.play().catch(() => { });
+                });
+            }
+        } catch (e) { }
+
+        this._countdownTimer = setTimeout(() => {
+            overlay.style.display = 'none';
+            overlay.classList.add('hidden');
+            overlay.style.pointerEvents = 'none';
+            valueEl.textContent = '';
+            valueEl.style.fontSize = '';
+            valueEl.classList.remove('hologram-tick');
+            valueEl.classList.remove('hologram-effect');
+            this._countdownTimer = null;
+            if (onComplete) onComplete();
+        }, 1000);
+    }
+
 
     createEnemyIndicator(container) {
         const wrapper = document.createElement('div');

@@ -902,13 +902,27 @@ class AROnmyoujiGame {
 
     onGameClear(data) {
         this.isRunning = false;
-        // 1. TV Turn Off
-        this.uiManager.playTvTurnOffAnimation(() => {
-            // 2. Screen Transition (Glitch/Noise)
-            this.uiManager.playScreenTransition(() => {
-                // 3. Show Result
-                this.uiManager.showResult('クリア！', data.killCount, data.time / 1000);
-                this.appState.endGame();
+
+        // 0. 一旦敵を全て消す（ビジュアルと内部リストの両方）
+        try {
+            const enemies = (this.gameWorld && typeof this.gameWorld.getEnemies === 'function') ? this.gameWorld.getEnemies().slice() : [];
+            for (const e of enemies) {
+                try { this.renderer.removeEnemy(e.id); } catch (e2) { }
+            }
+            try { if (this.gameWorld && this.gameWorld.enemyManager) this.gameWorld.enemyManager.enemies = []; } catch (e3) { }
+            try { this.uiManager.clearEnemyIndicators(); } catch (e4) { }
+        } catch (e) { }
+
+        // 1. 「状況完了」をカウントダウン同様の演出で表示（音無し）
+        this.uiManager.showSituationComplete(() => {
+            // 2. TV Turn Off
+            this.uiManager.playTvTurnOffAnimation(() => {
+                // 3. Screen Transition (Glitch/Noise)
+                this.uiManager.playScreenTransition(() => {
+                    // 4. Show Result
+                    this.uiManager.showResult('クリア！', data.killCount, data.time / 1000);
+                    this.appState.endGame();
+                });
             });
         });
     }

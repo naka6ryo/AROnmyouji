@@ -205,22 +205,24 @@ export class UIManager {
         if (element && handler) {
             element.addEventListener('click', (e) => {
                 try {
-                    // ユーザージェスチャに紐づけてAudioContextを解除し、クリック音を鳴らす
-                    if (typeof soundManager !== 'undefined' && soundManager) {
-                        try { soundManager.unlock(); soundManager.initAudioContext(); } catch (err) { }
-                        try {
-                            soundManager.load({
-                                fluorescent_crackle: 'assets/sfx/Fluorescent_Light-Noise01-1(Crackle).mp3'
-                            }).catch(() => { });
-                        } catch (err) { }
-                        try { soundManager.play('button', { volume: 0.6 }); } catch (err) { }
-                    }
+                    this.playButtonClickSound();
                 } catch (err) {
                     // 無視
                 }
                 handler(e);
             });
         }
+    }
+
+    playButtonClickSound() {
+        if (typeof soundManager === 'undefined' || !soundManager) return;
+        try { soundManager.unlock(); soundManager.initAudioContext(); } catch (err) { }
+        try {
+            soundManager.load({
+                fluorescent_crackle: 'assets/sfx/Fluorescent_Light-Noise01-1(Crackle).mp3'
+            }).catch(() => { });
+        } catch (err) { }
+        try { soundManager.play('button', { volume: 0.6 }); } catch (err) { }
     }
 
     setTextIfChanged(element, value) {
@@ -815,12 +817,17 @@ export class UIManager {
                 let lastFrameAt = 0;
                 let drawnFrames = 0;
                 const effectiveFrameMs = Math.max(slide.frameMs, TUTORIAL_MIN_FRAME_MS);
+                let settled = false;
+                let finishCurrentPlayback = null;
 
                 const finish = () => {
+                    if (settled) return;
+                    settled = true;
                     this.tutorialRaf = null;
                     this.tutorialTimer = null;
                     resolve({ loops: loopCount, drawnFrames });
                 };
+                finishCurrentPlayback = finish;
 
                 const tick = (now) => {
                     if (!this.tutorialActive || advanceRequested) {
@@ -847,6 +854,7 @@ export class UIManager {
                     this.tutorialRaf = requestAnimationFrame(tick);
                 };
 
+                this._finishTutorialPlayback = finishCurrentPlayback;
                 this.tutorialRaf = requestAnimationFrame(tick);
             });
         };
@@ -877,12 +885,18 @@ export class UIManager {
                 cancelAnimationFrame(this.tutorialRaf);
                 this.tutorialRaf = null;
             }
+            if (typeof this._finishTutorialPlayback === 'function') {
+                this._finishTutorialPlayback();
+                this._finishTutorialPlayback = null;
+            }
         };
 
         const advanceHandler = (event) => {
             if (!this.tutorialActive) return;
             if (event && event.pointerType === 'mouse' && event.button !== 0) return;
             if (typeof event?.preventDefault === 'function') event.preventDefault();
+            if (typeof event?.stopPropagation === 'function') event.stopPropagation();
+            this.playButtonClickSound();
             requestTutorialAdvance();
         };
         this.tutorialAdvanceHandler = advanceHandler;
@@ -916,6 +930,7 @@ export class UIManager {
 
             this.tutorialTimer = null;
             this.tutorialActive = false;
+            this._finishTutorialPlayback = null;
             this.clearTutorialAdvanceHandler();
             if (onComplete) onComplete();
         };

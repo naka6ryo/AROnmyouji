@@ -38,6 +38,7 @@ export class SlashProjectileManager {
     }
 
     setPerformanceMode(mode) {
+        if (mode === 'hot') mode = 'warm';
         this.performanceMode = PERFORMANCE_PROFILES[mode] ? mode : 'normal';
         this.performanceProfile = PERFORMANCE_PROFILES[this.performanceMode];
     }

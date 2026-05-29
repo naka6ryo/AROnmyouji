@@ -41,6 +41,7 @@ export class EnemyManager {
     }
 
     setPerformanceMode(mode) {
+        if (mode === 'hot') mode = 'warm';
         this.performanceMode = this.maxActiveEnemiesByMode[mode] ? mode : 'normal';
     }
 

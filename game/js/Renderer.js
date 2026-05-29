@@ -177,6 +177,7 @@ export class Renderer {
     }
 
     setPerformanceMode(mode) {
+        if (mode === 'hot') mode = 'warm';
         const profile = this.performanceProfiles[mode] || this.performanceProfiles.normal;
         if (this.performanceMode === mode) return;
 

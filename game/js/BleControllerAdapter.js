@@ -122,6 +122,7 @@ export class BleControllerAdapter {
             warm: 1000 / 50,
             hot: 1000 / 45
         };
+        if (mode === 'hot') mode = 'warm';
         this.setSensorMinInterval(intervals[mode] || intervals.normal);
     }
     

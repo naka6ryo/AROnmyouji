@@ -141,6 +141,7 @@ export class Hitodama {
     }
 
     setPerformanceMode(mode) {
+        if (mode === 'hot') mode = 'warm';
         this.performanceMode = this.performanceProfiles[mode] ? mode : 'normal';
         this.performanceProfile = this.performanceProfiles[this.performanceMode];
         this._freezeVisualDirty = true;

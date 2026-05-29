@@ -434,8 +434,7 @@ class AROnmyoujiGame {
                     button: 'assets/sfx/Button.mp3',
                     fluorescent_crackle: 'assets/sfx/Fluorescent_Light-Noise01-1(Crackle).mp3',
                     tv_turn_off: 'assets/sfx/TV-Turn_Off01-2(Reverb).mp3',
-                    countdown: 'assets/sfx/Countdown02-2.mp3',
-                    situation_complete: 'assets/sfx/決定ボタンを押す49.mp3'
+                    countdown: 'assets/sfx/Countdown02-2.mp3'
                 }).catch(() => {});
             }
         } catch (e) {
@@ -482,8 +481,7 @@ class AROnmyoujiGame {
                 button: 'assets/sfx/Button.mp3',
                     fluorescent_crackle: 'assets/sfx/Fluorescent_Light-Noise01-1(Crackle).mp3',
                     tv_turn_off: 'assets/sfx/TV-Turn_Off01-2(Reverb).mp3',
-                    countdown: 'assets/sfx/Countdown02-2.mp3',
-                    situation_complete: 'assets/sfx/決定ボタンを押す49.mp3'
+                    countdown: 'assets/sfx/Countdown02-2.mp3'
             }).catch(() => {});
         } catch (e) {
             
@@ -634,8 +632,7 @@ class AROnmyoujiGame {
                     circle_freeze: 'assets/sfx/聖魔法.mp3',
                     button: 'assets/sfx/Button.mp3',
                     fluorescent_crackle: 'assets/sfx/Fluorescent_Light-Noise01-1(Crackle).mp3',
-                    tv_turn_off: 'assets/sfx/TV-Turn_Off02-3(Reverb).mp3',
-                    situation_complete: 'assets/sfx/決定ボタンを押す49.mp3'
+                    tv_turn_off: 'assets/sfx/TV-Turn_Off01-2(Reverb).mp3'
                 }).catch(() => {});
             }
         } catch (e) {
@@ -908,18 +905,17 @@ class AROnmyoujiGame {
 
         // 0. 一旦敵を全て消す（ビジュアルと内部リストの両方）
         try {
-            const enemies = (this.gameWorld && typeof this.gameWorld.getEnemies === 'function') ? this.gameWorld.getEnemies().slice() : [];
-            for (const e of enemies) {
-                try { this.renderer.removeEnemy(e.id); } catch (e2) { }
+            if (this.renderer && typeof this.renderer.reset === 'function') {
+                this.renderer.reset();
             }
             try { if (this.gameWorld && this.gameWorld.enemyManager) this.gameWorld.enemyManager.enemies = []; } catch (e3) { }
             try { this.uiManager.clearEnemyIndicators(); } catch (e4) { }
         } catch (e) { }
 
-        // 1. 敵消去後に一瞬待ってから「状況完了」を表示
+        // 1. 敵消去後に少し待ってから「状況完了」を表示する
         setTimeout(() => {
             this.uiManager.showSituationComplete(() => {
-                // 2. 「状況完了」が消えてから少し待つ
+                // 2. 表示が消えた後、少し間を置いてから遷移する
                 setTimeout(() => {
                     // 3. TV Turn Off
                     this.uiManager.playTvTurnOffAnimation(() => {
@@ -930,9 +926,9 @@ class AROnmyoujiGame {
                             this.appState.endGame();
                         });
                     });
-                }, 250);
+                }, 220);
             });
-        }, 250);
+        }, 220);
     }
 
     async onHapticEvent(event) {

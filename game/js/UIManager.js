@@ -1359,6 +1359,40 @@ export class UIManager {
                 this.elements.failTime.textContent = `${hh}:${mm}:${ss}`;
             }
         }
+
+        if (isSuccess) {
+            try {
+                const audioKey = 'button';
+                const assetPath = 'assets/sfx/Button.mp3';
+                const mgr = (typeof window !== 'undefined' && window.soundManager)
+                    ? window.soundManager
+                    : (typeof soundManager !== 'undefined' ? soundManager : null);
+
+                if (mgr && typeof mgr.play === 'function') {
+                    try {
+                        mgr.play(audioKey, { volume: 1.0 });
+                    } catch (playErr) {
+                        if (typeof mgr.load === 'function') {
+                            mgr.load({ [audioKey]: assetPath })
+                                .then(() => {
+                                    try { mgr.play(audioKey, { volume: 1.0 }); } catch (e) { }
+                                })
+                                .catch(() => {
+                                    const a = new Audio(assetPath);
+                                    a.preload = 'auto';
+                                    a.volume = 1.0;
+                                    a.play().catch(() => { });
+                                });
+                        }
+                    }
+                } else {
+                    const a = new Audio(assetPath);
+                    a.preload = 'auto';
+                    a.volume = 1.0;
+                    a.play().catch(() => { });
+                }
+            } catch (e) { }
+        }
     }
 
     // --- Title Screen 2 ---

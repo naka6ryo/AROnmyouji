@@ -14,6 +14,9 @@ import { Renderer } from './Renderer.js';
 import { UIManager } from './UIManager.js';
 import { soundManager } from './SoundManager.js';
 
+const MAX_RENDER_FPS = 30;
+const MAX_RENDER_FRAME_MS = 1000 / MAX_RENDER_FPS;
+
 const PERFORMANCE_CONFIG = {
     HUD_UPDATE_INTERVAL_MS: 100,
     INDICATOR_UPDATE_INTERVAL_MS: 66,
@@ -22,20 +25,20 @@ const PERFORMANCE_CONFIG = {
     CAMERA_MAX_FPS: 24,
     THERMAL_MODES: {
         normal: {
-            targetFrameMs: 1000 / 50,
-            updateFrameMs: 1000 / 50,
+            targetFrameMs: MAX_RENDER_FRAME_MS,
+            updateFrameMs: MAX_RENDER_FRAME_MS,
             hudIntervalMs: 100,
             indicatorIntervalMs: 90
         },
         warm: {
-            targetFrameMs: 1000 / 45,
-            updateFrameMs: 1000 / 45,
+            targetFrameMs: MAX_RENDER_FRAME_MS,
+            updateFrameMs: MAX_RENDER_FRAME_MS,
             hudIntervalMs: 140,
             indicatorIntervalMs: 120
         },
         hot: {
-            targetFrameMs: 1000 / 36,
-            updateFrameMs: 1000 / 36,
+            targetFrameMs: MAX_RENDER_FRAME_MS,
+            updateFrameMs: MAX_RENDER_FRAME_MS,
             hudIntervalMs: 180,
             indicatorIntervalMs: 160
         }
@@ -254,6 +257,11 @@ class AROnmyoujiGame {
             }
 
             const now = performance.now();
+            if (this.lastCalibrationRenderTime && now - this.lastCalibrationRenderTime < MAX_RENDER_FRAME_MS) {
+                this.calibrationRenderFrame = requestAnimationFrame(tick);
+                return;
+            }
+
             const deltaTime = Math.min(now - this.lastCalibrationRenderTime, 100);
             this.lastCalibrationRenderTime = now;
             this.renderer.render(deltaTime, []);
@@ -931,7 +939,7 @@ class AROnmyoujiGame {
                     });
                 }, 220);
             });
-        }, 220);
+        }, 500);
     }
 
     async onHapticEvent(event) {

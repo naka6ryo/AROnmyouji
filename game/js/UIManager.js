@@ -5,6 +5,9 @@
 
 import { soundManager } from './SoundManager.js';
 
+const TUTORIAL_MAX_FPS = 30;
+const TUTORIAL_MIN_FRAME_MS = 1000 / TUTORIAL_MAX_FPS;
+
 export class UIManager {
     constructor() {
         this.elements = {};
@@ -797,6 +800,7 @@ export class UIManager {
                 let loopCount = 0;
                 let lastFrameAt = 0;
                 let drawnFrames = 0;
+                const effectiveFrameMs = Math.max(slide.frameMs, TUTORIAL_MIN_FRAME_MS);
 
                 const finish = () => {
                     this.tutorialRaf = null;
@@ -809,7 +813,7 @@ export class UIManager {
                         return;
                     }
 
-                    if (!lastFrameAt || now - lastFrameAt >= slide.frameMs) {
+                    if (!lastFrameAt || now - lastFrameAt >= effectiveFrameMs) {
                         drawSpriteFrame(ctx, canvas, image, slide, frameIndex);
                         drawnFrames += 1;
                         lastFrameAt = now;
@@ -819,7 +823,7 @@ export class UIManager {
                             frameIndex = 0;
                             loopCount += 1;
                             if (loopCount >= slide.loops) {
-                                this.tutorialTimer = setTimeout(finish, slide.frameMs);
+                                this.tutorialTimer = setTimeout(finish, effectiveFrameMs);
                                 return;
                             }
                         }

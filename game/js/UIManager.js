@@ -669,8 +669,30 @@ export class UIManager {
             this.tutorialActive = false;
         }
         if (!show && this.tutorialRaf) {
-            cancelAnimationFrame(this.tutorialRaf);
-            this.tutorialRaf = null;
+                            const indicatorEl = existing || this.createEnemyIndicator(container);
+                            if (vz < 0) {
+                                indicatorEl.dataset.behindSide = String(edgeX < 0 ? -1 : 1);
+                            } else {
+                                delete indicatorEl.dataset.behindSide;
+                            }
+
+                            // Clamp to ensure visual margin on all sides accounting for indicator size
+                            const containerRect = container.getBoundingClientRect();
+                            const marginPx = Math.round(containerRect.width * (marginPct / 100));
+                            // Ensure indicator is in DOM to measure it
+                            if (!indicatorEl.parentElement) container.appendChild(indicatorEl);
+                            const indRect = indicatorEl.getBoundingClientRect();
+                            const halfW = indRect.width / 2 || 12;
+                            const halfH = indRect.height / 2 || 12;
+
+                            let leftPx = (xPct / 100) * containerRect.width;
+                            let topPx = (yPct / 100) * containerRect.height;
+
+                            leftPx = Math.max(marginPx + halfW, Math.min(containerRect.width - marginPx - halfW, leftPx));
+                            topPx = Math.max(marginPx + halfH, Math.min(containerRect.height - marginPx - halfH, topPx));
+
+                            this.setStyleIfChanged(indicatorEl, 'left', `${leftPx}px`);
+                            this.setStyleIfChanged(indicatorEl, 'top', `${topPx}px`);
         }
         if (!show) {
             this.clearTutorialAdvanceHandler();

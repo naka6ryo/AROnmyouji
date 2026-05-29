@@ -1111,26 +1111,25 @@ export class UIManager {
 
         // 状況完了SE
         try {
-            const audioKey = 'situation_complete';
+            const audioKey = 'mission_complete';
             const assetPath = 'assets/sfx/決定ボタンを押す49.mp3';
-            const fallbackPath = 'C:/Users/naka6/Downloads/決定ボタンを押す49.mp3';
             const mgr = (typeof window !== 'undefined' && window.soundManager)
                 ? window.soundManager
                 : (typeof soundManager !== 'undefined' ? soundManager : null);
 
             if (mgr && typeof mgr.play === 'function') {
                 try {
-                    mgr.play(audioKey, { volume: 0.9 });
+                    mgr.play(audioKey, { volume: 1.0 });
                 } catch (playErr) {
                     if (typeof mgr.load === 'function') {
                         mgr.load({ [audioKey]: assetPath })
                             .then(() => {
-                                try { mgr.play(audioKey, { volume: 0.9 }); } catch (e) { }
+                                try { mgr.play(audioKey, { volume: 1.0 }); } catch (e) { }
                             })
                             .catch(() => {
-                                const a = new Audio(fallbackPath);
+                                const a = new Audio(assetPath);
                                 a.preload = 'auto';
-                                a.volume = 0.9;
+                                a.volume = 1.0;
                                 a.play().catch(() => { });
                             });
                     }
@@ -1138,13 +1137,8 @@ export class UIManager {
             } else {
                 const a = new Audio(assetPath);
                 a.preload = 'auto';
-                a.volume = 0.9;
-                a.play().catch(() => {
-                    const b = new Audio(fallbackPath);
-                    b.preload = 'auto';
-                    b.volume = 0.9;
-                    b.play().catch(() => { });
-                });
+                a.volume = 1.0;
+                a.play().catch(() => { });
             }
         } catch (e) { }
 
@@ -1360,39 +1354,6 @@ export class UIManager {
             }
         }
 
-        if (isSuccess) {
-            try {
-                const audioKey = 'button';
-                const assetPath = 'assets/sfx/Button.mp3';
-                const mgr = (typeof window !== 'undefined' && window.soundManager)
-                    ? window.soundManager
-                    : (typeof soundManager !== 'undefined' ? soundManager : null);
-
-                if (mgr && typeof mgr.play === 'function') {
-                    try {
-                        mgr.play(audioKey, { volume: 1.0 });
-                    } catch (playErr) {
-                        if (typeof mgr.load === 'function') {
-                            mgr.load({ [audioKey]: assetPath })
-                                .then(() => {
-                                    try { mgr.play(audioKey, { volume: 1.0 }); } catch (e) { }
-                                })
-                                .catch(() => {
-                                    const a = new Audio(assetPath);
-                                    a.preload = 'auto';
-                                    a.volume = 1.0;
-                                    a.play().catch(() => { });
-                                });
-                        }
-                    }
-                } else {
-                    const a = new Audio(assetPath);
-                    a.preload = 'auto';
-                    a.volume = 1.0;
-                    a.play().catch(() => { });
-                }
-            } catch (e) { }
-        }
     }
 
     // --- Title Screen 2 ---

@@ -20,6 +20,7 @@ export class UIManager {
         this.tutorialTimer = null;
         this.tutorialRaf = null;
         this.tutorialActive = false;
+        this.tutorialAdvanceHandler = null;
         this.tutorialPreloads = [];
         this.tutorialSpriteImages = new Map();
         this.titleHomeBackground = 'assets/picture/Title02.jpg';
@@ -669,6 +670,9 @@ export class UIManager {
             cancelAnimationFrame(this.tutorialRaf);
             this.tutorialRaf = null;
         }
+        if (!show) {
+            this.clearTutorialAdvanceHandler();
+        }
         if (btn) {
             btn.style.display = show ? 'block' : 'none';
             btn.style.pointerEvents = show ? 'auto' : 'none';
@@ -678,6 +682,14 @@ export class UIManager {
             overlay.style.display = show ? 'flex' : 'none';
             overlay.style.pointerEvents = show ? 'auto' : 'none';
             if (show) overlay.classList.remove('hidden'); else overlay.classList.add('hidden');
+        }
+    }
+
+    clearTutorialAdvanceHandler() {
+        const overlay = this.elements.startOverlay;
+        if (overlay && this.tutorialAdvanceHandler) {
+            overlay.removeEventListener('pointerdown', this.tutorialAdvanceHandler);
+            this.tutorialAdvanceHandler = null;
         }
     }
 
@@ -709,9 +721,11 @@ export class UIManager {
                 frameHeight: 877,
                 columns: 6,
                 frameMs: 80,
-                loops: 3
+                loops: 2
             }
         ];
+
+        let advanceRequested = false;
 
         const applySlideText = (index) => {
             const slide = slides[index];
@@ -804,11 +818,12 @@ export class UIManager {
 
                 const finish = () => {
                     this.tutorialRaf = null;
+                    this.tutorialTimer = null;
                     resolve({ loops: loopCount, drawnFrames });
                 };
 
                 const tick = (now) => {
-                    if (!this.tutorialActive) {
+                    if (!this.tutorialActive || advanceRequested) {
                         finish();
                         return;
                     }
@@ -849,41 +864,63 @@ export class UIManager {
             this.tutorialRaf = null;
         }
         this.tutorialActive = true;
+        this.clearTutorialAdvanceHandler();
+
+        const requestTutorialAdvance = () => {
+            if (!this.tutorialActive) return;
+            advanceRequested = true;
+            if (this.tutorialTimer) {
+                clearTimeout(this.tutorialTimer);
+                this.tutorialTimer = null;
+            }
+            if (this.tutorialRaf) {
+                cancelAnimationFrame(this.tutorialRaf);
+                this.tutorialRaf = null;
+            }
+        };
+
+        const advanceHandler = (event) => {
+            if (!this.tutorialActive) return;
+            if (event && event.pointerType === 'mouse' && event.button !== 0) return;
+            if (typeof event?.preventDefault === 'function') event.preventDefault();
+            requestTutorialAdvance();
+        };
+        this.tutorialAdvanceHandler = advanceHandler;
+        overlay.addEventListener('pointerdown', advanceHandler);
 
         overlay.classList.remove('hidden');
         overlay.style.display = 'flex';
         overlay.style.pointerEvents = 'auto';
         overlay.style.opacity = '1';
 
-        const transitionTotalMs = 1400;
-        const transitionMidpointMs = 130;
-        const transitionTailMs = transitionTotalMs - transitionMidpointMs;
-
-        applySlideText(0);
-        clearTutorialCanvas();
-
-        this.tutorialTimer = setTimeout(async () => {
+        const showSlide = async (index) => {
             if (!this.tutorialActive) return;
 
-            await playTutorialSprite(slides[0]);
+            const slide = slides[index];
+            if (!slide) return;
+
+            advanceRequested = false;
+            applySlideText(index);
+            clearTutorialCanvas();
+
+            await playTutorialSprite(slide);
             if (!this.tutorialActive) return;
 
-            this.playScreenTransition(() => {
-                applySlideText(1);
-                clearTutorialCanvas();
-
-                this.tutorialTimer = setTimeout(async () => {
+            if (index < slides.length - 1) {
+                this.playScreenTransition(() => {
                     if (!this.tutorialActive) return;
+                    showSlide(index + 1);
+                });
+                return;
+            }
 
-                    await playTutorialSprite(slides[1]);
-                    if (!this.tutorialActive) return;
+            this.tutorialTimer = null;
+            this.tutorialActive = false;
+            this.clearTutorialAdvanceHandler();
+            if (onComplete) onComplete();
+        };
 
-                    this.tutorialTimer = null;
-                    this.tutorialActive = false;
-                    if (onComplete) onComplete();
-                }, transitionTailMs);
-            });
-        }, transitionTailMs);
+        showSlide(0);
     }
     showCountdown(countFrom, onComplete) {
         const overlay = this.elements.countdownOverlay;

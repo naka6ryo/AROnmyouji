@@ -22,6 +22,43 @@ export class UIManager {
         this.titleHomeBackground = 'assets/picture/Title02.jpg';
         this.titleHomeFailureBackground = 'assets/picture/Title02_fail.jpg';
         this.useFailureTitleBackground = false;
+        this._preloadedImages = new Map();
+    }
+
+    /**
+     * 単一画像をプリロードして内部キャッシュに保持する
+     * @param {string} src
+     * @returns {Promise<Image>}
+     */
+    preloadImage(src) {
+        if (!src) return Promise.resolve(null);
+        if (this._preloadedImages.has(src)) {
+            const cached = this._preloadedImages.get(src);
+            if (cached && cached.complete) return Promise.resolve(cached);
+            // else fallthrough to return existing promise
+            if (cached && cached.__promise) return cached.__promise;
+        }
+
+        const img = new Image();
+        const p = new Promise((resolve, reject) => {
+            img.onload = () => { resolve(img); };
+            img.onerror = () => { resolve(img); };// resolve even on error to avoid blocking flow
+        });
+        // store a placeholder with promise so duplicate calls reuse
+        img.__promise = p;
+        this._preloadedImages.set(src, img);
+        img.src = src;
+        return p;
+    }
+
+    /**
+     * タイトル用背景画像を事前読み込みする（非同期だが呼び出しておく）
+     */
+    preloadTitleBackgrounds() {
+        try {
+            this.preloadImage(this.titleHomeBackground).catch(() => {});
+            this.preloadImage(this.titleHomeFailureBackground).catch(() => {});
+        } catch (e) { }
     }
 
     /**
@@ -122,6 +159,8 @@ export class UIManager {
             crtMainDisplay: document.getElementById('crt-main-display'),
             hologramText: document.getElementById('hologramText')
         };
+        // 初期化時にタイトル背景をプリロードしておく
+        try { this.preloadTitleBackgrounds(); } catch (e) { }
     }
 
     /**
@@ -1186,6 +1225,8 @@ export class UIManager {
 
         const isSuccess = /クリア|Clear|任務完了/.test(title);
         this.useFailureTitleBackground = !isSuccess;
+        // 表示前にタイトル背景をプリロードしておく（Result -> Title の遅延対策）
+        try { this.preloadTitleBackgrounds(); } catch (e) { }
 
         // Play fluorescent crackle when showing result screens
         try {

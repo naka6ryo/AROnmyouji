@@ -93,7 +93,7 @@ export class SoundManager {
             const url = map[key];
             // try fetch+decode for WebAudio
             try {
-                const resp = await fetch(url, { cache: 'no-cache' });
+                const resp = await fetch(url);
                 if (!resp.ok) throw new Error('fetch failed');
                 const arr = await resp.arrayBuffer();
                 // If an AudioContext already exists (unlocked by user), try WebAudio decode.

@@ -599,7 +599,8 @@ export class UIManager {
                 edgeY = Math.max(-0.35, Math.min(0.35, vy * 0.6));
                 rad = Math.atan2(edgeY, edgeX);
                 xPct = 50 + side * (50 - marginPct);
-                yPct = Math.max(35, Math.min(65, 50 - edgeY * (50 - marginPct)));
+                // Use symmetric margins for top/bottom to match right-side margin
+                yPct = Math.max(marginPct, Math.min(100 - marginPct, 50 - edgeY * (50 - marginPct)));
             } else {
                 const cosA = Math.cos(rad);
                 const sinA = Math.sin(rad);
@@ -629,21 +630,79 @@ export class UIManager {
                 delete indicatorEl.dataset.behindSide;
             }
 
-            this.setStyleIfChanged(indicatorEl, 'left', `${xPct}%`);
-            this.setStyleIfChanged(indicatorEl, 'top', `${yPct}%`);
+            // Compute arrow scale based on distance so we can account for it when clamping
+            const minDist = 0.9;
+            const maxDist = 4.0;
+            const dist = (enemy && typeof enemy.distance === 'number') ? enemy.distance : maxDist;
+            const t = Math.max(0, Math.min(1, (maxDist - dist) / (maxDist - minDist)));
+            const minScale = 0.9;
+            const maxScale = 1.8;
+            const scaleVal = minScale + t * (maxScale - minScale);
 
-            const arrow = indicatorEl._arrow;
-            if (arrow) {
-                const minDist = 0.9;
-                const maxDist = 4.0;
-                const dist = (enemy && typeof enemy.distance === 'number') ? enemy.distance : maxDist;
-                const t = Math.max(0, Math.min(1, (maxDist - dist) / (maxDist - minDist)));
-                const minScale = 0.9;
-                const maxScale = 1.8;
-                const scaleVal = minScale + t * (maxScale - minScale);
+            // Ensure indicator is in DOM to measure sizes
+            if (!indicatorEl.parentElement) container.appendChild(indicatorEl);
+            const containerRect = container.getBoundingClientRect();
+            const indRect = indicatorEl.getBoundingClientRect();
+            const arrowEl = indicatorEl._arrow;
+            const arrowRect = arrowEl ? arrowEl.getBoundingClientRect() : { width: 36, height: 36 };
+            // Effective half sizes should include scaled arrow so tip doesn't overflow
+            const halfW = Math.max(indRect.width / 2 || 12, (arrowRect.width * scaleVal) / 2 || 12);
+            const halfH = Math.max(indRect.height / 2 || 12, (arrowRect.height * scaleVal) / 2 || 12);
 
-                this.setStyleIfChanged(arrow, 'transform', `translate(-50%, -50%) rotate(${rotation}deg) scale(${scaleVal})`);
+            // Use symmetric margin pixels computed separately for X and Y so
+            // horizontal margin (used by right side) is matched on the left,
+            // and vertical margins use container height for consistent spacing.
+            const marginPxX = Math.round(containerRect.width * (marginPct / 100));
+            const marginPxY = Math.round(containerRect.height * (marginPct / 100));
+
+            let leftPx = (xPct / 100) * containerRect.width;
+            let topPx = (yPct / 100) * containerRect.height;
+
+            // First clamp by element half-size
+            leftPx = Math.max(marginPxX + halfW, Math.min(containerRect.width - marginPxX - halfW, leftPx));
+            topPx = Math.max(marginPxY + halfH, Math.min(containerRect.height - marginPxY - halfH, topPx));
+
+            // Additionally clamp based on arrow tip so the visible tip never crosses margins.
+            // rotation is in degrees (CSS rotation applied later); convert to radians.
+            const rotationDeg = rotation; // CSS rotation we computed earlier
+            const rotationRad = rotationDeg * Math.PI / 180;
+            const arrowH = (arrowRect.height || 0) * scaleVal;
+            // Arrow tip vector before rotation points down (0, +arrowH/2).
+            const tipOffsetX = -Math.sin(rotationRad) * (arrowH * 0.5);
+            const tipOffsetY = Math.cos(rotationRad) * (arrowH * 0.5);
+
+            // tip coordinates relative to container
+            let tipX = leftPx + tipOffsetX;
+            let tipY = topPx + tipOffsetY;
+
+            const minTipX = marginPxX + 0;
+            const maxTipX = containerRect.width - marginPxX;
+            const minTipY = marginPxY + 0;
+            const maxTipY = containerRect.height - marginPxY;
+
+            if (tipX < minTipX) {
+                leftPx += (minTipX - tipX);
+                tipX = minTipX;
+            } else if (tipX > maxTipX) {
+                leftPx -= (tipX - maxTipX);
+                tipX = maxTipX;
             }
+
+            if (tipY < minTipY) {
+                topPx += (minTipY - tipY);
+                tipY = minTipY;
+            } else if (tipY > maxTipY) {
+                topPx -= (tipY - maxTipY);
+                tipY = maxTipY;
+            }
+
+            this.setStyleIfChanged(indicatorEl, 'left', `${leftPx}px`);
+            this.setStyleIfChanged(indicatorEl, 'top', `${topPx}px`);
+
+            if (arrowEl) {
+                this.setStyleIfChanged(arrowEl, 'transform', `translate(-50%, -50%) rotate(${rotation}deg) scale(${scaleVal})`);
+            }
+
             this.updateIndicatorLabel(indicatorEl, enemy);
 
             this.enemyIndicatorMap.set(enemy.id, indicatorEl);
@@ -669,30 +728,8 @@ export class UIManager {
             this.tutorialActive = false;
         }
         if (!show && this.tutorialRaf) {
-                            const indicatorEl = existing || this.createEnemyIndicator(container);
-                            if (vz < 0) {
-                                indicatorEl.dataset.behindSide = String(edgeX < 0 ? -1 : 1);
-                            } else {
-                                delete indicatorEl.dataset.behindSide;
-                            }
-
-                            // Clamp to ensure visual margin on all sides accounting for indicator size
-                            const containerRect = container.getBoundingClientRect();
-                            const marginPx = Math.round(containerRect.width * (marginPct / 100));
-                            // Ensure indicator is in DOM to measure it
-                            if (!indicatorEl.parentElement) container.appendChild(indicatorEl);
-                            const indRect = indicatorEl.getBoundingClientRect();
-                            const halfW = indRect.width / 2 || 12;
-                            const halfH = indRect.height / 2 || 12;
-
-                            let leftPx = (xPct / 100) * containerRect.width;
-                            let topPx = (yPct / 100) * containerRect.height;
-
-                            leftPx = Math.max(marginPx + halfW, Math.min(containerRect.width - marginPx - halfW, leftPx));
-                            topPx = Math.max(marginPx + halfH, Math.min(containerRect.height - marginPx - halfH, topPx));
-
-                            this.setStyleIfChanged(indicatorEl, 'left', `${leftPx}px`);
-                            this.setStyleIfChanged(indicatorEl, 'top', `${topPx}px`);
+            cancelAnimationFrame(this.tutorialRaf);
+            this.tutorialRaf = null;
         }
         if (!show) {
             this.clearTutorialAdvanceHandler();

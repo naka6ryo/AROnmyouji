@@ -434,7 +434,8 @@ class AROnmyoujiGame {
                     button: 'assets/sfx/Button.mp3',
                     fluorescent_crackle: 'assets/sfx/Fluorescent_Light-Noise01-1(Crackle).mp3',
                     tv_turn_off: 'assets/sfx/TV-Turn_Off01-2(Reverb).mp3',
-                    countdown: 'assets/sfx/Countdown02-2.mp3'
+                    countdown: 'assets/sfx/Countdown02-2.mp3',
+                    situation_complete: 'assets/sfx/決定ボタンを押す49.mp3'
                 }).catch(() => {});
             }
         } catch (e) {
@@ -481,7 +482,8 @@ class AROnmyoujiGame {
                 button: 'assets/sfx/Button.mp3',
                     fluorescent_crackle: 'assets/sfx/Fluorescent_Light-Noise01-1(Crackle).mp3',
                     tv_turn_off: 'assets/sfx/TV-Turn_Off01-2(Reverb).mp3',
-                    countdown: 'assets/sfx/Countdown02-2.mp3'
+                    countdown: 'assets/sfx/Countdown02-2.mp3',
+                    situation_complete: 'assets/sfx/決定ボタンを押す49.mp3'
             }).catch(() => {});
         } catch (e) {
             
@@ -632,7 +634,8 @@ class AROnmyoujiGame {
                     circle_freeze: 'assets/sfx/聖魔法.mp3',
                     button: 'assets/sfx/Button.mp3',
                     fluorescent_crackle: 'assets/sfx/Fluorescent_Light-Noise01-1(Crackle).mp3',
-                    tv_turn_off: 'assets/sfx/TV-Turn_Off01-2(Reverb).mp3'
+                    tv_turn_off: 'assets/sfx/TV-Turn_Off02-3(Reverb).mp3',
+                    situation_complete: 'assets/sfx/決定ボタンを押す49.mp3'
                 }).catch(() => {});
             }
         } catch (e) {
@@ -913,18 +916,23 @@ class AROnmyoujiGame {
             try { this.uiManager.clearEnemyIndicators(); } catch (e4) { }
         } catch (e) { }
 
-        // 1. 「状況完了」をカウントダウン同様の演出で表示（音無し）
-        this.uiManager.showSituationComplete(() => {
-            // 2. TV Turn Off
-            this.uiManager.playTvTurnOffAnimation(() => {
-                // 3. Screen Transition (Glitch/Noise)
-                this.uiManager.playScreenTransition(() => {
-                    // 4. Show Result
-                    this.uiManager.showResult('クリア！', data.killCount, data.time / 1000);
-                    this.appState.endGame();
-                });
+        // 1. 敵消去後に一瞬待ってから「状況完了」を表示
+        setTimeout(() => {
+            this.uiManager.showSituationComplete(() => {
+                // 2. 「状況完了」が消えてから少し待つ
+                setTimeout(() => {
+                    // 3. TV Turn Off
+                    this.uiManager.playTvTurnOffAnimation(() => {
+                        // 4. Screen Transition (Glitch/Noise)
+                        this.uiManager.playScreenTransition(() => {
+                            // 5. Show Result
+                            this.uiManager.showResult('クリア！', data.killCount, data.time / 1000);
+                            this.appState.endGame();
+                        });
+                    });
+                }, 250);
             });
-        });
+        }, 250);
     }
 
     async onHapticEvent(event) {
